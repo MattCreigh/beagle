@@ -1,0 +1,42 @@
+Beagle is dual-licensed. Choose the option that applies to your use:
+
+───────────────────────────────────────────────────────────────────────────────
+1. NON-COMMERCIAL USE — FREE
+───────────────────────────────────────────────────────────────────────────────
+
+Personal, academic, research, and other non-commercial use is licensed under
+the PolyForm Noncommercial License 1.0.0. Full text: LICENSE-NONCOMMERCIAL.
+
+Summary (non-binding): you may use, modify, and redistribute Beagle for any
+purpose that does NOT provide a commercial advantage or monetary
+compensation, provided you give recipients the same license notice.
+
+───────────────────────────────────────────────────────────────────────────────
+2. COMMERCIAL USE — PAID LICENSE REQUIRED
+───────────────────────────────────────────────────────────────────────────────
+
+ANY business or commercial use — including use by for-profit organizations,
+use in products or services offered to customers, internal commercial
+tooling, and paid engagements — REQUIRES a commercial license from the
+copyright holder. See COMMERCIAL-LICENSE.md for scope and contact.
+
+There is no open-source grant for commercial use. Running Beagle at your
+company without a commercial license is a license violation even if the use
+is "internal only".
+
+───────────────────────────────────────────────────────────────────────────────
+3. THE OPTIONAL beagle-orpheus WHEEL IS SEPARATELY LICENSED
+───────────────────────────────────────────────────────────────────────────────
+
+The `beagle-orpheus` wheel (native FlatBuffers-over-ring-buffer transport,
+compiled C extension) is NOT covered by either license above. It is
+proprietary software: free for evaluation and limited single-use trials,
+and requires a paid license for any production or business deployment.
+Downloading and installing it is an explicit, informed decision — beagle
+ships and runs fully without it on the built-in HTTP transport.
+
+See the beagle-orpheus distribution's own LICENSE for its terms.
+
+───────────────────────────────────────────────────────────────────────────────
+SPDX identifiers present in source files refer to this dual-licensing scheme.
+Third-party dependencies remain under their own licenses.

@@ -1,0 +1,18 @@
+<?xml version='1.0' encoding='utf-8'?>
+<skill name="file-read">
+  <description>Read and analyze files in the codebase</description>
+  <metadata>
+    <created_at>0</created_at>
+    <updated_at>0</updated_at>
+    <use_count>0</use_count>
+    <success_count>0</success_count>
+    <failure_count>0</failure_count>
+    <avg_execution_time>0.0</avg_execution_time>
+    <tags>file, read, code</tags>
+    <trigger_conditions>read file, examine, analyze code</trigger_conditions>
+    <skill_hash />
+  </metadata>
+  <system_directive>You are a code analysis specialist. Use read tools to examine files.</system_directive>
+  <prompt_template>Read and analyze this file: {path}
+Provide key findings relevant to: {query}</prompt_template>
+</skill>

@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/*.tar.gz
+.venv/
+venv/
+
+# Tooling caches
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Runtime state — never in the repo
+.beagle/
+.goose/
+*.ring
+
+# OS
+.DS_Store
+
+# Local secrets / env
+.env
+*.key
+secrets.yaml

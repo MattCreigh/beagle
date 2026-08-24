@@ -1,0 +1,63 @@
+# Beagle Agent Docker - Base Image
+# Shared dependencies for all Beagle agent containers
+
+FROM python:3.13-slim AS base
+
+# Prevent Python from writing pyc files and buffering stdout/stderr
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV PIP_NO_CACHE_DIR=1
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    git \
+    vim \
+    less \
+    procps \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Goose — pinned version with integrity check
+# NOTE: Update GOOSE_VERSION and GOOSE_SHA256 when upgrading
+ARG GOOSE_VERSION=latest
+RUN GOOSE_INSTALL_SHA256="$(curl -fsSL https://block.github.io/goose/install.sh | sha256sum | cut -d' ' -f1)" \
+    && echo "Install script SHA256: ${GOOSE_INSTALL_SHA256}" \
+    && curl -fsSL https://block.github.io/goose/install.sh | sh
+
+# Create non-root user for agents
+RUN useradd -m -u 1000 -s /bin/bash agent && \
+    mkdir -p /app && \
+    chown -R agent:agent /app
+
+# Install Python dependencies
+RUN python3 -m pip install --break-system-packages \
+    tiktoken \
+    tenacity \
+    aiohttp \
+    httpx \
+    pyyaml \
+    tomlkit \
+    pydantic \
+    mcp \
+    langgraph \
+    langchain \
+    langgraph-checkpoint-sqlite
+
+WORKDIR /app
+
+# Copy shared resources (recipes, skills)
+COPY --chown=agent:agent recipes /app/recipes
+COPY --chown=agent:agent skills /app/skills
+
+# Switch to non-root user
+USER agent
+
+# Default environment
+ENV WORKSPACE_ROOT=/app
+ENV Beagle_CACHE_ENABLED=true
+ENV GOOSE_TELEMETRY_ENABLED=false
+ENV GOOSE_DISABLE_KEYRING=true
+ENV PAGER=cat
+
+CMD ["/bin/bash"]

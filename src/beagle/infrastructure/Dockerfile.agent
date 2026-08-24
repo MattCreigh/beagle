@@ -1,0 +1,29 @@
+# Beagle Agent - Specific Agent Image Template
+# Build with: docker build -f Dockerfile.agent --build-arg AGENT_TYPE=planner .
+
+ARG AGENT_TYPE=orchestrator
+FROM beagle-base:latest AS agent
+
+# Agent-specific configuration
+ARG AGENT_TYPE
+ARG WORKFLOW_ID=${WORKFLOW_ID:-default}
+
+# Agent type determines which skill/recipe to use
+ENV AGENT_TYPE=${AGENT_TYPE}
+ENV AGENT_NAME=beagle-${AGENT_TYPE}
+ENV SKILL_NAME=${SKILL_NAME:-research-planner}
+
+# Orpheus ring configuration
+ENV ORPHEUS_INSTANCE=beagle-${WORKFLOW_ID}
+ENV ORPHEUS_RING_DIR=/run/orpheus/nexus
+ENV ORPHEUS_TIMEOUT_MS=30000
+
+# Copy agent-specific code
+COPY --chown=agent:agent infrastructure/agent_entrypoint.sh /usr/local/bin/agent_entrypoint.sh
+RUN chmod +x /usr/local/bin/agent_entrypoint.sh
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD python3 /app/infrastructure/health_check.py --agent ${AGENT_TYPE} || exit 1
+
+ENTRYPOINT ["/usr/local/bin/agent_entrypoint.sh"]

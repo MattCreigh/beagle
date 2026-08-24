@@ -1,0 +1,19 @@
+# Normative template: research
+# Versioned, composable specification fragment for research workflows.
+name = "research"
+version = "1.0.0"
+
+constraints = [
+    "Every claim must be traceable to a source.",
+    "Do not fabricate citations or data.",
+]
+
+success_criteria = [
+    "The report answers the research question.",
+    "Every claim carries a source reference.",
+]
+
+verification_patterns = [
+    "grep the report for a source reference per claim.",
+    "Confirm the answer directly addresses the question.",
+]

@@ -1,0 +1,58 @@
+<?xml version='1.0' encoding='utf-8'?>
+<skill name="traefik-route-config">
+  <description>Configure and manage Traefik HTTP/HTTPS routes, including routers, services, and load balancers. Supports dynamic configuration via file providers, Docker labels, or Kubernetes CRDs.</description>
+  <metadata>
+    <created_at>0</created_at>
+    <updated_at>0</updated_at>
+    <use_count>0</use_count>
+    <success_count>0</success_count>
+    <failure_count>0</failure_count>
+    <avg_execution_time>0.0</avg_execution_time>
+    <tags>traefik, routing, http, https, load-balancer, infrastructure</tags>
+    <trigger_conditions>configure traefik route, add traefik router, traefik service configuration, traefik load balancer, traefik entrypoint, traefik rule, traefik priority, traefik middleware chain</trigger_conditions>
+    <skill_hash />
+  </metadata>
+  <system_directive>You are a Traefik route configuration specialist. Generate secure, validated Traefik configuration for routers and services. Always:
+1. Validate input parameters before generating configuration
+2. Sanitize all user inputs to prevent injection attacks
+3. Use parameterized configuration (no shell interpolation)
+4. Follow Traefik v2+ dynamic configuration standards
+5. Include health check configurations for services
+6. Validate configuration syntax before applying</system_directive>
+  <prompt_template>Configure a Traefik route with the following specifications:
+
+Route Configuration:
+- Name: {route_name}
+- Provider: {provider}
+- Rule: {rule}
+- Entrypoints: {entrypoints}
+- Service URL: {service_url}
+- Load Balancer Method: {load_balancer_method}
+- Priority: {priority}
+- Middlewares: {middlewares}
+- TLS Enabled: {tls_enabled}
+- TLS Cert Resolver: {tls_certresolver}
+- Pass Host Header: {pass_host_header}
+
+Configuration Context:
+- Configuration Path: {configuration_path}
+- Environment: {environment}
+
+Requirements:
+1. Generate valid Traefik v2+ configuration
+2. Include appropriate service definition
+3. Configure load balancer with health checks
+4. Apply middleware chain if specified
+5. Validate configuration syntax
+
+Error Handling:
+- If provider is unsupported: report available providers
+- If rule syntax is invalid: provide corrected syntax with explanation
+- If service URL is malformed: report validation error with expected format
+- If configuration path is inaccessible: report permissions issue</prompt_template>
+  <examples>
+    <example>HTTP route: provider=file, route_name="api-route", rule="Host(`api.example.com`)", entrypoints=["web"], service_url="http://localhost:8080"</example>
+    <example>HTTPS route with TLS: provider=docker, route_name="secure-app", rule="Host(`app.example.com`)", entrypoints=["websecure"], tls_enabled=true, tls_certresolver="letsencrypt"</example>
+    <example>Route with middleware: route_name="auth-route", rule="PathPrefix(`/api`)", middlewares=["auth", "rate-limit"], priority=10</example>
+  </examples>
+</skill>

@@ -1,0 +1,58 @@
+<?xml version='1.0' encoding='utf-8'?>
+<skill name="traefik-debug">
+  <description>Debug and troubleshoot Traefik configurations, including access logs, error logs, health checks, and real-time configuration analysis. Supports log analysis, configuration validation, and connectivity testing.</description>
+  <metadata>
+    <created_at>0</created_at>
+    <updated_at>0</updated_at>
+    <use_count>0</use_count>
+    <success_count>0</success_count>
+    <failure_count>0</failure_count>
+    <avg_execution_time>0.0</avg_execution_time>
+    <tags>traefik, debug, troubleshooting, logs, health-check, diagnostics</tags>
+    <trigger_conditions>traefik debug, traefik logs, traefik not working, traefik health check, traefik configuration error, traefik connectivity, traefik performance, traefik diagnostics</trigger_conditions>
+    <skill_hash />
+  </metadata>
+  <system_directive>You are a Traefik debugging specialist. Perform systematic diagnostics:
+1. Collect logs and configuration without modifying state
+2. Analyze patterns in error messages
+3. Validate configuration syntax and semantics
+4. Test connectivity to backend services
+5. Check health endpoint responses
+6. Provide actionable remediation steps
+7. Preserve security - never expose sensitive data in debug output</system_directive>
+  <prompt_template>Debug Traefik with the following parameters:
+
+Debug Configuration:
+- Debug Target: {debug_target}
+- Log Level: {log_level}
+- Log Path: {log_path}
+- Configuration Path: {config_path}
+- Container Name: {container_name}
+- Service Name: {service_name}
+- Endpoint URL: {endpoint_url}
+- Time Range: {time_range}
+- Filter Pattern: {filter_pattern}
+- Include Access Logs: {include_access_logs}
+- Include Error Logs: {include_error_logs}
+- Max Entries: {max_entries}
+
+Diagnostic Context:
+- Environment: {environment}
+- Traefik Version: {traefik_version}
+- Deployment Type: {deployment_type}
+
+Diagnostic Steps:
+1. Collect relevant logs within specified time range
+2. Validate configuration syntax
+3. Check service connectivity
+4. Analyze health check status
+5. Identify error patterns
+6. Generate remediation recommendations
+
+Error Handling:
+- If log files inaccessible: report permissions issue
+- If configuration invalid: provide specific syntax error location
+- If service unreachable: report network diagnostic results
+- If container not found: list available Traefik containers
+- If timeout occurs: report partial results with timeout notice</prompt_template>
+</skill>

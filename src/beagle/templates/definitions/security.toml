@@ -1,0 +1,19 @@
+# Normative template: security
+# Versioned, composable specification fragment for security workflows.
+name = "security"
+version = "1.0.0"
+
+constraints = [
+    "Never weaken a security control to pass a gate.",
+    "Validate all external input at system boundaries.",
+]
+
+success_criteria = [
+    "No security control is weakened.",
+    "All external input is validated.",
+]
+
+verification_patterns = [
+    "Run the security test suite.",
+    "Confirm no control was disabled or downgraded.",
+]

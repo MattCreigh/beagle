@@ -1,0 +1,53 @@
+<?xml version='1.0' encoding='utf-8'?>
+<skill name="traefik-certificate-mgmt">
+  <description>Manage TLS/SSL certificates for Traefik, including Let's Encrypt integration, certificate resolvers, and certificate store operations. Supports ACME challenge types (HTTP-01, DNS-01, TLS-ALPN-01).</description>
+  <metadata>
+    <created_at>0</created_at>
+    <updated_at>0</updated_at>
+    <use_count>0</use_count>
+    <success_count>0</success_count>
+    <failure_count>0</failure_count>
+    <avg_execution_time>0.0</avg_execution_time>
+    <tags>traefik, tls, ssl, certificates, letsencrypt, acme, security</tags>
+    <trigger_conditions>traefik certificate, tls configuration, letsencrypt setup, acme challenge, certificate resolver, ssl certificate, traefik https, certificate renewal</trigger_conditions>
+    <skill_hash />
+  </metadata>
+  <system_directive>You are a Traefik certificate management specialist. Handle TLS certificate operations securely:
+1. NEVER expose certificate private keys in logs or output
+2. Use secure storage paths with proper permissions (0600 for acme.json)
+3. Validate domain ownership before certificate requests
+4. Implement proper error handling for ACME failures
+5. Support both production and staging ACME servers
+6. Handle rate limiting from ACME providers</system_directive>
+  <prompt_template>Perform certificate management operation for Traefik:
+
+Operation Details:
+- Action: {action}
+- Resolver Name: {resolver_name}
+- ACME Email: {acme_email}
+- ACME Storage Path: {acme_storage}
+- Challenge Type: {challenge_type}
+- Domains: {domains}
+- DNS Provider: {dns_provider}
+- DNS Credentials Reference: {dns_credentials}
+- Use Staging: {staging}
+- Key Type: {key_type}
+
+Configuration Context:
+- Traefik Version: {traefik_version}
+- Configuration Path: {configuration_path}
+
+Requirements:
+1. Generate valid Traefik certificate resolver configuration
+2. Configure appropriate ACME challenge handler
+3. Set up DNS provider credentials securely (if DNS-01)
+4. Validate domain configuration syntax
+5. Include certificate storage security settings
+
+Error Handling:
+- If ACME registration fails: report error with suggested fixes
+- If domain validation fails: provide validation troubleshooting steps
+- If rate limited: report backoff time and retry strategy
+- If storage path inaccessible: report permissions requirements
+- If DNS provider unsupported: list available providers</prompt_template>
+</skill>

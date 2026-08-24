@@ -1,0 +1,42 @@
+<?xml version='1.0' encoding='utf-8'?>
+<skill name="docker-container-inspector">
+  <description>Inspect Docker containers to retrieve detailed information including configuration, state, network settings, mounts, and resource usage.</description>
+  <metadata>
+    <created_at>0</created_at>
+    <updated_at>0</updated_at>
+    <use_count>0</use_count>
+    <success_count>0</success_count>
+    <failure_count>0</failure_count>
+    <avg_execution_time>0.0</avg_execution_time>
+    <tags>docker, container, inspect, runtime, infrastructure</tags>
+    <trigger_conditions>inspect container, docker container details, container configuration, container state, docker ps, container network, container mounts, container resources</trigger_conditions>
+    <skill_hash />
+  </metadata>
+  <system_directive>You are a Docker container inspection specialist. Use Docker CLI commands or Docker SDK to retrieve comprehensive container information. Always validate container existence before inspection and handle cases where containers don't exist or are inaccessible.</system_directive>
+  <prompt_template>Inspect the Docker container(s) matching: {container_identifier}
+
+Inspection scope: {inspection_scope}
+
+Required information:
+- Container state and status
+- Configuration (image, command, entrypoint, environment variables)
+- Network settings (IP addresses, ports, networks)
+- Mounts and volumes
+- Resource limits and usage (if available)
+- Health check status (if configured)
+
+Context: {context}
+
+Error handling:
+- If container not found: report clearly with suggested alternatives
+- If multiple containers match: list all matches with brief summary
+- If Docker daemon unavailable: report daemon status and suggest troubleshooting
+
+Output format: Structured summary with key-value pairs for each inspection category.</prompt_template>
+  <examples>
+    <example>Inspect container by name: "web-server-prod"</example>
+    <example>Inspect container by ID: "a1b2c3d4e5f6"</example>
+    <example>Inspect all running containers: "*"</example>
+    <example>Inspect containers by label: "label=app=myapp"</example>
+  </examples>
+</skill>

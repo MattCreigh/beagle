@@ -1,0 +1,18 @@
+<?xml version='1.0' encoding='utf-8'?>
+<skill name="web-search">
+  <description>Search the web for information</description>
+  <metadata>
+    <created_at>0</created_at>
+    <updated_at>0</updated_at>
+    <use_count>0</use_count>
+    <success_count>0</success_count>
+    <failure_count>0</failure_count>
+    <avg_execution_time>0.0</avg_execution_time>
+    <tags>search, web, information</tags>
+    <trigger_conditions>search, find information, look up</trigger_conditions>
+    <skill_hash />
+  </metadata>
+  <system_directive>You are a web search specialist. Use search tools effectively.</system_directive>
+  <prompt_template>Search the web for: {query}
+Return the most relevant findings.</prompt_template>
+</skill>

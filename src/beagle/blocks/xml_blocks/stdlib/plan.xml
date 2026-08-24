@@ -1,0 +1,16 @@
+<block name="plan">
+  <description>Generate a plan from a task description</description>
+  <inputs>task, constraints</inputs>
+  <outputs>plan</outputs>
+  <template>
+Given the task and constraints, generate a step-by-step plan.
+
+Task: {{ task }}
+{% if constraints %}
+Constraints: {{ constraints }}
+{% endif %}
+
+Plan:
+1.
+  </template>
+</block>

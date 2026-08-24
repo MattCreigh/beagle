@@ -1,0 +1,15 @@
+<block name="verify">
+  <description>Verify a code change with tests and lint</description>
+  <inputs>diff, test_command</inputs>
+  <outputs>success, findings</outputs>
+  <template>
+Verify the following change by running the test suite.
+
+Diff:
+{{ diff }}
+
+Test command: {{ test_command }}
+
+Expected: all tests pass, no lint errors.
+  </template>
+</block>

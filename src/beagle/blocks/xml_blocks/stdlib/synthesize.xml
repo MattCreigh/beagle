@@ -1,0 +1,15 @@
+<block name="synthesize">
+  <description>Synthesize a final answer from intermediate results</description>
+  <inputs>findings, output_format</inputs>
+  <outputs>final_answer</outputs>
+  <template>
+Synthesize the following findings into a coherent final answer.
+
+Findings:
+{{ findings }}
+
+Output format: {{ output_format }}
+
+Final answer:
+  </template>
+</block>

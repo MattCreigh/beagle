@@ -1,0 +1,318 @@
+# Beagle Dev Stack - Docker Compose
+# Run with: docker-compose -f infrastructure/docker-compose.yml up
+#
+# Enterprise production ready — all services have:
+#   - Pinned image tags (no :latest)
+#   - Health checks with startup grace periods
+#   - Resource limits (mem_limit, cpus)
+#   - Restart policies
+#   - Explicit dependency ordering with health conditions
+
+version: "3.9"
+
+services:
+  # ─────────────────────────────────────────────────────────────────
+  # Orpheus Daemon - Ring buffer management
+  # ─────────────────────────────────────────────────────────────────
+  orpheus-daemon:
+    image: orpheus:1.0.0
+    container_name: beagle-orpheus-daemon
+    volumes:
+      - orpheus-nexus:/run/orpheus/nexus
+      - orpheus-logs:/var/log/orpheus
+    environment:
+      - ORPHEUS_INSTANCE=${ORPHEUS_INSTANCE:-beagle-dev}
+      - ORPHEUS_LOG_LEVEL=info
+    networks:
+      - beagle-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import orpheus; print('ok')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "0.5"
+        reservations:
+          memory: 128M
+          cpus: "0.1"
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+  # ─────────────────────────────────────────────────────────────────
+  # Orchestrator - DAG execution control
+  # ─────────────────────────────────────────────────────────────────
+  orchestrator:
+    build:
+      context: ..
+      dockerfile: infrastructure/Dockerfile.agent
+      args:
+        AGENT_TYPE: orchestrator
+    image: beagle-orchestrator:${BEAGLE_VERSION:-13.4.0}
+    container_name: beagle-orchestrator
+    environment:
+      - AGENT_TYPE=orchestrator
+      - WORKFLOW_ID=${WORKFLOW_ID:-default}
+      - ORPHEUS_INSTANCE=${ORPHEUS_INSTANCE:-beagle-dev}
+      - ORPHEUS_RING_DIR=/run/orpheus/nexus
+      - GOOSE_PROVIDER=${GOOSE_PROVIDER:-ollama_cloud}
+      - GOOSE_MODEL=${GOOSE_MODEL:-gemma3:27b}
+      - WORKSPACE_ROOT=/app
+    volumes:
+      - orpheus-nexus:/run/orpheus/nexus:rw
+      - ../recipes:/app/recipes:ro
+      - ../skills:/app/skills:ro
+      - ../ai:/app/ai:rw
+    networks:
+      - beagle-net
+    depends_on:
+      orpheus-daemon:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python3", "/app/health_check.py", "--agent", "orchestrator"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: "2.0"
+        reservations:
+          memory: 512M
+          cpus: "0.5"
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "5"
+
+  # ─────────────────────────────────────────────────────────────────
+  # Agent Containers - One per DAG node
+  # ─────────────────────────────────────────────────────────────────
+  planner:
+    build:
+      context: ..
+      dockerfile: infrastructure/Dockerfile.agent
+      args:
+        AGENT_TYPE: planner
+        SKILL_NAME: research-planner
+    image: beagle-agent-planner:${BEAGLE_VERSION:-13.4.0}
+    container_name: beagle-planner
+    environment:
+      - AGENT_TYPE=planner
+      - SKILL_NAME=research-planner
+      - WORKFLOW_ID=${WORKFLOW_ID:-default}
+      - ORPHEUS_INSTANCE=${ORPHEUS_INSTANCE:-beagle-dev}
+      - ORPHEUS_RING_DIR=/run/orpheus/nexus
+      - GOOSE_PROVIDER=${GOOSE_PROVIDER:-ollama_cloud}
+      - GOOSE_MODEL=${GOOSE_MODEL:-gemma3:27b}
+      - WORKSPACE_ROOT=/app
+    volumes:
+      - orpheus-nexus:/run/orpheus/nexus:rw
+      - ../recipes:/app/recipes:ro
+      - ../skills:/app/skills:ro
+      - ../ai:/app/ai:rw
+    networks:
+      - beagle-net
+    depends_on:
+      orchestrator:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python3", "/app/health_check.py", "--agent", "planner"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 45s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: "1.0"
+        reservations:
+          memory: 256M
+          cpus: "0.25"
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "3"
+
+  executor:
+    build:
+      context: ..
+      dockerfile: infrastructure/Dockerfile.agent
+      args:
+        AGENT_TYPE: executor
+        SKILL_NAME: search-executor
+    image: beagle-agent-executor:${BEAGLE_VERSION:-13.4.0}
+    container_name: beagle-executor
+    environment:
+      - AGENT_TYPE=executor
+      - SKILL_NAME=search-executor
+      - WORKFLOW_ID=${WORKFLOW_ID:-default}
+      - ORPHEUS_INSTANCE=${ORPHEUS_INSTANCE:-beagle-dev}
+      - ORPHEUS_RING_DIR=/run/orpheus/nexus
+      - GOOSE_PROVIDER=${GOOSE_PROVIDER:-ollama_cloud}
+      - GOOSE_MODEL=${GOOSE_MODEL:-gemma3:27b}
+      - WORKSPACE_ROOT=/app
+    volumes:
+      - orpheus-nexus:/run/orpheus/nexus:rw
+      - ../recipes:/app/recipes:ro
+      - ../skills:/app/skills:ro
+      - ../ai:/app/ai:rw
+    networks:
+      - beagle-net
+    depends_on:
+      planner:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python3", "/app/health_check.py", "--agent", "executor"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 45s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: "1.0"
+        reservations:
+          memory: 256M
+          cpus: "0.25"
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "3"
+
+  verifier:
+    build:
+      context: ..
+      dockerfile: infrastructure/Dockerfile.agent
+      args:
+        AGENT_TYPE: verifier
+        SKILL_NAME: fact-checker
+    image: beagle-agent-verifier:${BEAGLE_VERSION:-13.4.0}
+    container_name: beagle-verifier
+    environment:
+      - AGENT_TYPE=verifier
+      - SKILL_NAME=fact-checker
+      - WORKFLOW_ID=${WORKFLOW_ID:-default}
+      - ORPHEUS_INSTANCE=${ORPHEUS_INSTANCE:-beagle-dev}
+      - ORPHEUS_RING_DIR=/run/orpheus/nexus
+      - GOOSE_PROVIDER=${GOOSE_PROVIDER:-ollama_cloud}
+      - GOOSE_MODEL=${GOOSE_MODEL:-gemma3:27b}
+      - WORKSPACE_ROOT=/app
+    volumes:
+      - orpheus-nexus:/run/orpheus/nexus:rw
+      - ../recipes:/app/recipes:ro
+      - ../skills:/app/skills:ro
+      - ../ai:/app/ai:rw
+    networks:
+      - beagle-net
+    depends_on:
+      executor:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python3", "/app/health_check.py", "--agent", "verifier"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 45s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: "1.0"
+        reservations:
+          memory: 256M
+          cpus: "0.25"
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "3"
+
+  synthesizer:
+    build:
+      context: ..
+      dockerfile: infrastructure/Dockerfile.agent
+      args:
+        AGENT_TYPE: synthesizer
+        SKILL_NAME: synthesis-writer
+    image: beagle-agent-synthesizer:${BEAGLE_VERSION:-13.4.0}
+    container_name: beagle-synthesizer
+    environment:
+      - AGENT_TYPE=synthesizer
+      - SKILL_NAME=synthesis-writer
+      - WORKFLOW_ID=${WORKFLOW_ID:-default}
+      - ORPHEUS_INSTANCE=${ORPHEUS_INSTANCE:-beagle-dev}
+      - ORPHEUS_RING_DIR=/run/orpheus/nexus
+      - GOOSE_PROVIDER=${GOOSE_PROVIDER:-ollama_cloud}
+      - GOOSE_MODEL=${GOOSE_MODEL:-gemma3:27b}
+      - WORKSPACE_ROOT=/app
+    volumes:
+      - orpheus-nexus:/run/orpheus/nexus:rw
+      - ../recipes:/app/skills:ro
+      - ../ai:/app/ai:rw
+    networks:
+      - beagle-net
+    depends_on:
+      verifier:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python3", "/app/health_check.py", "--agent", "synthesizer"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 45s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: "1.0"
+        reservations:
+          memory: 256M
+          cpus: "0.25"
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "3"
+
+# ─────────────────────────────────────────────────────────────────
+# Networks
+# ─────────────────────────────────────────────────────────────────
+networks:
+  beagle-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
+
+# ─────────────────────────────────────────────────────────────────
+# Volumes
+# ─────────────────────────────────────────────────────────────────
+volumes:
+  orpheus-nexus:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /run/orpheus/nexus
+  orpheus-logs:
+    driver: local

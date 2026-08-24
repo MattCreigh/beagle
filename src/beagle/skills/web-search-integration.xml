@@ -1,0 +1,197 @@
+<?xml version='1.0' encoding='utf-8'?>
+<skill name="web-search-integration">
+  <description>Enable web search capability in Beagle research workflows by connecting the web_search.py DuckDuckGo implementation to MCP tools accessible by Goose subprocesses.</description>
+  <metadata>
+    <created_at>0</created_at>
+    <updated_at>0</updated_at>
+    <use_count>0</use_count>
+    <success_count>0</success_count>
+    <failure_count>0</failure_count>
+    <avg_execution_time>0.0</avg_execution_time>
+    <tags>web, search, integration, duckduckgo, mcp</tags>
+    <trigger_conditions>web search, search integration, duckduckgo, research workflow</trigger_conditions>
+    <skill_hash />
+  </metadata>
+  <system_directive>You are a web search integration specialist. Connect web search capability to research workflows.</system_directive>
+  <prompt_template># Skill: Web Search Integration for Beagle Workflows
+
+## Purpose
+Enable web search capability in Beagle research workflows by connecting the `web_search.py` DuckDuckGo implementation to MCP tools accessible by Goose subprocesses.
+
+## Architecture
+
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│                     Beagle Research Workflow                                │
+├──────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  ┌──────────────┐    ┌──────────────┐    ┌────────────────────────┐     │
+│  │   search     │───▶│  synthesis   │───▶│ ground_truth_validation│     │
+│  │  executor    │    │   writer     │    │     validator          │     │
+│  └──────────────┘    └──────────────┘    └────────────────────────┘     │
+│         │                                                              │
+│         │ calls web_search tool                                         │
+│         ▼                                                               │
+│  ┌──────────────────────────────────────────────────────────────────┐   │
+│  │                    MCP Web Search Server                          │   │
+│  │  - web_search(query, max_results)                                │   │
+│  │  - arxiv_search(query, max_results)                              │   │
+│  │  - web_research(topic, depth)                                    │   │
+│  └──────────────────────────────────────────────────────────────────┘   │
+│         │                                                              │
+│         │ HTTP API call                                                │
+│         ▼                                                               │
+│  ┌──────────────────────────────────────────────────────────────────┐   │
+│  │                   DuckDuckGo Search (ddgs)                        │   │
+│  │  - No API key required                                            │   │
+│  │  - Supports region, safesearch, timelimit                         │   │
+│  │  - Rate limit: ~30 requests/minute                                 │   │
+│  └──────────────────────────────────────────────────────────────────┘   │
+│                                                                          │
+└──────────────────────────────────────────────────────────────────────────┘
+```
+
+## Integration Points
+
+### 1. Goose Configuration (~/.config/goose/config.yaml)
+
+Add this extension to enable web search in Goose:
+
+```yaml
+extensions:
+  beagle_web_search_server:
+    name: Beagle Web Search Server
+    cmd: /opt/beagle/beagle_venv/bin/python
+    args:
+      - -m
+      - beagle.infrastructure.mcp_utility_server
+    envs:
+      PYTHONPATH: /home/server/Projects/beagle:/home/server/Projects/beagle/metaprompts
+    enabled: true
+    type: stdio
+    timeout: 60
+```
+
+### 2. Workflow Configuration (research.yaml)
+
+Already configured with `enable_web_search: true` in templates.
+
+### 3. Task Schema (task_schema.py)
+
+Supports `enable_web_search: bool = Field(default=True)`
+
+## Tools Provided
+
+### web_search
+Search the web using DuckDuckGo.
+
+**Parameters:**
+- `query` (str): Search query (max 500 chars)
+- `max_results` (int): Max results 1-50 (default: 10)
+- `region` (str): 'wt-wt' for worldwide
+- `safesearch` (str): 'on', 'moderate', 'off'
+- `timelimit` (str): 'day', 'week', 'month', 'year'
+
+**Returns:** JSON with results containing title, href, body.
+
+### arxiv_search
+Search arXiv for academic papers.
+
+**Parameters:**
+- `query` (str): Search query
+- `max_results` (int): Max papers (default: 10)
+- `sort_by` (str): 'submittedDate', 'relevance'
+- `sort_order` (str): 'ascending', 'descending'
+
+**Returns:** JSON with paper metadata (title, authors, arXiv ID, abstract).
+
+### web_research
+Structured research combining multiple searches.
+
+**Parameters:**
+- `topic` (str): Research topic
+- `depth` (str): 'shallow', 'standard', 'deep'
+- `max_sources` (int): Max sources (default: 5)
+
+**Returns:** Markdown research report with citations.
+
+## Usage in Research Workflows
+
+The research-planner and search-executor agents should be updated to call these tools:
+
+### research-planner.md Update
+Add to prompt template:
+```
+Use web_search tool for queries requiring current information:
+- Recent library versions
+- Breaking news
+- Current best practices
+- Official documentation
+```
+
+### search-executor.md Update
+Add to tool usage patterns:
+```
+# Web search (when local codebase insufficient)
+Use web_search tool via Goose MCP:
+- tool: web_search
+- params: {query: "search term", max_results: 5}
+
+# Academic references
+Use arxiv_search tool:
+- tool: arxiv_search
+- params: {query: "transformer attention", max_results: 10}
+```
+
+## Rate Limits
+
+DuckDuckGo imposes rate limits (~30 requests/minute). The MCP server handles:
+- Retry with exponential backoff
+- Circuit breaker for repeated failures
+- Graceful degradation (returns JSON with error field)
+
+## Error Handling
+
+All tools return JSON with structured error information:
+```json
+{
+  "error": "Error message",
+  "query": "Original query",
+  "results": []
+}
+```
+
+## Dependencies
+
+- Python package: `ddgs &gt;= 9.0`
+- Python package: `mcp &gt;= 1.0`
+- Standard library: `urllib`, `xml.etree.ElementTree`
+
+Install missing dependencies:
+```bash
+pip install ddgs mcp
+```
+
+## Testing
+
+Test the MCP server directly:
+```bash
+python -m beagle.infrastructure.mcp_utility_server
+```
+
+Test web search:
+```bash
+python -c "
+from beagle.web_search import search
+import json
+result = search('Python asyncio tutorial', max_results=5)
+print(json.dumps(json.loads(result), indent=2))
+"
+```
+
+## Related Skills
+- web-researcher.md: Research agent using web search
+- web-search-agent.md: Academic paper search agent
+- research-planner.md: Planning agent for research
+- search-executor.md: Execution agent for searches</prompt_template>
+</skill>

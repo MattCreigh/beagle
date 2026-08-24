@@ -1,0 +1,19 @@
+<block name="review">
+  <description>Peer-review a code change</description>
+  <inputs>diff, context</inputs>
+  <outputs>review_comments, score</outputs>
+  <template>
+Review the following diff for correctness, style, and maintainability.
+
+Diff:
+{{ diff }}
+
+Context:
+{{ context }}
+
+Provide:
+1. Line-by-line comments
+2. A overall score (0-10)
+3. Pass/fail verdict
+  </template>
+</block>

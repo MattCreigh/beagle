@@ -1,0 +1,18 @@
+<block name="execute">
+  <description>Execute a code change based on a plan</description>
+  <inputs>plan, context, file_path</inputs>
+  <outputs>diff, result</outputs>
+  <template>
+Apply the following plan to the codebase.
+
+Plan:
+{{ plan }}
+
+Context:
+{{ context }}
+
+Target file: {{ file_path }}
+
+Generate the minimal diff needed to implement the plan.
+  </template>
+</block>

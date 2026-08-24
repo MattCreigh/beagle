@@ -1,0 +1,1123 @@
+# defaults_registry.toml - classification of every hardcoded tunable literal in src/beagle.
+# CD-0 inventory + tranche-2 refinement (2026-08-22): every former file-level
+# `pending ['*']` row is now SYMBOL-level. Statuses:
+#   moved     = value lives in config; code reads it at runtime.
+#   invariant = doctrine/security/protocol constant; must NOT become config.
+#   pending   = genuine tunable awaiting a later [defaults.*] move tranche;
+#               may not GROW (new files/symbols fail the gate).
+
+[[entry]]
+file = "beacon/journal.py"
+symbols = ["__init__"]
+status = "moved"
+note = "CD-1: required kwargs; canonical homes [coord].archive_max_bytes/archive_max_files/journal_fsync_interval_s"
+
+[[entry]]
+file = "beacon/constants.py"
+symbols = ["*"]
+status = "invariant"
+note = "beacon key-layout constants; changing them orphans existing stores"
+
+[[entry]]
+file = "beacon/journal.py"
+symbols = ["_REPLAYABLE_OPS", "_SECRET_NAME_PATTERN", "_JOURNAL_FILE_MODE", "_BOARD_PREFIXES", "_BOARD_EXCLUDE_PREFIXES"]
+status = "invariant"
+note = "protocol contract + C-03 secret pattern + permission floor"
+
+[[entry]]
+file = "security/_shared_patterns.py"
+symbols = ["*"]
+status = "invariant"
+note = "secret-detection patterns are doctrine, not tunables"
+
+[[entry]]
+file = "security/constants.py"
+symbols = ["*"]
+status = "invariant"
+note = "security baseline limits; floors need user sign-off to move"
+
+[[entry]]
+file = "src/beagle/audit.py"
+symbols = ["APPROVAL_DENIED", "APPROVAL_GRANTED", "APPROVAL_REQUESTED", "CHECKPOINT_LOADED", "CHECKPOINT_SAVED", "CREDENTIAL_SCRUBBED", "NODE_COMPLETED", "NODE_FAILED", "NODE_STARTED", "QUERY_REJECTED", "SECURITY_BLOCKED", "VALIDATION_FAILED", "VALIDATION_PASSED", "WORKFLOW_COMPLETED", "WORKFLOW_FAILED", "WORKFLOW_RESUMED", "WORKFLOW_STARTED"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/audit.py"
+symbols = ["APPROVAL_TIMEOUT", "BUDGET_EXCEEDED", "BUDGET_WARNING", "NODE_RETRYING", "VALIDATION_TIMEOUT"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/beacon/archive.py"
+symbols = ["_ARCHIVE_FILE_MODE", "_TEARDOWN_KEY"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/beacon/archive.py"
+symbols = ["_TEARDOWN_TTL_S"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/beacon/backends/fakeredis_unix.py"
+symbols = ["_DEFAULT_SOCKET_MODE"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/beacon/connector.py"
+symbols = ["_CHANNEL_SLOT_COUNT", "_CHANNEL_SLOT_SIZE", "_RING_FILE_MODE"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/beacon/connector.py"
+symbols = ["_RING_SLOT_COUNT", "_RING_SLOT_SIZE", "__init__"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/beacon/contact.py"
+symbols = ["_CHANNEL_FILE_MODE", "_CHANNEL_SLOT_COUNT", "_CHANNEL_SLOT_SIZE", "_ENVELOPE_VERSION"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/beacon/contact.py"
+symbols = ["_OUT_RING_SLOT_COUNT", "_OUT_RING_SLOT_SIZE"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/beacon/intents.py"
+symbols = ["_ENVELOPE_VERSION"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/beacon/journal.py"
+symbols = ["_JOURNAL_FILE_MODE"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/beacon/keys.py"
+symbols = ["_DIRHASH_LENGTH"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/beacon/server.py"
+symbols = ["_RING_FILE_MODE", "_TEARDOWN_ELECTOR_ID"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/beacon/server.py"
+symbols = ["_GRACE_TTL_S", "_HEARTBEAT_INTERVAL_S", "_POLLER_WAIT_MS", "_RING_SLOT_COUNT", "_RING_SLOT_SIZE"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/beacon/spawn.py"
+symbols = ["_SPAWN_POLL_INTERVAL_S"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/bridges/a2a_server.py"
+symbols = ["_MAX_INPUT_KEYS"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/bridges/a2a_server.py"
+symbols = ["_A2A_MAX_BODY_BYTES", "_MAX_QUERY_LENGTH", "_RATE_LIMIT_WINDOW"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/bridges/autogen/agent.py"
+symbols = ["__init__"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/bridges/autogen/assistant.py"
+symbols = ["__init__"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/bridges/autogen/group_chat.py"
+symbols = ["__init__"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/bridges/autogen/user_proxy.py"
+symbols = ["__init__"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/bridges/crewai/agent.py"
+symbols = ["__init__"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/bridges/crewai/crew.py"
+symbols = ["__init__"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/bridges/crewai/llm.py"
+symbols = ["__init__"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/bridges/goose_launcher.py"
+symbols = ["_PROXY_HOST", "_PROXY_SCRIPT_BASENAME"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/bridges/goose_launcher.py"
+symbols = ["_POLL_INTERVAL", "_PROXY_PORT", "_READY_TIMEOUT", "_SIGTERM_DEADLINE_S", "_SIGTERM_POLL_S"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/bridges/llm_client_registry.py"
+symbols = ["_MAX_CLIENTS"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/bridges/llm_direct.py"
+symbols = ["COST_PER_1K_TOKENS", "DEFAULT_HOST"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/bridges/llm_direct.py"
+symbols = ["__init__"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/bridges/ollama_cloud_proxy.py"
+symbols = ["DEFAULT_BIND"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/bridges/ollama_cloud_proxy.py"
+symbols = ["DEFAULT_PORT"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/bridges/retriever.py"
+symbols = ["_MAX_CACHE_SIZE"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/code_mode.py"
+symbols = ["TOOL_SCHEMA_TEMPLATE"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/code_mode.py"
+symbols = ["__init__"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/config/model_resolver.py"
+symbols = ["_PRESET_LAST_RESORT"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/config/paths.py"
+symbols = ["_EXECUTABLE_ENV_SUFFIX"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/constants.py"
+symbols = ["MCP_A2A_MAX_INPUT_KEYS", "SECRETS_CACHE_TTL_S", "WORKFLOW_DEFAULT"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/constants.py"
+symbols = ["CACHE_MAX_SIZE", "CONTEXT_AUTO_COMPRESS_FLOOR", "CONTEXT_HARD_SOVEREIGN_CEILING", "DEFAULT_SUBPROCESS_TIMEOUT_S", "DEFAULT_VALIDATION_TIMEOUT_S", "GOOSE_READY_TIMEOUT_S", "GUARDIAN_APPROVAL_CACHE_TTL_S", "GUARDIAN_APPROVAL_TIMEOUT_S", "HEALTHCHECK_INTERVAL_S", "HEALTHCHECK_TIMEOUT_S", "LLM_CLIENT_DEFAULT_TIMEOUT_S", "LLM_CLIENT_MAX_CLIENTS", "MAX_PATH_LENGTH", "MCP_A2A_MAX_BODY_BYTES", "MCP_DEFAULT_RPC_TIMEOUT_S", "MCP_EMBED_TIMEOUT_S", "MCP_MAX_HOPS", "MCP_MAX_QUERY_LENGTH", "MCP_MAX_TOP_K", "MCP_RAG_SEARCH_TIMEOUT_S", "PROGRESS_MAX_AGE_HOURS", "RATE_LIMIT_DEFAULT_BURST", "RATE_LIMIT_DEFAULT_RPS", "RATE_LIMIT_PER_TENANT_RPS", "RATE_LIMIT_TENANT_FLAG", "WATCHDOG_CRITICAL_PCT", "WATCHDOG_WARN_PCT"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/context/auto_hydration.py"
+symbols = ["KUZU_MIN_RATIO"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/context/claude_md_updater.py"
+symbols = ["_CLAUDE_MD_FILENAME", "_METADATA_MARKER_END", "_METADATA_MARKER_START"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/context/compressed_store.py"
+symbols = ["DEFAULT_MAX_FOLDS", "DEFAULT_MIN_AGE_SECONDS"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/context/context_integration.py"
+symbols = ["__init__"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/context/context_manager_hook.py"
+symbols = ["__init__"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/context/context_optimizer.py"
+symbols = ["__init__"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/context/context_preprocessor.py"
+symbols = ["DEFAULT_CONTEXT_CRITICAL", "DEFAULT_CONTEXT_WARNING", "DEFAULT_FILE_SIZE_LIMIT", "DEFAULT_LINE_LIMIT"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/context/context_reporter.py"
+symbols = ["_STALENESS_SECONDS"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/context/embedding_adapter.py"
+symbols = ["DEFAULT_EMBEDDING_DIM"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/context/embedding_cache.py"
+symbols = ["DEFAULT_MAX_ENTRIES", "EVICT_AT", "EVICT_BATCH"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/context/post_compaction_rehydration.py"
+symbols = ["BEAGLE_SYSTEM_IDENTITY"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/context/semantic_prompt_cache.py"
+symbols = ["DEFAULT_MAX_ENTRIES", "DEFAULT_SIMILARITY_THRESHOLD", "DEFAULT_TTL_SECONDS"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/context/token_counter_subscriber.py"
+symbols = ["DEFAULT_CRITICAL", "DEFAULT_PRE_COMPACT", "DEFAULT_WARNING"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/context/trigger.py"
+symbols = ["__init__"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/context/watchdog_actor.py"
+symbols = ["DEFAULT_TIMER_SECONDS"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/core/a2a_protocol.py"
+symbols = ["A2A_VERSION", "DEFAULT_HOST"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/core/a2a_protocol.py"
+symbols = ["DEFAULT_PORT", "_A2A_AUTH_WINDOW_SECONDS"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/core/a2a_types.py"
+symbols = ["A2A_PROTOCOL_VERSION", "CAPABILITY_QUERY", "CAPABILITY_RESPONSE", "HELLO_ACK", "LOCK_GRANTED", "LOCK_RELEASE", "LOCK_REQUEST", "STREAMING_RESPONSE", "STREAM_DATA", "STREAM_END", "STREAM_START", "TASK_UPDATE"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/core/agent_spawner.py"
+symbols = ["SYSTEM_DIRECTIVE_TEMPLATE"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/core/agent_spawner.py"
+symbols = ["DEFAULT_MAX_NESTED_AGENTS", "DEFAULT_SUBPROCESS_TIMEOUT", "DEFAULT_VALIDATION_TIMEOUT"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/core/autonomous_orchestrator.py"
+symbols = ["__init__"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/core/bootstrap_graph.py"
+symbols = ["DEFERRED_INIT", "TRUST_GATE"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/core/dynamic_pool.py"
+symbols = ["__init__"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/core/graph.py"
+symbols = ["MAX_ITERATIONS", "_MAX_GRPO_METADATA_KEYS"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/core/graph.py"
+symbols = ["GRPO_N_TRAJECTORIES", "MAX_ERRORS", "_GRPO_TIMEOUT_SECONDS"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/core/graph_builder.py"
+symbols = ["MAX_ITERATIONS", "_MAX_GRPO_METADATA_KEYS"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/core/graph_builder.py"
+symbols = ["GRPO_N_TRAJECTORIES", "MAX_ERRORS", "_GRPO_TIMEOUT_SECONDS"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/core/hydration_node.py"
+symbols = ["_PREFETCH_MAX_ENTRIES", "_PREFETCH_SIMILARITY_THRESHOLD", "_PREFETCH_TTL_SECONDS", "_SUBQUERY_MIN_LEN"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/core/nodes.py"
+symbols = ["_READ_ONLY_DIRECTIVE", "_READ_WRITE_DIRECTIVE"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/core/orchestrator/executor.py"
+symbols = ["DEFAULT_SUBPROCESS_TIMEOUT", "DEFAULT_VALIDATION_TIMEOUT"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/core/orchestrator/system_directive.py"
+symbols = ["SYSTEM_DIRECTIVE_TEMPLATE"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/core/orchestrator/system_directive.py"
+symbols = ["DEFAULT_MAX_NESTED_AGENTS"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/core/router.py"
+symbols = ["DEFAULT_WORKFLOW"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/core/router.py"
+symbols = ["SATURATION_SCORE"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/core/sandbox.py"
+symbols = ["DEFAULT_CPU_TIME_LIMIT", "DEFAULT_MAX_FILES", "DEFAULT_MAX_PROCESSES", "__init__"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/core/singletons.py"
+symbols = ["_TTL"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/core/skill_library.py"
+symbols = ["SKILL_ROUTER_MODEL"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/core/state.py"
+symbols = ["MAX_HYDRATION_CODE_CHUNKS"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/core/state.py"
+symbols = ["MAX_COMPLETED_NODES", "MAX_ERRORS", "MAX_FACT_LEDGER", "MAX_TOOL_FAILURE_HISTORY"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/core/templating.py"
+symbols = ["__init__"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/core/turboquant.py"
+symbols = ["COMPRESSION_RATIO", "DEFAULT_BITS", "KV_CACHE_RATIO"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/core/warm_workers.py"
+symbols = ["_DEFAULT_WARM_WORKER_COUNT", "__init__"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/core/workflow_constants.py"
+symbols = ["DEFAULT_NODE_TOKEN_BUDGET", "MAX_NODE_TOKEN_BUDGET", "_READ_ONLY_DIRECTIVE", "_READ_WRITE_DIRECTIVE"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/core/workflow_constants.py"
+symbols = ["HARD_SOVEREIGN_THRESHOLD"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/cost_tracker.py"
+symbols = ["CONTEXT_CRITICAL_THRESHOLD", "CONTEXT_WARNING_THRESHOLD", "MAX_PROMPT_RATIO", "_DEFAULT_CONTEXT_WINDOW", "__init__"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/daemon/scheduler.py"
+symbols = ["__init__"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/errors.py"
+symbols = ["__init__"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/events/bus.py"
+symbols = ["_CALLBACK_TIMEOUT_SECONDS"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/feature_flags.py"
+symbols = ["ENABLE_DEGRADATION_MANAGER", "ENABLE_GENAI_METRICS", "ENABLE_GRAPH_RAG", "ENABLE_MULTI_TENANCY"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/guardian/__init__.py"
+symbols = ["NEEDS_HUMAN"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/guardian/__init__.py"
+symbols = ["__init__"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/health/thresholds.py"
+symbols = ["__init__"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/infrastructure/cast_ingestion.py"
+symbols = ["CHUNK_SIZE_TOKENS"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/infrastructure/cast_ingestion.py"
+symbols = ["KUZU_INSERT_TX_BATCH", "LANCE_WRITE_BATCH", "OVERLAP_RATIO", "SENTENCE_TRANSFORMERS_BATCH"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/infrastructure/constraint_extractor.py"
+symbols = ["__init__"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/infrastructure/constraint_registry.py"
+symbols = ["NICE_TO_HAVE"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/infrastructure/docker_rag_logger.py"
+symbols = ["ARCHITECTURE_DECISION", "CONTAINER_ERROR", "CONTAINER_START", "CONTAINER_STOP", "PERFORMANCE_METRIC", "RING_CREATED", "RING_ERROR"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/infrastructure/docker_rag_logger.py"
+symbols = ["AGENT_ERROR", "AGENT_TASK"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/infrastructure/faiss_prefilter.py"
+symbols = ["__init__"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/infrastructure/knowledge_extractor.py"
+symbols = ["__init__"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/infrastructure/mcp_coord_server.py"
+symbols = ["_MCP_RATE_LIMIT_MAX_CALLS", "_MCP_RATE_LIMIT_WINDOW"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/infrastructure/mcp_openclaw_server.py"
+symbols = ["COMPONENT_UNAVAILABLE", "CONTROLLER_UNAVAILABLE", "EMPTY_SPEC", "FILE_NOT_FOUND", "FILE_TOO_LARGE", "INTERNAL_ERROR", "INVALID_CRON", "INVALID_INPUT", "INVALID_PATH", "INVALID_TASK_TYPE", "LAUNCH_FAILED", "PAYLOAD_TOO_LARGE", "STORE_UNAVAILABLE", "TASK_NOT_FOUND", "TASK_NOT_PENDING", "VALIDATION_FAILED"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/infrastructure/mcp_openclaw_server.py"
+symbols = ["_MAX_CONSTRAINTS_SIZE", "_MAX_LIST_LIMIT", "_MAX_QUERY_LENGTH", "_MAX_SPEC_SIZE"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/infrastructure/mcp_rag_server.py"
+symbols = ["VECTOR_DISTANCE_TYPE"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/infrastructure/mcp_rag_server.py"
+symbols = ["DEFAULT_VECTOR_RESULTS", "MAX_GRAPH_RESULTS", "MAX_HOPS", "MAX_SNIPPET_CHARS", "MAX_VECTOR_RESULTS", "_JOBS_MAX_ENTRIES", "_MCP_RATE_LIMIT_MAX_CALLS", "_MCP_RATE_LIMIT_WINDOW", "_RAG_CACHE_MAX_SIZE", "_RAG_CACHE_TTL", "__init__"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/infrastructure/mcp_rag_wrapper.py"
+symbols = ["_HEALTH_BASENAME", "_PID_BASENAME"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/infrastructure/mcp_security.py"
+symbols = ["DEFAULT_TOKEN_TTL"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/infrastructure/mcp_security.py"
+symbols = ["_AUTH_FAILURE_WINDOW", "_MAX_AUTH_FAILURES", "_MAX_FAILED_ATTEMPTS_ENTRIES"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/infrastructure/mcp_utility_server.py"
+symbols = ["_MCP_RATE_LIMIT_MAX_CALLS", "_MCP_RATE_LIMIT_WINDOW", "__init__"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/infrastructure/openclaw_orpheus_client.py"
+symbols = ["RESPONSE_HEADER_SIZE"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/infrastructure/orpheus_agent.py"
+symbols = ["GET_TASK", "SEND_TASK"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/infrastructure/orpheus_agent.py"
+symbols = ["__init__"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/infrastructure/orpheus_ring_manager.py"
+symbols = ["PACKET_HEADER_FMT", "PACKET_HEADER_SIZE"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/infrastructure/orpheus_ring_manager.py"
+symbols = ["READY_FLAG_EMPTY", "READY_FLAG_ERROR", "READY_FLAG_READY"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/infrastructure/rag_paths.py"
+symbols = ["LANCE_TABLE_NAME"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/infrastructure/services/embedding.py"
+symbols = ["_EMBED_MODEL_OLLAMA", "_OLLAMA_CLOUD_API", "_OLLAMA_CLOUD_BASE"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/infrastructure/services/embedding.py"
+symbols = ["_EMBED_DIMENSION", "__init__"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/infrastructure/session_memory.py"
+symbols = ["_MAX_SESSION_EPISODES", "_MAX_SESSION_MESSAGES"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/infrastructure/task_notifier.py"
+symbols = ["TASK_CANCELLED", "TASK_COMPLETED", "TASK_FAILED", "TASK_HEARTBEAT", "TASK_PROGRESS", "TASK_STARTED"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/infrastructure/task_notifier.py"
+symbols = ["__init__"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/infrastructure/tools/_impl.py"
+symbols = ["_AUDIT_DIR_NAME", "_BEAGLE_DIR_NAME"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/infrastructure/tools/_impl.py"
+symbols = ["_AUDIT_PREVIEW_LINES", "_GIT_LOG_LIMIT", "_PROGRESS_STALE_DAYS", "_SUBPROCESS_TIMEOUT_S"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/infrastructure/turboquant_lance_cache.py"
+symbols = ["SIDECAR_BIN", "SIDECAR_META"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/infrastructure/turboquant_lance_cache.py"
+symbols = ["DEFAULT_BITS"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/lifecycle/checkpoint.py"
+symbols = ["CHECKPOINT_DIR", "CHECKPOINT_FILE"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/lifecycle/checkpoint.py"
+symbols = ["MAX_CHECKPOINTS"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/lifecycle/restart.py"
+symbols = ["__init__"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/memory/hierarchical_memory.py"
+symbols = ["LONG_TERM"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/memory/hierarchical_memory.py"
+symbols = ["_ZSTD_COMPRESSION_LEVEL"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/memory/memory_index.py"
+symbols = ["INDEX_HEADER", "OLDEST_FIRST", "RELEVANCE_WEIGHTED", "_DEFAULT_TOKEN_BUDGET"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/memory/memory_index.py"
+symbols = ["_CATASTROPHIC_THRESHOLD"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/memory/memory_upload.py"
+symbols = ["_DEFAULT_DEDUP_THRESHOLD", "_DEFAULT_MAX_CHARS", "_DEFAULT_MAX_POINTS", "_DEFAULT_MIN_CHARS", "_DEFAULT_MIN_SCORE"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/meta/builtin.py"
+symbols = ["__init__"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/observability/genai.py"
+symbols = ["ATTR_COST_USD", "ATTR_EVH_PASSED", "ATTR_NODE_NAME", "ATTR_RECIPE_NAME", "ATTR_REQUEST_MAX_TOKENS", "ATTR_REQUEST_MODEL", "ATTR_REQUEST_TEMPERATURE", "ATTR_RESPONSE_MODEL", "ATTR_SYSTEM", "ATTR_USAGE_INPUT_TOKENS", "ATTR_USAGE_OUTPUT_TOKENS", "ATTR_USAGE_TOTAL_TOKENS", "ATTR_WORKFLOW_ID", "COST_CHECK", "MCP_TOOL", "NODE_EXECUTION", "RAG_SEARCH", "WORKFLOW_RUN"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/preflight/estimator.py"
+symbols = ["DEFAULT_INPUT_TOKENS", "DEFAULT_OUTPUT_TOKENS"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/preflight/estimator.py"
+symbols = ["__init__"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/reproducibility/determinism.py"
+symbols = ["_DEFAULT_SEED"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/reproducibility/determinism.py"
+symbols = ["_DETERMINISTIC_EPOCH"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/reproducibility/manifest.py"
+symbols = ["MANIFEST_VERSION"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/resilience/degradation.py"
+symbols = ["CIRCUIT_BREAKER", "DEGRADED_1", "DEGRADED_2", "DEGRADED_3", "DEGRADED_4", "HEALTH_SCORE", "MCP_HEALTH"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/resilience/degradation.py"
+symbols = ["__init__"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/runtime/loader.py"
+symbols = ["_DEFAULT_PLUGIN"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/secrets_loader.py"
+symbols = ["_MAX_SECRET_FILE_MODE"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/secrets_loader.py"
+symbols = ["_DEFAULT_CACHE_TTL"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/security/ast_validator.py"
+symbols = ["MAX_CODE_LENGTH"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/security/constants.py"
+symbols = ["DEFAULT_FIREWALL_MODEL", "DEFAULT_FIREWALL_PROVIDER"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/security/constants.py"
+symbols = ["MAX_PROMPT_LENGTH", "MAX_QUERY_LENGTH", "SEMANTIC_FIREWALL_TIMEOUT"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/security/deserialization_guard.py"
+symbols = ["_TRUSTED_VALUES_ONLY"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/security/sanitization.py"
+symbols = ["MAX_SCRUB_LENGTH"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/security/validation.py"
+symbols = ["_CACHED_INPUT_MAX_LENGTH"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/security/vigil.py"
+symbols = ["MIN_PRINTABLE_RATIO"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/security/vigil.py"
+symbols = ["MAX_NON_ASCII_RATIO", "MAX_OUTPUT_LENGTH"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/slo/indicators.py"
+symbols = ["E2E_LATENCY_P95", "MCP_AVAILABILITY", "NODE_LATENCY_P95"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/slo/indicators.py"
+symbols = ["BUDGET_ACCURACY", "GROUND_TRUTH_SUCCESS_RATE", "WORKFLOW_SUCCESS_RATE"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/slo/tracker.py"
+symbols = ["_SLO_SCHEMA"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/slo/tracker.py"
+symbols = ["__init__"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/steering/manager.py"
+symbols = ["__init__"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/steering/sources.py"
+symbols = ["__init__"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/style_guides/bulk_render.py"
+symbols = ["DEFAULT_MAX_DEPTH"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/style_guides/render.py"
+symbols = ["DEFAULT_CORE", "PATTERN_TIER_BACKGROUND", "PATTERN_TIER_LOAD_BEARING"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/style_guides/render.py"
+symbols = ["CANONICAL_MAX_BYTES", "COMPACT_MAX_BYTES", "DOCTRINE_BUNDLE_MAX_BYTES", "DOCTRINE_DIRECTIVE_MAX_BYTES", "FULL_SOFT_CAP_BYTES", "HYDRATION_TTL_SECONDS"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/style_guides/tom_hydrator.py"
+symbols = ["HYDRATOR_BLOCK_MAX_BYTES", "HYDRATOR_MAX_QUERIES", "HYDRATOR_PER_RESULT_MAX_BYTES", "HYDRATOR_QUERY_TIMEOUT_SECONDS"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/style_guides/version_resolver.py"
+symbols = ["_IMPORT_NAME", "_PKG"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/utils/cache.py"
+symbols = ["COMPRESSION_RATIO", "__init__"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/utils/circuit_breaker.py"
+symbols = ["HALF_OPEN"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/utils/circuit_breaker.py"
+symbols = ["_MAX_CIRCUITS", "__init__"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/utils/ensemble.py"
+symbols = ["_JUDGE_SYSTEM"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/utils/mcp_rate_limit.py"
+symbols = ["__init__"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/utils/rate_limiter/workflow.py"
+symbols = ["_BACKOFF_MULTIPLIER", "_INITIAL_BACKOFF", "_JITTER_FACTOR", "_MAX_BACKOFF", "__init__"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/utils/safe_file_ops.py"
+symbols = ["_GENERATED_MARKER"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/utils/structured_logging.py"
+symbols = ["__init__"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/utils/subprocess/output_handlers.py"
+symbols = ["TRUNCATION_HEADER_LINES"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/utils/subprocess/output_handlers.py"
+symbols = ["TRUNCATION_FOOTER_LINES", "_MAX_EARLY_DRAIN_SECONDS"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/utils/subprocess/pool_config.py"
+symbols = ["_EDGE_MAX_WORKERS", "_RATE_LIMIT_TTL"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/utils/subprocess_manager.py"
+symbols = ["__init__"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/utils/subprocess_pool.py"
+symbols = ["TRUNCATION_HEADER_LINES"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/utils/subprocess_pool.py"
+symbols = ["TRUNCATION_FOOTER_LINES", "_MAX_EARLY_DRAIN_LINES", "_RATE_LIMIT_TTL"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/utils/text_utils.py"
+symbols = ["_HEAD_LINES", "_MIN_LINES", "_TAIL_LINES"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/validation/feedback.py"
+symbols = ["__init__"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/web_search.py"
+symbols = ["DEFAULT_REGION", "DEFAULT_SAFESEARCH"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/web_search.py"
+symbols = ["DDGS_TIMEOUT", "DEFAULT_MAX_RESULTS", "DEFAULT_MAX_RETRIES", "DEFAULT_RETRY_DELAY", "DEFAULT_TIMEOUT"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+[[entry]]
+file = "src/beagle/webhooks.py"
+symbols = ["APPROVAL_REQUIRED", "NODE_COMPLETED", "NODE_FAILED", "WORKFLOW_COMPLETED", "WORKFLOW_FAILED", "WORKFLOW_STARTED"]
+status = "invariant"
+note = "tranche-2: name-classified protocol/layout/contract constant; must NOT become config"
+
+[[entry]]
+file = "src/beagle/webhooks.py"
+symbols = ["BUDGET_EXCEEDED", "BUDGET_WARNING", "MAX_DELIVERY_HISTORY"]
+status = "pending"
+note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"

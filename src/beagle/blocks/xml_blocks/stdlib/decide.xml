@@ -1,0 +1,17 @@
+<block name="decide">
+  <description>Make a go/no-go decision</description>
+  <inputs>evidence, criteria</inputs>
+  <outputs>decision, rationale</outputs>
+  <template>
+Given the evidence and criteria, make a go/no-go decision.
+
+Evidence:
+{{ evidence }}
+
+Criteria:
+{{ criteria }}
+
+Decision (GO / NO-GO):
+Rationale:
+  </template>
+</block>

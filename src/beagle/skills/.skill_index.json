@@ -1,0 +1,66 @@
+{
+  "web-search": {
+    "name": "web-search",
+    "description": "Search the web for information",
+    "created_at": 1774470270.1502807,
+    "updated_at": 1774470270.1502814,
+    "use_count": 0,
+    "success_count": 0,
+    "failure_count": 0,
+    "avg_execution_time": 0.0,
+    "tags": [
+      "search",
+      "web",
+      "information"
+    ],
+    "trigger_conditions": [
+      "search",
+      "find information",
+      "look up"
+    ],
+    "skill_hash": "932302e4bc83"
+  },
+  "file-read": {
+    "name": "file-read",
+    "description": "Read and analyze files in the codebase",
+    "created_at": 1774470270.1513505,
+    "updated_at": 1774470270.1513515,
+    "use_count": 0,
+    "success_count": 0,
+    "failure_count": 0,
+    "avg_execution_time": 0.0,
+    "tags": [
+      "file",
+      "read",
+      "code"
+    ],
+    "trigger_conditions": [
+      "read file",
+      "examine",
+      "analyze code"
+    ],
+    "skill_hash": "2bade2362d0f"
+  },
+  "code-write": {
+    "name": "code-write",
+    "description": "Write or modify code files",
+    "created_at": 1774470270.1523604,
+    "updated_at": 1774470270.1523614,
+    "use_count": 0,
+    "success_count": 0,
+    "failure_count": 0,
+    "avg_execution_time": 0.0,
+    "tags": [
+      "code",
+      "write",
+      "modify"
+    ],
+    "trigger_conditions": [
+      "write code",
+      "create file",
+      "modify",
+      "implement"
+    ],
+    "skill_hash": "6069f9a0c1cb"
+  }
+}
