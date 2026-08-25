@@ -455,7 +455,7 @@ class PersistentSingleton[T](ABC):
         ...
 
     @abstractmethod
-    def _serialize(self, instance: T) -> bytes:
+    def _serialize(self, _instance: T) -> bytes:
         """Serialize instance to bytes for persistence."""
         ...
 

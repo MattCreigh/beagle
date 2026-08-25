@@ -208,7 +208,7 @@ class SentenceTransformerEmbedder:
 
         """
         self.model_name = model_name
-        self._model = None
+        self._model: Any = None  # lazy: None until first encode()
         self.dimension = _EMBED_DIMENSION
         self.provider = "sentence-transformers"
         logger.info(f"[Embeddings] Initializing SentenceTransformer: {model_name}")
