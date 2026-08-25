@@ -137,10 +137,20 @@ def compute_delta(_target_dir: str | Path, scan_files: list[str]) -> DeltaResult
         live_mtime, _ = live_index[common_path]
         cached_entry = state[common_path]
         cached_mtime = cached_entry.get("mtime", "")
-        if cached_mtime != live_mtime:
-            result.modified.append(common_path)
-        else:
+        if cached_mtime == live_mtime:
             result.unchanged_count += 1
+            continue
+        # v13.22.4 heat fix: mtime alone is NOT proof of modification.
+        # Bulk redeploys/copies rewrite every mtime without changing a
+        # byte of content (e.g. reinstalling site-packages), which made
+        # this branch declare ~100% of files modified and forced a full
+        # 5k-chunk re-embed on the next hourly tick. Verify against the
+        # persisted sha256_hash before paying for a rebuild.
+        cached_hash = cached_entry.get("sha256_hash", "")
+        if cached_hash and _content_hash(common_path) == cached_hash:
+            result.unchanged_count += 1
+            continue
+        result.modified.append(common_path)
 
     # If only deletes (no modifies or adds), we can surgical-delete
     # If everything is unchanged → no-op
@@ -204,6 +214,22 @@ def is_noop(result: DeltaResult) -> bool:
         and not result.added
         and not result.deleted
     )
+
+
+def _content_hash(path: str) -> str:
+    """First 16 hex chars of the file's sha256.
+
+    Must mirror ``update_state_after_ingestion``'s hash exactly
+    (read_text utf-8 errors=replace → sha256[:16]) or unchanged files
+    would compare unequal and trigger spurious rebuilds.
+
+    Returns "" on OSError; callers treat that as modified (fail-closed).
+    """
+    try:
+        source = Path(path).read_text(encoding="utf-8", errors="replace")
+        return hashlib.sha256(source.encode()).hexdigest()[:16]
+    except OSError:
+        return ""
 
 
 # ── Internal: state file I/O ──────────────────────────────────────────────────

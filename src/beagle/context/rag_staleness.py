@@ -24,6 +24,7 @@ import os
 import threading
 import time
 from dataclasses import asdict, dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -77,6 +78,60 @@ _MAX_STALE_AGE = _env_int("BEAGLE_MAX_STALE_AGE_SECONDS", 3600)
 _BACKGROUND_TASKS: set[asyncio.Task[Any]] = set()
 
 
+def _seconds_since(epoch: float) -> float:
+    """Seconds elapsed since a *persisted* wall-clock epoch.
+
+    Wall clock BY NECESSITY, despite the interval rule: these epochs live in
+    the sidecar JSON and must stay comparable across process restarts AND
+    reboots, where ``time.monotonic()``'s baseline is meaningless. Computed
+    via UTC datetimes so a DST shift or backwards NTP step degrades the age
+    estimate instead of corrupting bookkeeping (negative ages are clamped).
+    This helper is the single sanctioned wall-interval site in this module.
+    """
+    delta = datetime.now(UTC) - datetime.fromtimestamp(epoch, UTC)
+    return max(0.0, delta.total_seconds())
+
+
+# v13.22.4 heat fix: live reingest threads + a *bounded* exit-join.
+# A plain daemon thread dies the instant the CLI exits, which meant a
+# render-hints-triggered rebuild was killed mid-staging every tick and the
+# index never actually converged. concurrent.futures' atexit join was the
+# opposite extreme (process hung for the whole multi-minute embed). The
+# compromise: register an atexit hook that joins in-flight reingest threads
+# with a timeout (BEAGLE_REINGEST_EXIT_WAIT_SECONDS, default 120s). Typical
+# post-deploy deltas (small, thanks to the content-hash delta fix) finish in
+# seconds; a pathological storm is cut off at the cap instead of hanging the
+# cron child for 20 minutes. An aborted attempt leaves only the staging dir
+# dirty, which the next stage_ingest wipes — live stores are untouched until
+# the final atomic swap.
+_LIVE_REINGEST_THREADS: set[threading.Thread] = set()
+_EXIT_JOIN_REGISTERED = False
+
+
+def _join_pending_reingests() -> None:
+    """Join in-flight reingest threads at exit, bounded by a total timeout."""
+    timeout = _env_int(
+        "BEAGLE_REINGEST_EXIT_WAIT_SECONDS",
+        120,
+    )
+    # In-process join budget: monotonic is required here (doctrine floor) —
+    # this deadline never leaves the process, unlike the persisted sidecar
+    # epochs consumed by _seconds_since().
+    deadline = time.monotonic() + timeout
+    for t in list(_LIVE_REINGEST_THREADS):
+        remaining = max(0.0, deadline - time.monotonic())
+        t.join(timeout=remaining)
+
+
+def _ensure_exit_join_hook() -> None:
+    global _EXIT_JOIN_REGISTERED
+    if not _EXIT_JOIN_REGISTERED:
+        import atexit
+
+        atexit.register(_join_pending_reingests)
+        _EXIT_JOIN_REGISTERED = True
+
+
 @dataclass
 class StalenessRecord:
     """Tracks the staleness state of the RAG index.
@@ -101,6 +156,11 @@ class StalenessRecord:
     last_attempt_at: float = 0.0
     reingest_count: int = 0
     codebase_path: str = ""
+    # v13.22.4 heat fix: cheap change-detector for codebase_path
+    # ("{file_count}:{total_size}:{max_mtime_ns}"), captured at mark_fresh()
+    # time. When it matches the live tree, _sync_reingest skips the ingest
+    # entirely instead of rebuilding an identical index every TTL expiry.
+    last_fingerprint: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -115,6 +175,7 @@ class StalenessRecord:
             last_attempt_at=data.get("last_attempt_at", 0.0),
             reingest_count=data.get("reingest_count", 0),
             codebase_path=data.get("codebase_path", ""),
+            last_fingerprint=data.get("last_fingerprint", ""),
         )
 
 
@@ -130,7 +191,7 @@ class RAGStalenessTracker:
     _flight_lock: threading.Lock
     _in_flight: bool = False
 
-    def __new__(cls, *args: Any, **kwargs: Any) -> RAGStalenessTracker:
+    def __new__(cls, *_args: Any, **_kwargs: Any) -> RAGStalenessTracker:
         if cls._instance is None:
             cls._instance = super().__new__(cls)
             cls._instance._initialized = False  # type: ignore[has-type]
@@ -234,10 +295,7 @@ class RAGStalenessTracker:
         if self._record.last_reingested_at == 0:
             return True  # never successfully ingested
 
-        age = (
-            # wall-clock-ok: compares against a persisted timestamp
-            time.time() - self._record.last_reingested_at
-        )
+        age = _seconds_since(self._record.last_reingested_at)
         if age > _MAX_STALE_AGE:
             logger.info(
                 f"[RAGStaleness] Auto-stale: last reingestion was "
@@ -252,20 +310,14 @@ class RAGStalenessTracker:
         """Seconds since staleness was marked."""
         if self._record.marked_at == 0:
             return 0.0
-        return (
-            # wall-clock-ok: compares against a persisted timestamp
-            time.time() - self._record.marked_at
-        )
+        return _seconds_since(self._record.marked_at)
 
     @property
     def last_reingested_age(self) -> float:
         """Seconds since last successful reingestion."""
         if self._record.last_reingested_at == 0:
             return float("inf")
-        return (
-            # wall-clock-ok: compares against a persisted timestamp
-            time.time() - self._record.last_reingested_at
-        )
+        return _seconds_since(self._record.last_reingested_at)
 
     def mark_stale(self, reason: str = "unknown") -> None:
         """Mark RAG data as stale, requiring reingestion.
@@ -306,6 +358,10 @@ class RAGStalenessTracker:
         self._record.last_reingested_at = time.time()
         self._record.reingest_count += 1
         self._record.codebase_path = codebase_path
+        if codebase_path:
+            self._record.last_fingerprint = _target_fingerprint(codebase_path)
+        else:
+            self._record.last_fingerprint = ""
         self._record.marked_at = 0.0
         self._record.reason = ""
         self._save()
@@ -328,8 +384,7 @@ class RAGStalenessTracker:
         if last_activity == 0:
             return True  # Never attempted — allow
 
-        # wall-clock-ok: compares against a persisted timestamp
-        elapsed = time.time() - last_activity
+        elapsed = _seconds_since(last_activity)
         if elapsed >= _MIN_REINGEST_INTERVAL:
             return True
 
@@ -446,19 +501,53 @@ class RAGStalenessTracker:
         except Exception as _evt_exc:  # ruff: ignore[BLE001]  # broad: telemetry must never block work
             logger.debug(f"[RAGStaleness] RAGStale event publish skipped: {_evt_exc}")
 
-        async def _runner() -> dict[str, Any]:
-            # Run the synchronous reingestion in a worker thread so the
-            # event loop is never blocked (do not use `await` on the
-            # sync function — it would run inline on the loop).
+        loop = asyncio.get_running_loop()
+        fut: asyncio.Future[dict[str, Any]] = loop.create_future()
+
+        def _set_result(res: dict[str, Any]) -> None:
+            if not fut.done():
+                fut.set_result(res)
+
+        # v13.22.4 heat fix: run the reingestion on a *daemon* thread instead
+        # of asyncio.to_thread. concurrent.futures registers an atexit hook
+        # that joins its worker threads, so a CLI process (e.g. the hourly
+        # `beagle render-hints` cron child) stayed alive for the entire
+        # multi-minute embed even though the task was fire-and-forget — the
+        # "stuck embedding loop". A daemon thread dies with the process; the
+        # half-written staging dir is rmtree'd by the next stage_ingest call,
+        # and the live stores are only touched during the final atomic swap.
+        def _work() -> None:
             try:
-                return await asyncio.to_thread(self._sync_reingest, codebase_path)
-            except Exception as e:  # ruff: ignore[BLE001]  # broad catch intentional — background task: any failure must be logged and swallowed (task is fire-and-forget)
+                try:
+                    res = self._sync_reingest(codebase_path)
+                finally:
+                    # Free the slot whatever happened, or the tracker would
+                    # refuse every future reingest for the life of the process.
+                    self._release_reingest_slot()
+                    _LIVE_REINGEST_THREADS.discard(thread)
+            except Exception as e:  # ruff: ignore[BLE001]  # broad catch intentional — background thread: log and bridge the failure back
                 logger.error(f"[RAGStaleness] Background reingest failed: {e}")
-                return {"status": "error", "error": str(e)}
-            finally:
-                # Free the slot whatever happened, or the tracker would
-                # refuse every future reingest for the life of the process.
-                self._release_reingest_slot()
+                res = {"status": "error", "error": str(e)}
+            try:
+                if not loop.is_closed():
+                    loop.call_soon_threadsafe(_set_result, res)
+            except RuntimeError:
+                pass  # loop already closed — fire-and-forget caller moved on
+
+        thread = threading.Thread(
+            target=_work,
+            name=f"beagle-rag-reingest-{codebase_path or 'default'}",
+            daemon=True,
+        )
+        # Bounded exit-join (see _LIVE_REINGEST_THREADS above): lets a normal
+        # rebuild finish before the CLI exits without ever hanging for the
+        # full duration of a pathological one.
+        _LIVE_REINGEST_THREADS.add(thread)
+        _ensure_exit_join_hook()
+
+        async def _runner() -> dict[str, Any]:
+            thread.start()
+            return await fut
 
         try:
             task = asyncio.create_task(
@@ -498,6 +587,26 @@ class RAGStalenessTracker:
 
         try:
             from ..infrastructure.hotswap_ingest import hotswap_ingest
+
+            # v13.22.4 heat fix: fingerprint gate. The TTL-based is_stale
+            # fires every hour by construction; combined with mtime-resetting
+            # redeploys this produced a full ~5k-chunk re-embed (19 min of
+            # llama-server at ~600% CPU → 90 °C package) on far too many
+            # ticks. If the target tree is byte-identical since the last
+            # successful ingest AND the live index opens cleanly, there is
+            # nothing to rebuild.
+            fp_now = _target_fingerprint(target)
+            if (
+                self._record.last_fingerprint
+                and fp_now == self._record.last_fingerprint
+                and _index_usable()
+            ):
+                logger.info(
+                    "[RAGStaleness] Reingest skipped: target unchanged since "
+                    "last ingestion and live index healthy"
+                )
+                self.mark_fresh(codebase_path=target)
+                return {"status": "skipped_unchanged"}
 
             result = hotswap_ingest(target)
 
@@ -539,6 +648,54 @@ class RAGStalenessTracker:
             "can_reingest": self.can_reingest(),
             "reingest_in_flight": self.reingest_in_flight,
         }
+
+
+# ── Module-level helpers ──────────────────────────────────────────────────────
+
+
+def _target_fingerprint(target: str) -> str:
+    """Cheap change-detector for *target*: "{count}:{total_size}:{max_mtime_ns}".
+
+    Excludes ``__pycache__`` / bytecode (churns on import without any content
+    change). Returns "" when the target is missing or unreadable so callers
+    fail open (i.e. proceed with the ingest).
+    """
+    root = Path(target)
+    if not root.is_dir():
+        return ""
+    count = 0
+    total_size = 0
+    newest_ns = 0
+    try:
+        for p in root.rglob("*"):
+            if not p.is_file() or "__pycache__" in p.parts:
+                continue
+            if p.suffix in {".pyc", ".pyo"}:
+                continue
+            st = p.stat()
+            count += 1
+            total_size += st.st_size
+            if st.st_mtime_ns > newest_ns:
+                newest_ns = st.st_mtime_ns
+    except OSError:
+        return ""
+    return f"{count}:{total_size}:{newest_ns}"
+
+
+def _index_usable() -> bool:
+    """True when the live LanceDB table opens cleanly.
+
+    Used to avoid skipping a reingest that would repair a torn index.
+    Any probe failure returns False (→ do the ingest; correctness over quiet).
+    """
+    try:
+        from ..infrastructure.hotswap_ingest import _live_lance_is_healthy
+        from ..infrastructure.rag_paths import LANCE_TABLE_NAME, db_root
+
+        live_table = Path(db_root()) / "lancedb" / f"{LANCE_TABLE_NAME}.lance"
+        return _live_lance_is_healthy(live_table)
+    except Exception:  # ruff: ignore[BLE001]  # probe must never crash the gate
+        return False
 
 
 # ── Module-level convenience ──────────────────────────────────────────────────

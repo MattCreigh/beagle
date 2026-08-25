@@ -33,6 +33,7 @@ from typing import Any
 
 import numpy as np
 
+from beagle.config.paths import get_data_root
 from beagle.security.validation import validate_cypher_identifier
 
 from .rag_paths import LANCE_TABLE_NAME, db_root, kuzu_uri, lancedb_uri
@@ -128,27 +129,57 @@ def _get_staging_dir() -> str:
     return tempfile.gettempdir()
 
 
+def _ingest_cache_path(target_dir: str) -> Path:
+    """Per-target incremental-cache path under the Beagle data root.
+
+    v13.22.5: relocated OUT of the target directory. The cache is runtime
+    state, not corpus — keeping it beside the indexed sources meant any
+    redeploy/rsync of the target wiped it (and reset mtimes), forcing a
+    full re-parse + re-embed on the next ingest (2026-08-25 render-hints
+    heat incident). Keyed by a digest of the resolved target path so
+    several codebases sharing one data root never collide.
+    """
+    resolved = str(Path(target_dir).resolve())
+    digest = hashlib.sha256(resolved.encode()).hexdigest()[:16]
+    return get_data_root() / f".beagle_ingest_cache_{digest}.json"
+
+
 def _load_ingest_cache(target_dir: str) -> dict[str, dict[str, str]]:
-    """Load incremental ingestion cache from .beagle_ingest_cache.json.
+    """Load the incremental ingestion cache for *target_dir*.
+
+    Reads the data-root location written by v13.22.5+; falls back to the
+    legacy ``<target>/.beagle_ingest_cache.json`` (read-only) so caches
+    seeded before the relocation keep working until the next successful
+    ingestion persists them to the new location.
 
     Returns:
         Dict of {file_path: {mtime, hash}} for previously ingested files.
 
     """
-    cache_path = Path(target_dir) / ".beagle_ingest_cache.json"
+    cache_path = _ingest_cache_path(target_dir)
     if cache_path.exists():
         try:
             return json.loads(cache_path.read_text(encoding="utf-8"))  # type: ignore[no-any-return]
+        except (json.JSONDecodeError, OSError):
+            return {}
+    # Legacy fallback (pre-relocation location inside the target dir).
+    legacy_path = Path(target_dir) / ".beagle_ingest_cache.json"
+    if legacy_path.exists():
+        try:
+            return json.loads(legacy_path.read_text(encoding="utf-8"))  # type: ignore[no-any-return]
         except (json.JSONDecodeError, OSError):
             return {}
     return {}
 
 
 def _save_ingest_cache(target_dir: str, cache: dict[str, dict[str, str]]) -> None:
-    """Save incremental ingestion cache."""
-    cache_path = Path(target_dir) / ".beagle_ingest_cache.json"
+    """Save the incremental ingestion cache to the data-root location."""
+    cache_path = _ingest_cache_path(target_dir)
+    tmp_path = cache_path.with_suffix(".json.tmp")
     try:
-        cache_path.write_text(json.dumps(cache, indent=2), encoding="utf-8")
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        tmp_path.write_text(json.dumps(cache, indent=2), encoding="utf-8")
+        tmp_path.replace(cache_path)
     except OSError as e:
         logger.warning(f"Failed to save ingest cache: {e}")
 
@@ -899,12 +930,18 @@ def delete_kuzu_nodes_for_files(
 
     try:
         # Explicit buffer_pool_size avoids kuzu's 8TB mmap default that
-        # OOMs on memory-constrained hosts. 256MB is plenty for our graph
-        # sizes (10k-200k nodes; the original 80%-of-RAM default assumes
-        # a dedicated DB host with tens of GB free).
+        # OOMs on memory-constrained hosts. The original 80%-of-RAM
+        # default assumes a dedicated DB host with tens of GB free.
         #
         # v13.22.3 H1 fix: env-driven. See cast_ingestion.py docstring.
-        _kuzu_buffer_pool = int(os.environ.get("BEAGLE_KUZU_BUFFER_POOL_MB", "64")) * 1024 * 1024
+        # v13.22.5: default raised 64 → 512MB. The 64MB default could not
+        # hold a full-corpus staging build (~5.2k nodes / ~8.9k relations):
+        # relation inserts failed en masse with "Buffer manager exception:
+        # Unable to allocate memory" and the pipeline never reached the
+        # embedding phase (2026-08-25 render-hints heat incident). 512MB
+        # completed the same build comfortably alongside the normal
+        # session load on a 16GB host.
+        _kuzu_buffer_pool = int(os.environ.get("BEAGLE_KUZU_BUFFER_POOL_MB", "512")) * 1024 * 1024
         _kuzu_max_db_size = int(os.environ.get("BEAGLE_KUZU_MAX_DB_SIZE_MB", "512")) * 1024 * 1024
         # v13.22.3: set checkpoint_threshold so Kùzu auto-checkpoints
         # periodically; without it (default -1 = unlimited), a crashed
