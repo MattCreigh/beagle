@@ -8,14 +8,19 @@ invariants I-4/I-5, measured facts M-11/M-12.
 from __future__ import annotations
 
 import multiprocessing
+import multiprocessing.queues
+import multiprocessing.synchronize
 import threading
 import time
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any, cast
 
 import pytest
 import redis
+
+from beagle.beacon.backend import StoreClient
 
 # orpheus is the optional proprietary ring transport; channel-ring tests
 # exercise it directly and must skip when the wheel is absent.
@@ -26,6 +31,19 @@ from beagle.beacon.contact import Unreachable, open_channel, sweep_channels
 from beagle.beacon.keys import resolve_paths
 from beagle.beacon.records import AgentRecord, stable_colour
 from beagle.beacon.server import BeaconServer
+
+
+def _make_client(socket_path: str) -> StoreClient:
+    """Open a redis client typed as the beacon StoreClient protocol.
+
+    The beacon drivers return a properly-typed ``StoreClient``; a raw
+    ``redis.Redis`` is structurally compatible (same 27-command surface)
+    but mypy needs the cast to accept it where ``StoreClient`` is expected.
+    """
+    return cast(
+        StoreClient,
+        redis.Redis(unix_socket_path=socket_path, decode_responses=True),
+    )
 
 
 def _make_record(agent_id: str) -> AgentRecord:
@@ -65,9 +83,9 @@ def _opener_proc(
     workdir: str,
     agent_id: str,
     peer_id: str,
-    ready: multiprocessing.Event,
-    attached: multiprocessing.Event,
-    result: multiprocessing.Queue,
+    ready: multiprocessing.synchronize.Event,
+    attached: multiprocessing.synchronize.Event,
+    result: multiprocessing.queues.Queue,
 ) -> None:
     paths = resolve_paths(workdir)
     session = CoordSession(paths, agent_id)
@@ -84,7 +102,7 @@ def _opener_proc(
 
     gate = threading.Event()
     deadline = time.monotonic() + 3.0
-    reply = []
+    reply: list[bytes] = []
     while time.monotonic() < deadline and not reply:
         reply = session.read_channel(channel.b2a_path)
         if not reply:
@@ -98,9 +116,9 @@ def _opener_proc(
 def _callee_proc(
     workdir: str,
     agent_id: str,
-    ready: multiprocessing.Event,
-    attached: multiprocessing.Event,
-    result: multiprocessing.Queue,
+    ready: multiprocessing.synchronize.Event,
+    attached: multiprocessing.synchronize.Event,
+    result: multiprocessing.queues.Queue,
 ) -> None:
     paths = resolve_paths(workdir)
     session = CoordSession(paths, agent_id)
@@ -110,7 +128,7 @@ def _callee_proc(
 
     gate = threading.Event()
     deadline = time.monotonic() + 3.0
-    offers = []
+    offers: list[dict[str, Any]] = []
     while time.monotonic() < deadline and not offers:
         offers = session.poll_offers()
         if not offers:
@@ -121,7 +139,7 @@ def _callee_proc(
         return
 
     offer = offers[0]
-    incoming = []
+    incoming: list[bytes] = []
     deadline = time.monotonic() + 3.0
     while time.monotonic() < deadline and not incoming:
         incoming = session.read_channel(offer["a2b_path"])
@@ -144,11 +162,11 @@ class TestTwoProcessRendezvous:
         agent_a = str(uuid.uuid4())
         agent_b = str(uuid.uuid4())
 
-        ready_a: multiprocessing.Event = multiprocessing.Event()
-        ready_b: multiprocessing.Event = multiprocessing.Event()
-        attached_a: multiprocessing.Event = multiprocessing.Event()
-        attached_b: multiprocessing.Event = multiprocessing.Event()
-        results: multiprocessing.Queue = multiprocessing.Queue()
+        ready_a: multiprocessing.synchronize.Event = multiprocessing.Event()
+        ready_b: multiprocessing.synchronize.Event = multiprocessing.Event()
+        attached_a: multiprocessing.synchronize.Event = multiprocessing.Event()
+        attached_b: multiprocessing.synchronize.Event = multiprocessing.Event()
+        results: multiprocessing.queues.Queue = multiprocessing.Queue()
 
         real_workdir = self._workdir
 
@@ -166,15 +184,14 @@ class TestTwoProcessRendezvous:
         assert ready_a.wait(timeout=5)
         assert ready_b.wait(timeout=5)
 
+        assert running_server.poller is not None
         running_server.poller.attach(agent_a)
         running_server.poller.attach(agent_b)
 
         # Populating agent:<id>.inbox_ring is coord_attach's job (WP-7, not
         # yet built) — until then, an integration test completes it by hand,
         # same as it already does for poller.attach() itself.
-        client = redis.Redis(
-            unix_socket_path=str(running_server.paths.socket_path), decode_responses=True
-        )
+        client = _make_client(str(running_server.paths.socket_path))
         out_path = running_server.paths.agent_ring_path(agent_b, direction="out")
         client.hset(f"agent:{agent_b}", "inbox_ring", str(out_path))
         client.close()
@@ -206,9 +223,7 @@ class TestUnreachable:
     def test_open_channel_to_expired_lease_is_unreachable_not_stale(
         self, running_server: BeaconServer
     ) -> None:
-        client = redis.Redis(
-            unix_socket_path=str(running_server.paths.socket_path), decode_responses=True
-        )
+        client = _make_client(str(running_server.paths.socket_path))
         opener = str(uuid.uuid4())
         dead_peer = str(uuid.uuid4())
 
@@ -227,9 +242,7 @@ class TestUnreachable:
     def test_open_channel_to_non_contactable_peer_is_unreachable(
         self, running_server: BeaconServer
     ) -> None:
-        client = redis.Redis(
-            unix_socket_path=str(running_server.paths.socket_path), decode_responses=True
-        )
+        client = _make_client(str(running_server.paths.socket_path))
         opener = str(uuid.uuid4())
         peer = str(uuid.uuid4())
         client.hset(f"agent:{peer}", mapping={"contactable": "0", "accepts": "handoff"})
@@ -244,9 +257,7 @@ class TestUnreachable:
     def test_open_channel_for_unaccepted_kind_is_unreachable(
         self, running_server: BeaconServer
     ) -> None:
-        client = redis.Redis(
-            unix_socket_path=str(running_server.paths.socket_path), decode_responses=True
-        )
+        client = _make_client(str(running_server.paths.socket_path))
         opener = str(uuid.uuid4())
         peer = str(uuid.uuid4())
         client.hset(f"agent:{peer}", mapping={"contactable": "1", "accepts": "query"})
@@ -290,9 +301,7 @@ class TestChannelCap:
     def test_opening_over_the_cap_is_refused_without_evicting(
         self, running_server: BeaconServer
     ) -> None:
-        client = redis.Redis(
-            unix_socket_path=str(running_server.paths.socket_path), decode_responses=True
-        )
+        client = _make_client(str(running_server.paths.socket_path))
         opener = str(uuid.uuid4())
         cap = 2
         peers = [str(uuid.uuid4()) for _ in range(cap + 1)]
@@ -324,9 +333,7 @@ class TestSweep:
     """D-11: the sweep unlinks ring FILES of a dead party's channel."""
 
     def test_sweep_unlinks_ring_files_of_a_dead_party(self, running_server: BeaconServer) -> None:
-        client = redis.Redis(
-            unix_socket_path=str(running_server.paths.socket_path), decode_responses=True
-        )
+        client = _make_client(str(running_server.paths.socket_path))
         opener = str(uuid.uuid4())
         peer = str(uuid.uuid4())
         client.hset(f"agent:{peer}", mapping={"contactable": "1", "accepts": "handoff"})

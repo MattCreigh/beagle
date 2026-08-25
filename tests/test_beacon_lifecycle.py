@@ -13,6 +13,7 @@ import threading
 import time
 import uuid
 from pathlib import Path
+from typing import cast
 
 import pytest
 import redis
@@ -22,6 +23,7 @@ import redis
 orpheus = pytest.importorskip("orpheus")  # noqa: E402
 from beacon_lib.codec import encode_signal as encode_intent  # noqa: E402,I001  # P4: shim alias until full rename
 
+from beagle.beacon.backend import StoreClient  # noqa: E402
 from beagle.beacon.server import BeaconServer, get_peer_credentials  # noqa: E402
 from beagle.beacon.spawn import ensure_running, is_live  # noqa: E402
 
@@ -38,6 +40,19 @@ _MCP_COORD_SERVER = (
 _C01_PATTERN = re.compile(
     r"AF_INET|TcpFakeServer|127\.0\.0\.1|socket\.socket\(\s*socket\.AF_INET|bind\(\("
 )
+
+
+def _make_client(socket_path: str) -> StoreClient:
+    """A redis client typed as the beacon StoreClient protocol.
+
+    The beacon drivers return a properly-typed ``StoreClient``; a raw
+    ``redis.Redis`` is structurally compatible (same command surface) but
+    mypy needs the cast where ``StoreClient`` is expected.
+    """
+    return cast(
+        StoreClient,
+        redis.Redis(unix_socket_path=socket_path, decode_responses=True),
+    )
 
 
 class TestC01NoTCP:
@@ -98,6 +113,7 @@ class TestReadYourWrites:
         # hand here since WP-5 doesn't exist yet) and attach the server side.
         ring_path = running_server.paths.agent_ring_path(agent_id, direction="in")
         writer = orpheus.OrpheusRing(str(ring_path), "writer", True, 4096, 64, "fifo")
+        assert running_server.poller is not None
         running_server.poller.attach(agent_id)
 
         # The ring write: agent_id releases its own lock.
@@ -129,6 +145,7 @@ class TestReadYourWrites:
             "ring — the drain is missing or ordered wrong (I-1)"
         )
 
+        assert running_server.poller is not None
         running_server.poller.detach(agent_id)
         client.close()
 
@@ -143,7 +160,7 @@ class TestReadYourWrites:
         )
         client.set("lock:shared", "agent-b", nx=True)
 
-        apply_intent(client, "unlock_file", "agent-a", {"filehash": "shared"})
+        apply_intent(cast(StoreClient, client), "unlock_file", "agent-a", {"filehash": "shared"})
 
         assert client.get("lock:shared") == "agent-b"
         client.close()
@@ -238,7 +255,7 @@ class TestApplyIntent:
         client = redis.Redis(
             unix_socket_path=str(running_server.paths.socket_path), decode_responses=True
         )
-        apply_intent(client, "heartbeat", "agent-x", {"phase": "writing", "agent_ttl_s": 15})
+        apply_intent(cast(StoreClient, client), "heartbeat", "agent-x", {"phase": "writing", "agent_ttl_s": 15})
         assert client.sismember("agent:list", "agent-x")
         assert 0 < client.ttl("agent:agent-x") <= 15
         client.close()
@@ -251,7 +268,7 @@ class TestApplyIntent:
         )
         client.delete("event")
         for i in range(10):
-            apply_intent(client, "event", "agent-x", {"action": f"e{i}", "event_log_maxlen": 5})
+            apply_intent(cast(StoreClient, client), "event", "agent-x", {"action": f"e{i}", "event_log_maxlen": 5})
         assert client.llen("event") == 5
         client.close()
 
@@ -261,10 +278,10 @@ class TestApplyIntent:
         client = redis.Redis(
             unix_socket_path=str(running_server.paths.socket_path), decode_responses=True
         )
-        apply_intent(client, "touch_file", "agent-y", {"path": "a.py"})
-        apply_intent(client, "touch_file", "agent-y", {"path": "a.py"})
-        apply_intent(client, "touch_file", "agent-y", {"path": "b.py"})
-        files = client.hget("agent:agent-y", "files")
+        apply_intent(cast(StoreClient, client), "touch_file", "agent-y", {"path": "a.py"})
+        apply_intent(cast(StoreClient, client), "touch_file", "agent-y", {"path": "a.py"})
+        apply_intent(cast(StoreClient, client), "touch_file", "agent-y", {"path": "b.py"})
+        files = cast(str, client.hget("agent:agent-y", "files") or "")
         assert sorted(files.split(",")) == ["a.py", "b.py"]
         client.close()
 

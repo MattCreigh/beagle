@@ -112,6 +112,7 @@ class TestAttachDetach:
         # server-side crash-cleanup path is the ring poller's detach(), which
         # is what a lease-expiry sweep (WP-6/WP-9's GC) would call. Exercise
         # that path directly here, since the sweep itself is a later package.
+        assert running_server.poller is not None
         running_server.poller.detach(agent_id)
 
         assert not ring_path.exists()
