@@ -34,7 +34,7 @@ beagle config init            # seed ~/.config/beagle from code defaults
 Beagle runs fully configless — every setting has a correct in-code default.
 All user-editable configuration lives in ONE place:
 
-```
+```text
 ~/.config/beagle/              # the ONLY config root (XDG)
 ├── beagle_core_config/config.toml
 ├── style_guides/guides/*.toml     # optional doctrine files
@@ -73,7 +73,7 @@ Every outbound connection goes through one seam
 (`beagle.core.transports`). The built-in transport is plain HTTP:
 
 ```bash
-$ BEAGLE_TRANSPORT=... or [connections] transport = "..." in ~/.config/beagle
+BEAGLE_TRANSPORT=... or [connections] transport = "..." in ~/.config/beagle
 ```
 
 - Selection order: `$BEAGLE_TRANSPORT` env → `[connections].transport` in
@@ -107,7 +107,7 @@ pip install ./beagle_orpheus-<ver>-<platform>.whl   # registers beagle.transport
 
 ONE stdio surface, registered in goose as `Beagle`:
 
-```
+```bash
 /opt/beagle/beagle_venv/bin/python3 -m beagle.infrastructure.mcp_beagle_server
 ```
 

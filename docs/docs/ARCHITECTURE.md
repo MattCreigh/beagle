@@ -43,10 +43,24 @@ Protocol (MCP).
 └──────────────────────────────────────┘
 ```
 
+```mermaid
+flowchart TD
+    HO["Host Orchestrator<br/>User-facing session layer"] --> TM["Task Multiplexer<br/>Task routing / workflow selection"]
+    TM -->|"MCP Protocol"| WE["Beagle Workflow Engine<br/>Router · Steering · Deep Forks<br/>A2A Protocol · MCP Servers · RAG"]
+    WE --> OS["Observability & Security<br/>Distributed tracing · Semantic firewall"]
+```
+
 ```text
 Host Orchestrator ──▶ Task Multiplexer ──▶ Beagle Workflow Engine ──▶ Observability & Security
                         │  MCP protocol    │
                         └──────────────────┘
+```
+
+```mermaid
+flowchart LR
+    HO["Host Orchestrator"] --> TM["Task Multiplexer"]
+    TM -->|"MCP protocol"| WE["Beagle Workflow Engine"]
+    WE --> OS["Observability & Security"]
 ```
 
 ---
@@ -179,7 +193,7 @@ See `config.toml` for the full schema.
 
 Beagle exposes ONE Model Context Protocol server, registered in goose as `Beagle`:
 
-```
+```bash
 python3 -m beagle.infrastructure.mcp_beagle_server
 ```
 
