@@ -177,7 +177,7 @@ See `config.toml` for the full schema.
 
 ## MCP Protocol Servers
 
-Beagle exposes ONE Model Context Protocol server, registered in goose as `beagle`:
+Beagle exposes ONE Model Context Protocol server, registered in goose as `Beagle`:
 
 ```
 python3 -m beagle.infrastructure.mcp_beagle_server

@@ -105,7 +105,7 @@ pip install ./beagle_orpheus-<ver>-<platform>.whl   # registers beagle.transport
 
 ## MCP servers & plugins
 
-ONE stdio surface, registered in goose as `beagle`:
+ONE stdio surface, registered in goose as `Beagle`:
 
 ```
 /opt/beagle/beagle_venv/bin/python3 -m beagle.infrastructure.mcp_beagle_server
