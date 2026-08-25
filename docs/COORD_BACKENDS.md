@@ -207,7 +207,7 @@ Outside the seam entirely — a backend author never touches these:
   1. Implement BackendDriver and return a StoreClient from connect().
   2. Add one line to REGISTRY in beagle/beacon/backends/__init__.py.
   3. pytest tests/test_beacon_backend_conformance.py  -> all green, no xfail.
-  4. scripts/bench_coord_backend.py --backend <name>  -> record the numbers.
-  5. Set [coord].backend = "<name>". Change NO other file. Run the full suite.
+  4. `scripts/bench_coord_backend.py --backend <name>`  -> record the numbers.
+  5. Set `[coord].backend = "<name>"`. Change NO other file. Run the full suite.
   If step 5 required a Python edit, the backend is not conformant; the slot is.
 </verification-checklist>
