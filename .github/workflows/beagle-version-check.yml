@@ -56,7 +56,8 @@ jobs:
       - name: Compare against pyproject.toml
         run: |
           PKG_VERSION="${{ steps.version.outputs.version }}"
-          PYPROJECT_VERSION=$(grep -E '^version\s*=' pyproject.toml | head -1 | sed -E 's/version\s*=\s*"([^"]+)".*/\1/')
+          PYPROJECT_VERSION=$(grep -E '^version\s*=' pyproject.toml | head -1 \
+            | sed -E 's/version\s*=\s*"([^"]+)".*/\1/')
           echo "Package:    $PKG_VERSION"
           echo "pyproject:  $PYPROJECT_VERSION"
           if [ "$PKG_VERSION" != "$PYPROJECT_VERSION" ]; then
@@ -72,8 +73,10 @@ jobs:
           # pyproject version, or the build fails. Bump both together at
           # release time (the badge is the only sanctioned version literal
           # in the README; the no-stray-literals check below still applies).
-          BADGE_VERSION=$(grep -oE 'badge/version-[0-9]+\.[0-9]+\.[0-9]+' README.md | head -n1 | cut -d- -f2-)
-          PYPROJECT_VERSION=$(grep -E '^version\s*=' pyproject.toml | head -1 | sed -E 's/version\s*=\s*"([^"]+)".*/\1/')
+          BADGE_VERSION=$(grep -oE 'badge/version-[0-9]+\.[0-9]+\.[0-9]+' README.md | head -n1 \
+            | cut -d- -f2-)
+          PYPROJECT_VERSION=$(grep -E '^version\s*=' pyproject.toml | head -1 \
+            | sed -E 's/version\s*=\s*"([^"]+)".*/\1/')
           echo "badge:     $BADGE_VERSION"
           echo "pyproject: $PYPROJECT_VERSION"
           if [ -z "$BADGE_VERSION" ]; then
