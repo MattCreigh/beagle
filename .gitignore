@@ -3,9 +3,20 @@ __pycache__/
 *.py[cod]
 *.egg-info/
 build/
-dist/
+# Built wheels under dist/ ARE tracked (release artefacts); sdists are not.
+dist/*.tar.gz
 .venv/
 venv/
+
+# LaTeX build artifacts (docs/spec)
+*.aux
+*.lof
+*.lot
+*.toc
+*.out
+*.synctex.gz
+docs/spec/*.log
+docs/spec/*.pdf
 
 # Tooling caches
 .mypy_cache/
@@ -18,6 +29,9 @@ htmlcov/
 
 # Property-based testing artifacts
 .hypothesis/
+
+# Local QA-toolchain state (machine-specific)
+.beagle_ingest_cache.json
 
 # Runtime state — never in the repo
 .beagle/

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "beagle"
-version = "1.3.0"
+version = "1.4.0"
 description = "Domain-agnostic autonomous agentic workflow system: multi-agent orchestration, hybrid RAG, MCP integration"
 readme = "README.md"
 license = { file = "LICENSE" }

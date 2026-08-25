@@ -35,8 +35,8 @@
 }
 
 % Build note: the architecture figure's verbatim block uses Unicode
-% box-drawing glyphs; compile with XeLaTeX or LuaLaTeX (pdflatex will
-% drop or error on those codepoints).
+% box-drawing glyphs plus U+25BC; compile with XeLaTeX or LuaLaTeX
+% (pdflatex will drop or error on those codepoints).
 \usepackage{iftex}
 \ifluatex\else\ifxetex\else
   \errmessage{Compile with LuaLaTeX or XeLaTeX: the architecture figure uses Unicode box-drawing glyphs unsupported by pdfLaTeX.}
@@ -109,7 +109,7 @@ The specification separates formal mathematical abstraction from concrete engine
 \end{figure}
 
 \subsection{Formal Lowering Function}
-The lowering function is a four-stage pipeline. Stage 1 merges
+The lowering function is a three-stage pipeline. Stage 1 merges
 tier-lowered rule fragments; stages 2--3 render and canonicalize. The merge
 --- not the canonicalizer --- owns conflict resolution and tier precedence.
 \begin{align}
@@ -233,10 +233,11 @@ The gap predicate is decidable only once its operators are grounded:
     \item $\mathbf{CoveredByDoctrine}(\text{pattern}, \mathbb{D})$: false iff a
         doctrine-corpus retrieval ($\texttt{rag\_search}$, top-$k=5$) returns
         no hit at or above similarity threshold $\theta_{\text{sim}}$.
-    \item Defaults: $\theta_{\text{freq}} \ge 3$, $\theta_{\text{sim}}$ fixed per
+    \item Defaults: $\theta_{\text{freq}} = 3$, $\theta_{\text{sim}}$ fixed per
         embedding model card. All four operators are deterministic given the
-        telemetry snapshot; \texttt{observe} pins the snapshot id so gap
-        reports are replayable.
+        telemetry snapshot \emph{and} the doctrine-corpus state;
+        \texttt{observe} pins both the telemetry snapshot id and the doctrine
+        build hash so gap reports are replayable.
 \end{itemize}
 
 The \texttt{enrich} primitive consumes gap reports and generates proposals:
@@ -252,7 +253,7 @@ The \texttt{curate} primitive validates staged proposals against four gates:
     \item \textbf{Conflict Detection}: No conflict with existing rules after implied repeal resolution.
     \item \textbf{Entrenchment Preservation}: If targeting $T_1$ or $T_4$, the proposal must be a restriction (narrowing), not widening.
     \item \textbf{Budget Ceiling}: The byte size of the proposed addition must fit within the tier budget, i.e.\ $\|\text{content}\|_{\text{bytes}} \le \mathbf{Cap}(T_i)$ for target tier $T_i$, where $\mathbf{Cap}$ is the tier byte-budget function defined in the core budgets section (default $2048$ bytes for $T_3$ extensions).
-    \item \textbf{Source Trust Tiering}: Every citation must resolve to a source in a trusted origin class (first-party repository files, first-party documentation). Web-sourced citations are admissible only if (i) two independent origins agree on the cited content, and (ii) any proposal targeting $T_2$ or above is additionally flagged for human review at promotion. This closes the soundness hole where attacker-controlled web content passes verbatim-match verification while being untrustworthy.
+    \item \textbf{Source Trust Tiering}: Every citation must resolve to a source in a trusted origin class (first-party repository files, first-party documentation). Web-sourced citations are admissible only if (i) two independent origins --- distinct registrable domains --- agree on the cited content, and (ii) any proposal targeting $T_1$ or $T_2$ is additionally flagged for human review at promotion. This closes the soundness hole where attacker-controlled web content passes verbatim-match verification while being untrustworthy.
 \end{enumerate}
 
 \subsection{Background Subprocesses and Budget Separation}
@@ -300,11 +301,12 @@ strictly dominates the other by tier precedence; conflicting equal-tier
 proposals are both denied (fail-closed) and returned to \texttt{enrich}
 with the conflict reason. Silent last-writer-wins is prohibited.
 
-\label{sec:doctrine-compilation}
-\textbf{Doctrine Compilation.} Promotion concludes by compiling the merged
-doctrine into the active artifact set; compilation enforces all byte-cap
-gates ($\mathbf{Cap}(T_i)$ per tier) and fails closed on violation. This
-compilation step is what conformance test TC-15 exercises.
+\textbf{Doctrine Compilation.}\label{sec:doctrine-compilation}
+Promotion first applies $\mathbf{Prune}_{\text{doctrine}}(T_i)$ to every tier
+exceeding its cap, then compiles the merged doctrine into the active artifact
+set; compilation enforces all byte-cap gates ($\mathbf{Cap}(T_i)$ per tier)
+and fails closed on violation. This compilation step is what conformance test
+TC-15 exercises.
 
 \textbf{Mandatory Human Escalation for T1/T4 (Remediation 3):} Any proposal targeting $T_1$ or $T_4$ triggers \texttt{ESCALATE} and requires authenticated human signature before promotion.
 
@@ -331,9 +333,11 @@ snapshot id. $\mathbf{CompressAndDeduplicate}$ removes rules whose
 normalized content hashes collide (keeping the highest-utility instance),
 then replaces each surviving low-utility rule body with a content-addressed
 TurboQuant fold pointer retrievable via \texttt{query\_fold}; archived
-bodies remain auditably recoverable and never silently vanish. Pruned
-rules that receive no hits across two consecutive windows are deleted;
-all others are archived.
+bodies remain auditably recoverable and never silently vanish. A pruned
+rule receives a \emph{hit} when its fold pointer is retrieved via
+\texttt{query\_fold}. Pruned rules with no such hits across two consecutive
+windows are deleted; deletion appends the rule identifier, content hash,
+and fold id to the promotion audit log before the payload is released.
 
 \subsection{Formal Integration with Existing Invariants}
 The new primitives and background processes preserve:
@@ -348,7 +352,7 @@ The new primitives and background processes preserve:
 \subsection{Extended Conformance Tests}
 \begin{table}[H]
 \centering
-\caption{Additional Conformance Tests (TC-10 to TC-15)}
+\caption{Additional Conformance Tests (TC-10 to TC-18)}
 \begin{tabular}{@{}lll@{}}
 \toprule
 \textbf{Test} & \textbf{Invariant} & \textbf{Assertion} \\
@@ -360,7 +364,7 @@ TC-13 & Human gate on T1/T4 & Proposals targeting T1/T4 halt at ESCALATE, reject
 TC-14 & Epoch-gated promotion & Doctrine TOML updates blocked while ActiveRuns > 0. \\
 TC-15 & Auto-pruning ceiling & When $\|T_3(e)\| > \mathbf{Cap}(T_3)$, AutoDream GC compacts below cap before doctrine compilation (Section~\ref{sec:doctrine-compilation}) fails the byte-cap gate. \\
 TC-16 & Serialized epoch application & Conflicting equal-tier proposals in one batch are both denied; no silent last-writer-wins merge occurs. \\
-TC-17 & Curate staging isolation & Every $\mathbf{Persist}$ performed by \texttt{curate} lands in $\mathcal{A}'_{\text{artifact}} \setminus \mathcal{W}_{\text{workspace}}$; workspace byte-identical before/after. \\
+TC-17 & Staging isolation & Every $\mathbf{Persist}$ performed by \texttt{observe}, \texttt{enrich}, or \texttt{curate} lands in $\mathcal{A}'_{\text{artifact}} \setminus \mathcal{W}_{\text{workspace}}$; workspace byte-identical before/after each emission. \\
 TC-18 & Source-trust gate & A proposal citing a single untrusted web origin is denied at gate 5 even though its citation passes verbatim verification. \\
 \bottomrule
 \end{tabular}

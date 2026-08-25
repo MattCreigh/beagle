@@ -6,7 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) conventions.
 
 ---
 
-## [Unreleased]
+## [1.4.0] - 2026-08-25
+
+### Packaging
+
+- Version SSOT bumped 1.3.0 → **1.4.0** for the standalone main-repo
+  release; built wheels tracked under `dist/` (beagle 1.4.0 +
+  compiled `beagle-orpheus` cp313 transport plugin).
 
 ### Licensing replaced with a single custom proprietary licence
 

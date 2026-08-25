@@ -5,7 +5,7 @@
 | **Document Title** | Beagle — System Specification and Operations Manual |
 | **Document ID** | BEAGLE-SPEC-OPS-001 |
 | **Document Version** | 1.0 |
-| **Software Version** | 1.3.0 (single-sourced from `pyproject.toml [project].version`, resolved at import time by `beagle.constants._resolve_package_version()`; verify at runtime with `beagle --version`) |
+| **Software Version** | 1.4.0 (single-sourced from `pyproject.toml [project].version`, resolved at import time by `beagle.constants._resolve_package_version()`; verify at runtime with `beagle --version`) |
 | **Release Date** | 2026-08-22 |
 | **System Classification** | Autonomous Multi-Agent Workflow Orchestration Engine |
 | **Audience** | Platform engineers, SREs, security reviewers, integration developers |
@@ -897,7 +897,7 @@ line. For containerised estates, retag and redeploy the prior image digest.
 
 | Claim in this manual | Verified against |
 |---|---|
-| Version 1.3.0 SSOT | `pyproject.toml [project].version`; `constants._resolve_package_version()`; `make build` output naming |
+| Version 1.4.0 SSOT | `pyproject.toml [project].version`; `constants._resolve_package_version()`; `make build` output naming |
 | Entry points `beagle`, `goose-workflow` | `pyproject.toml [project.scripts]` |
 | Ten shipped workflows | `docs/CLI.md` workflow enumeration |
 | Four MCP servers | `src/beagle/infrastructure/mcp_{rag,utility,openclaw,coord}_server.py` `__main__` blocks |
