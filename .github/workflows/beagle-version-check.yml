@@ -88,6 +88,27 @@ jobs:
             exit 1
           fi
 
+      - name: Assert README title carries the pyproject version
+        run: |
+          # The README H1 title is "# Beagle <version>" — the version is
+          # pinned to pyproject.toml here so it can never lag the release.
+          # Bump pyproject.toml and the title together at release time.
+          TITLE=$(head -n1 README.md \
+            | grep -oE 'Beagle [0-9]+\.[0-9]+\.[0-9]+' \
+            | awk '{print $2}')
+          PYPROJECT_VERSION=$(grep -E '^version\s*=' pyproject.toml | head -1 \
+            | sed -E 's/version\s*=\s*"([^"]+)".*/\1/')
+          echo "title:      # Beagle $TITLE"
+          echo "pyproject:  $PYPROJECT_VERSION"
+          if [ -z "$TITLE" ]; then
+            echo "::error::README.md H1 must be '# Beagle <version>' (got: $(head -n1 README.md))"
+            exit 1
+          fi
+          if [ "$TITLE" != "$PYPROJECT_VERSION" ]; then
+            echo "::error::README title version $TITLE != pyproject.toml version $PYPROJECT_VERSION"
+            exit 1
+          fi
+
       - name: Check no-hardcoded-version-string
         run: |
           # Run the hook against all changed python files in the PR

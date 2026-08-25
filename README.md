@@ -1,4 +1,4 @@
-# Beagle
+# Beagle 1.4.0
 
 Multi-agent workflow orchestration engine
 

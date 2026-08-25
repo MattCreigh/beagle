@@ -694,7 +694,7 @@ def _index_usable() -> bool:
 
         live_table = Path(db_root()) / "lancedb" / f"{LANCE_TABLE_NAME}.lance"
         return _live_lance_is_healthy(live_table)
-    except Exception:  # ruff: ignore[BLE001]  # probe must never crash the gate
+    except Exception:  # ruff: ignore[BLE001]  # broad catch intentional — probe must never crash the gate
         return False
 
 
