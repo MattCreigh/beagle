@@ -1,42 +1,160 @@
-Beagle is dual-licensed. Choose the option that applies to your use:
+BEAGLE LICENSE AGREEMENT
+Version 1.0 — Free for Personal Use, Paid Licence for Commercial Use
+
+Copyright (c) 2026 Matthew David Calder Creigh ("Licensor").
+All rights reserved.
+
+SPDX-License-Identifier: LicenseRef-Beagle-1.0
+
+Licensing enquiries: [ADD LICENSING CONTACT — EMAIL OR URL BEFORE PUBLISHING]
 
 ───────────────────────────────────────────────────────────────────────────────
-1. NON-COMMERCIAL USE — FREE
+1. DEFINITIONS
 ───────────────────────────────────────────────────────────────────────────────
 
-Personal, academic, research, and other non-commercial use is licensed under
-the PolyForm Noncommercial License 1.0.0. Full text: LICENSE-NONCOMMERCIAL.
+"The Software" means Beagle and any part of it — source code, binaries,
+documentation, configuration templates, workflows, skills, and associated
+assets — made available under this Agreement.
 
-Summary (non-binding): you may use, modify, and redistribute Beagle for any
-purpose that does NOT provide a commercial advantage or monetary
-compensation, provided you give recipients the same license notice.
+"You" means an individual or organisation exercising rights under this
+Agreement.
 
-───────────────────────────────────────────────────────────────────────────────
-2. COMMERCIAL USE — PAID LICENSE REQUIRED
-───────────────────────────────────────────────────────────────────────────────
+"Commercial Use" is ANY use that is not Personal, Non-Commercial Use,
+including but not limited to:
 
-ANY business or commercial use — including use by for-profit organizations,
-use in products or services offered to customers, internal commercial
-tooling, and paid engagements — REQUIRES a commercial license from the
-copyright holder. See COMMERCIAL-LICENSE.md for scope and contact.
+- Any use by a for-profit company or sole trader, INCLUDING purely
+  internal use with no revenue attached to the Software itself.
+- Any use that generates, or is intended to generate, revenue directly or
+  indirectly.
+- Any use in the development or delivery of products or services offered
+  for sale, to clients, or to third parties.
+- Offering the Software, or anything built on it, as a hosted or managed
+  service (SaaS), consulting engagement, or paid deployment.
+- Bundling, distributing, or reselling the Software as part of a paid
+  product.
 
-There is no open-source grant for commercial use. Running Beagle at your
-company without a commercial license is a license violation even if the use
-is "internal only".
+"Personal, Non-Commercial Use" means:
 
-───────────────────────────────────────────────────────────────────────────────
-3. THE OPTIONAL beagle-orpheus WHEEL IS SEPARATELY LICENSED
-───────────────────────────────────────────────────────────────────────────────
-
-The `beagle-orpheus` wheel (native FlatBuffers-over-ring-buffer transport,
-compiled C extension) is NOT covered by either license above. It is
-proprietary software: free for evaluation and limited single-use trials,
-and requires a paid license for any production or business deployment.
-Downloading and installing it is an explicit, informed decision — beagle
-ships and runs fully without it on the built-in HTTP transport.
-
-See the beagle-orpheus distribution's own LICENSE for its terms.
+- Use by an individual for personal projects, learning, research, or
+  hobbies.
+- Use by a non-profit organization for internal, non-revenue-generating
+  activities.
 
 ───────────────────────────────────────────────────────────────────────────────
-SPDX identifiers present in source files refer to this dual-licensing scheme.
-Third-party dependencies remain under their own licenses.
+2. GRANT OF LICENCE (PERSONAL, NON-COMMERCIAL USE)
+───────────────────────────────────────────────────────────────────────────────
+
+Subject to the terms of this Agreement, the Licensor grants You a
+non-exclusive, non-transferable, revocable, worldwide, royalty-free licence
+to use, copy, modify, and run the Software SOLELY for Personal,
+Non-Commercial Use as defined above.
+
+───────────────────────────────────────────────────────────────────────────────
+3. EVALUATION PERIOD
+───────────────────────────────────────────────────────────────────────────────
+
+Any entity may install and evaluate the Software for internal evaluation
+and testing purposes for a period of THIRTY (30) DAYS from first
+installation. Continued use beyond that period for any Commercial Use
+requires a commercial licence under Section 9. This evaluation right does
+not permit production use, customer-facing use, or revenue-generating use
+during or after the evaluation period.
+
+───────────────────────────────────────────────────────────────────────────────
+4. PROHIBITED USES
+───────────────────────────────────────────────────────────────────────────────
+
+Without a separate written commercial licence from the Licensor, You may
+NOT:
+
+- Use the Software in any commercial, revenue-generating, or production
+  environment.
+- Offer the Software, or any capability built on it, as a service to third
+  parties.
+- Distribute, sublicense, resell, or lease the Software or derivative
+  works of it.
+- Remove, obscure, or alter any copyright, trademark, or attribution
+  notices contained in the Software.
+
+───────────────────────────────────────────────────────────────────────────────
+5. CONTRIBUTIONS
+───────────────────────────────────────────────────────────────────────────────
+
+You may submit modifications, fixes, or enhancements to the Licensor
+("Contributions"). By submitting a Contribution You grant the Licensor a
+perpetual, irrevocable, worldwide, royalty-free licence to use, reproduce,
+modify, distribute, sublicence, and sell Your Contribution as part of the
+Software under any terms the Licensor chooses. You assert no right to
+compensation for Contributions, and You warrant that You have the right to
+grant this licence for every part of the Contribution.
+
+Nothing in this Section grants You any licence to USE or redistribute the
+Software beyond what Sections 2–4 allow.
+
+───────────────────────────────────────────────────────────────────────────────
+6. TERM AND TERMINATION
+───────────────────────────────────────────────────────────────────────────────
+
+This Agreement takes effect when You first use, copy, or modify the
+Software.
+
+It terminates automatically, without notice, if You breach any of its
+terms. Upon termination You must cease all use and destroy all copies of
+the Software in Your possession or control.
+
+The Licensor may revoke the licence granted in Section 2 at any time by
+written notice (including notice published in the project repository).
+Sections 7, 8, and 11 survive termination.
+
+───────────────────────────────────────────────────────────────────────────────
+7. DISCLAIMER OF WARRANTY
+───────────────────────────────────────────────────────────────────────────────
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT.
+
+───────────────────────────────────────────────────────────────────────────────
+8. LIMITATION OF LIABILITY
+───────────────────────────────────────────────────────────────────────────────
+
+IN NO EVENT SHALL THE LICENSOR BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER
+LIABILITY — WHETHER IN CONTRACT, TORT (INCLUDING NEGLIGENCE), OR OTHERWISE
+— ARISING FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR THIS
+AGREEMENT. SOME JURISDICTIONS DO NOT ALLOW CERTAIN LIMITATIONS, IN WHICH
+CASE THEY APPLY TO THE FULLEST EXTENT PERMITTED BY LAW.
+
+───────────────────────────────────────────────────────────────────────────────
+9. COMMERCIAL LICENCES
+───────────────────────────────────────────────────────────────────────────────
+
+Commercial licences are granted by separate written agreement with the
+Licensor. Contact the address at the top of this file, or the licensing
+contact published in the project repository, to obtain one. A commercial
+licence may include terms for seat or site counts, support, updates,
+indemnification, and pricing tiers.
+
+───────────────────────────────────────────────────────────────────────────────
+10. OPTIONAL COMPONENTS AND THIRD-PARTY SOFTWARE
+───────────────────────────────────────────────────────────────────────────────
+
+Third-party dependencies remain under their own respective licences.
+
+The optional `beagle-orpheus` transport wheel is NOT part of the Software
+and NOT licensed under this Agreement: it is separately licensed
+proprietary software — free for evaluation and limited single-use trials,
+paid for production or business deployment. Beagle runs fully without it
+on the built-in HTTP transport; installing it is always an explicit
+operator decision governed by that distribution's own licence.
+
+───────────────────────────────────────────────────────────────────────────────
+11. GENERAL
+───────────────────────────────────────────────────────────────────────────────
+
+If any provision of this Agreement is held unenforceable, it shall be
+modified to the minimum extent necessary, and the remaining provisions
+stay in force. Failure to enforce any provision is not a waiver of it.
+This Agreement is the entire agreement between You and the Licensor
+regarding the Software, superseding any prior understanding. Governing
+law and venue for commercial licences are as fixed in the signed
+commercial agreement.

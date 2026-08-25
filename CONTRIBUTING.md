@@ -1,6 +1,6 @@
-# Contributing to Beagle — Goose Agentic Workflow
+# Contributing to Beagle
 
-Thanks for your interest in contributing to **Beagle** (Goose Agentic Workflow).
+Thanks for your interest in contributing to **Beagle**.
 This document explains the development workflow, coding standards, and review
 process. It is a living document — when in doubt, follow the patterns already
 present in the codebase and ask in a PR.
@@ -46,20 +46,20 @@ present in the codebase and ask in a PR.
 # Clone & install
 git clone https://github.com/<org>/beagle
 cd beagle
-python3.12 -m venv .venv
-source .venv/bin/activate
-pip install -e ".[dev]"
+uv sync --extra dev          # uv is the supported install path
 
 # Install pre-commit hooks
-pre-commit install
-pre-commit install --hook-type push
+uv run pre-commit install
+uv run pre-commit install --hook-type push
 
 # Verify the install
-pytest tests/test_doctrine_*.py -v
+uv run pytest tests/test_doctrine_*.py -v
 ```
 
-Hardware acceleration is **off by default** (see `constraints/cpu-only.txt`).
-For GPU dev, comment out that constraint in your local venv.
+Hardware acceleration is out of scope: the GPU stack was removed by design
+(see `docs/decisions/2026-08-18-gpu-stack-removed.md`). Embeddings run
+locally on CPU; LLM inference is remote against any OpenAI-compatible
+endpoint you configure.
 
 ---
 
@@ -77,7 +77,9 @@ For GPU dev, comment out that constraint in your local venv.
 ### Versioning
 
 The single source of truth for the package version is
-`beagle/__version__`. Do **not** hardcode version strings
+`pyproject.toml [project].version` (resolved at import time by
+`beagle.constants._resolve_package_version()`; `beagle/__version__` is a
+derived re-export). Do **not** hardcode version strings
 elsewhere. The pre-commit hook
 `no-hardcoded-version-string` will reject any file containing
 `# v1`, `# v2`, etc. (Note: existing audit-trail comments like
@@ -122,8 +124,6 @@ Property-based tests (using `hypothesis`) are required for:
 - Firewall rules
 - Schema hardener
 
-Fuzz tests live in `tests/fuzz/` and run on a slow schedule in CI.
-
 ---
 
 ## Pull request process
@@ -132,9 +132,9 @@ Fuzz tests live in `tests/fuzz/` and run on a slow schedule in CI.
 2. **Commit with conventional messages**:
    `feat(rag): add per-tenant rate limiting`
 3. **Push & open a PR** against `main`.
-4. **CI must be green**: lint, type-check, tests, security scan, SBOM.
-5. **CODEOWNERS** auto-assigns reviewers. Security-sensitive files
-   (`beagle/security/**`) require sign-off from `@beagle-security-team`.
+4. **CI must be green**: lint, type-check, tests, security scan.
+5. Security-sensitive files (`beagle/security/**`) require maintainer
+   sign-off in review.
 6. **Squash-merge** with a conventional-commit message.
 
 ---
@@ -166,12 +166,12 @@ Fuzz tests live in `tests/fuzz/` and run on a slow schedule in CI.
 
 ## Release process
 
-1. Bump `__version__` in `beagle/__init__.py`.
-2. Update `CHANGELOG.md` (auto-generated from conventional commits by
-   `scripts/release_notes.py`).
+1. Bump the version SSOT (`pyproject.toml [project].version`; resolved at
+   import time by `beagle.constants._resolve_package_version()` — verify
+   with `beagle --version`).
+2. Update `CHANGELOG.md` under a new version heading.
 3. Tag: `git tag -a v<version> -m "Release v<version>"`.
 4. Push the tag: `git push origin v<version>`.
-5. CI publishes to PyPI and builds SBOMs.
 
 ---
 
@@ -184,8 +184,8 @@ maintainers reserve the right to close unproductive threads.
 
 ## License
 
-Beagle is proprietary software. All rights reserved. By contributing, you
-agree that your contributions become the property of the copyright holder and
-are licensed under the same proprietary terms as the rest of the project. No
-usage, copying, modification, or distribution is permitted without a separate
-commercial license. See [LICENSE](LICENSE) for the full terms.
+Beagle is proprietary software, copyright Matthew David Calder Creigh —
+free for personal, non-commercial use; commercial use requires a paid
+licence. See [LICENSE](LICENSE) for the full terms. By contributing, you
+grant the Licensor the perpetual, irrevocable, royalty-free rights
+described in LICENSE §5 (Contributions).

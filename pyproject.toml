@@ -13,7 +13,7 @@ keywords = ["agents", "orchestration", "rag", "mcp", "workflows", "llm"]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
-    "License :: Other/Proprietary License",  # dual: non-commercial free / commercial paid — see LICENSE
+    "License :: Other/Proprietary License",  # custom licence: personal/non-commercial free, commercial paid — see LICENSE
     "Programming Language :: Python :: 3.12",
     "Topic :: Software Development :: Libraries :: Application Frameworks",
 ]
@@ -112,7 +112,6 @@ beagle = [
     "blocks/xml_blocks/stdlib/*.xml",
     "prompts/*.md",
     "recipes/*.xml",
-    "config/defaults_registry.toml",
     "workflows_builtin/*.yaml",
     "templates/definitions/*.toml",
     "infrastructure/Dockerfile.*",

@@ -5,8 +5,9 @@ orchestration, hybrid vector+graph RAG, and MCP integration — designed to run
 any structured multi-phase work (research, analysis, operations, code, writing,
 planning) rather than being tied to a single domain.
 
-Production software. Dual-licensed: free for non-commercial use, paid license
-required for business use — see [LICENSE](LICENSE).
+Production software. Proprietary — free for personal, non-commercial use;
+a paid licence is required for commercial use (including internal company
+use). See [LICENSE](LICENSE).
 
 ---
 
@@ -147,11 +148,15 @@ mypy src
 
 ## License
 
-Dual-licensed — see [LICENSE](LICENSE):
+Beagle is proprietary software, copyright Matthew David Calder Creigh.
+See [LICENSE](LICENSE) for the full terms. In short:
 
-1. **Non-commercial use:** free under the PolyForm Noncommercial License.
-2. **Business/commercial use:** paid commercial license required
-   ([COMMERCIAL-LICENSE.md](COMMERCIAL-LICENSE.md)). Internal company use is
-   commercial use.
-3. The optional `beagle-orpheus` wheel is separately licensed proprietary
+1. **Personal, non-commercial use:** free — individuals, personal
+   projects, learning and research, and non-profit organizations.
+2. **Evaluation:** any entity may evaluate internally for 30 days.
+3. **Commercial use:** requires a paid licence under a separate written
+   agreement — this includes internal company use, hosted/managed
+   services, client work, and bundling into paid products.
+4. Contributions are welcomed under the grant in LICENSE §5.
+5. The optional `beagle-orpheus` wheel is separately licensed proprietary
    software (evaluation free; production paid).
