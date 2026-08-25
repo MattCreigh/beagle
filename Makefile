@@ -56,7 +56,7 @@ build: clean ## Build wheel and sdist
 
 install: build ## Build and install into current venv (CPU-only; --no-deps avoids GPU torch)
 	uv pip install --reinstall --no-deps dist/beagle-*.whl
-	uv pip install -r requirements.lock --no-deps
+	uv sync --frozen --no-dev --no-install-project
 
 # H4 (MS-6): the deployed venv is the BLUE side of a red/blue split. It is
 # NON-EDITABLE by design — the frozen wheel in site-packages is what every
@@ -66,11 +66,11 @@ install: build ## Build and install into current venv (CPU-only; --no-deps avoid
 dev-deps: ## Install the [dev] extra, non-editable (CPU-only index; never the GPU torch stack)
 	uv pip install ".[dev]" --extra-index-url https://download.pytorch.org/whl/cpu --no-deps
 
-locked-install: ## Install from locked requirements (reproducible)
-	uv pip install -r requirements.lock --no-deps
+locked-install: ## Reproducible install straight from uv.lock (the SSOT)
+	uv sync --frozen --no-dev
 
-freeze-requirements: ## Generate locked requirements file from the clean venv via uv export
-	$(PY) -m uv export --no-dev --no-emit-project > requirements.lock
+freeze-requirements: ## Emit an ephemeral pip-format export from uv.lock (never commit it)
+	$(PY) -m uv export --frozen --no-dev --no-emit-project -o requirements-frozen.txt
 
 pip-audit: ## Audit transitive dependencies for known vulnerabilities
 	# v1.0.4 (audit R9): pip-audit is now a declared dev dependency, so this
@@ -78,7 +78,8 @@ pip-audit: ## Audit transitive dependencies for known vulnerabilities
 	# CVEs (pip-audit --strict, 2026-08-07): langgraph-checkpoint 4.0.2,
 	# langchain 1.2.15, langchain-anthropic 1.4.1, click 8.3.2, mcp 1.27.0 —
 	# see the dependency-bump follow-up queue before release.
-	$(PY) -m pip_audit -r requirements.txt --strict
+	$(PY) -m uv export --frozen --no-dev --no-emit-project -o requirements-frozen.txt
+	$(PY) -m pip_audit -r requirements-frozen.txt --strict
 
 banned:  ## Check for banned coding patterns
 	@echo "Checking for banned patterns..."

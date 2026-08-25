@@ -656,7 +656,7 @@ make build            # equivalent to: uv build
 # 4. Install the wheel WITHOUT dependency resolution (--no-deps is mandatory:
 #    unrestricted resolution pulls the ~3.5 GB GPU torch stack onto CPU hosts)
 uv pip install --reinstall --no-deps dist/beagle-*.whl
-uv pip install -r requirements.lock --no-deps
+uv sync --frozen --no-dev --no-install-project
 
 # 5. Development dependencies (non-editable by design: the deployed tree stays
 #    on the frozen wheel; see Makefile target comments)
@@ -668,7 +668,7 @@ beagle doctor
 ```
 
 Reproducible locked install alternative: `make locked-install`
-(uses `requirements.lock`; regenerate with `make freeze-requirements`).
+(resolves from `uv.lock`; pip-format export via `make freeze-requirements`).
 
 Quality gates during development:
 
@@ -679,7 +679,7 @@ make vulture       # dead-code scan
 make banned        # banned-pattern grep gate (utcnow, shell=True, truncated uuid...)
 make test          # full suite via project testpaths (timeout 300 s per test)
 make qa            # lint + banned + test
-make pip-audit     # known-CVE audit of requirements.txt (strict)
+make pip-audit     # known-CVE audit of the locked dep set (strict)
 ```
 
 Test execution guidance: the suite collects roughly 3,300 tests. Prefer a
@@ -871,7 +871,7 @@ Deployment invariants:
 git pull                                   # fetch the new revision
 make build                                 # rebuild the wheel (new SSOT version)
 uv pip install --reinstall --no-deps dist/beagle-*.whl
-uv pip install -r requirements.lock --no-deps
+uv sync --frozen --no-dev --no-install-project
 beagle doctor && beagle health --required-only
 beagle daemon restart                      # if running the daemon shape
 ```

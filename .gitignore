@@ -54,3 +54,9 @@ scripts/sync-to-opt-venv.sh
 
 # Per-checkout session-fork protocol notes (never shipped)
 /SESSION_FORKS.md
+
+# Ephemeral pip-format exports (generated from uv.lock on demand)
+/requirements-frozen.txt
+
+# Dependency lockfile — resolved at install time, not shipped in the public repo
+uv.lock

@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) conventions.
 
 ---
 
+## [Unreleased]
+
+### Packaging
+
+- **Removed**: committed `requirements.txt` — it merely mirrored pyproject constraints.
+- Pip-format exports are now ephemeral: `make freeze-requirements`, CI `uv export --frozen`.
+
 ## [1.4.0] - 2026-08-25
 
 ### Packaging
