@@ -27,7 +27,14 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-import orpheus
+# orpheus is the optional proprietary ring transport. Without it, channel
+# rings cannot be provisioned or pushed — but the channel itself is fully
+# recorded in the store and reachable over the socket RPC (see _push_offer's
+# documented fallback), so orpheus is never a hard dependency.
+try:
+    import orpheus
+except ImportError:  # pragma: no cover - exercised only when the wheel is absent
+    orpheus = None  # type: ignore[assignment]
 
 from beagle.beacon.backend import StoreClient
 from beagle.beacon.keys import BeaconPaths
@@ -162,12 +169,13 @@ def open_channel(
     # Beacon provisions both rings once (reset=True); each side later opens
     # its own end with reset=False, mirroring the in-ring convention (WP-4)
     # so two independent processes never race to reset the same file.
-    for p in (a2b_path, b2a_path):
-        ring = orpheus.OrpheusRing(
-            str(p), "writer", True, _CHANNEL_SLOT_SIZE, _CHANNEL_SLOT_COUNT, "fifo"
-        )
-        del ring
-        p.chmod(_CHANNEL_FILE_MODE)
+    if orpheus is not None:  # pragma: no cover - orpheus absent
+        for p in (a2b_path, b2a_path):
+            ring = orpheus.OrpheusRing(
+                str(p), "writer", True, _CHANNEL_SLOT_SIZE, _CHANNEL_SLOT_COUNT, "fifo"
+            )
+            del ring
+            p.chmod(_CHANNEL_FILE_MODE)
 
     channel = Channel(
         channel_id=channel_id,
@@ -208,7 +216,7 @@ def _push_offer(client: StoreClient, card: ContactCard, channel: Channel, kind: 
     fallback, so a dropped push notification never loses the channel
     itself, only its immediacy.
     """
-    if not card.inbox_ring:
+    if not card.inbox_ring or orpheus is None:  # pragma: no cover - orpheus absent
         return
     envelope = json.dumps(
         {

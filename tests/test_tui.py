@@ -4,14 +4,19 @@ import asyncio
 
 import pytest
 
-from beagle.events import (
+# textual is the TUI dependency, declared in the optional `tui` extra. CI's
+# test job installs `.[dev]` only, so the TUI tests skip when textual is
+# absent.
+textual = pytest.importorskip("textual")  # noqa: F401
+
+from beagle.events import (  # noqa: E402
     NodeCompleted,
     NodeOutput,
     NodeStarted,
     WorkflowStarted,
     get_event_bus,
 )
-from beagle.tui.app import BeagleApp
+from beagle.tui.app import BeagleApp  # noqa: E402
 
 
 @pytest.mark.asyncio

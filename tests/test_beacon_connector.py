@@ -52,6 +52,22 @@ def running_server(tmp_path: Path):
     thread.join(timeout=5)
 
 
+def _has_orpheus() -> bool:
+    try:
+        import orpheus  # noqa: F401
+        return True
+    except ImportError:
+        return False
+
+
+# Ring fast-path tests exercise the optional proprietary orpheus transport;
+# they skip when the wheel is absent. Socket-fallback tests below still run.
+_ring_skip = pytest.mark.skipif(
+    not _has_orpheus(), reason="orpheus (proprietary ring transport) not installed"
+)
+
+
+@_ring_skip
 class TestAttachDetach:
     def test_attach_registers_record_and_creates_ring_file(
         self, running_server: BeaconServer
@@ -102,6 +118,7 @@ class TestAttachDetach:
         session.close()
 
 
+@_ring_skip
 class TestRingFastPath:
     def test_heartbeat_goes_over_the_ring(self, running_server: BeaconServer) -> None:
         agent_id = str(uuid.uuid4())

@@ -54,6 +54,11 @@ dependencies = [
     "defusedxml>=0.7.1",
     "jinja2>=3.1.6",
     "casbin>=1.30.0",
+    # Beacon's default coordination backend (fakeredis_unix) imports redis at
+    # module scope and the CLI imports beacon unconditionally — so both are
+    # RUNTIME dependencies, not dev-only. Pure Python, no redis-server binary.
+    "redis>=5.0",
+    "fakeredis==2.37.1",
     # NOTE: no proprietary dependencies ship by default. The optional
     # beagle-orpheus transport wheel is downloaded and installed EXPLICITLY
     # by the operator after an informed licensing decision (see README).
@@ -80,7 +85,6 @@ dev = [
     "pytest-xdist>=3.5",
     "pytest-timeout>=2.3",
     "hypothesis>=6.0",
-    "fakeredis==2.37.1",  # Beacon store backend — pure-Python, no C extension, no redis-server binary needed
     "mypy>=1.10",
     "ruff>=0.16.0",
     "types-PyYAML",

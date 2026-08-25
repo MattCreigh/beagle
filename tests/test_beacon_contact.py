@@ -17,6 +17,10 @@ from pathlib import Path
 import pytest
 import redis
 
+# orpheus is the optional proprietary ring transport; channel-ring tests
+# exercise it directly and must skip when the wheel is absent.
+pytest.importorskip("orpheus")
+
 from beagle.beacon.connector import CoordSession
 from beagle.beacon.contact import Unreachable, open_channel, sweep_channels
 from beagle.beacon.keys import resolve_paths

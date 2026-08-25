@@ -13,7 +13,11 @@ import json
 import uuid
 
 import pytest
-from beacon_lib.codec import SIGNAL_OPS, decode_signal, encode_signal
+
+# orpheus / beacon_lib are the optional proprietary ring transport; the
+# signal-framing tests exercise it directly and must skip when absent.
+pytest.importorskip("beacon_lib.codec")
+from beacon_lib.codec import SIGNAL_OPS, decode_signal, encode_signal  # noqa: E402
 
 
 class TestEncodeDecodeRoundTrip:

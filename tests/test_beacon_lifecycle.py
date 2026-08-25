@@ -14,13 +14,16 @@ import time
 import uuid
 from pathlib import Path
 
-import orpheus
 import pytest
 import redis
-from beacon_lib.codec import encode_signal as encode_intent  # P4: shim alias until full rename
 
-from beagle.beacon.server import BeaconServer, get_peer_credentials
-from beagle.beacon.spawn import ensure_running, is_live
+# orpheus / beacon_lib are the optional proprietary ring transport; lifecycle
+# tests that drive the ring path directly must skip when the wheel is absent.
+orpheus = pytest.importorskip("orpheus")  # noqa: E402
+from beacon_lib.codec import encode_signal as encode_intent  # noqa: E402,I001  # P4: shim alias until full rename
+
+from beagle.beacon.server import BeaconServer, get_peer_credentials  # noqa: E402
+from beagle.beacon.spawn import ensure_running, is_live  # noqa: E402
 
 _BEACON_SRC = Path(__file__).resolve().parent.parent / "src" / "beagle" / "beacon"
 _MCP_COORD_SERVER = (

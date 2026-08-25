@@ -13,6 +13,11 @@ Operator override, 2026-08-21: orpheus is a REQUIRED runtime dependency
 (reverses the "orpheus not installed" branch of the original D-06 fallback).
 EphemeralRingConnector.attach() always provisions a ring; the only remaining
 fallback is the per-write case above.
+
+2026-08-25: orpheus is now OPTIONAL. When the wheel is absent the connector
+leaves its ring unprovisioned and every op falls back to the socket (D-06) —
+an operation is NEVER silently dropped. The socket RPC is the built-in
+path and works with zero proprietary deps.
 """
 
 from __future__ import annotations
@@ -22,8 +27,15 @@ import logging
 from dataclasses import dataclass
 from typing import Any
 
-import orpheus
-from beacon_lib.codec import encode_signal
+# orpheus / beacon_lib are the optional proprietary ring transport. Without
+# them the connector degrades to the socket RPC path (D-06) — every op still
+# succeeds over the socket, so orpheus is never a hard dependency.
+try:
+    import orpheus
+    from beacon_lib.codec import encode_signal
+except ImportError:  # pragma: no cover - exercised only when the wheel is absent
+    orpheus = None  # type: ignore[assignment]
+    encode_signal = None  # type: ignore[assignment]
 
 from beagle.beacon import contact
 from beagle.beacon.archive import elect_flush_owner, flush_archive
@@ -77,7 +89,18 @@ class EphemeralRingConnector:
         return self._ring is not None
 
     def attach(self) -> None:
-        """Create and open this agent's outbound ring."""
+        """Create and open this agent's outbound ring.
+
+        When the optional ``orpheus`` wheel is absent this is a no-op: the
+        connector stays ring-less, ``write()`` returns False, and the caller
+        falls back to the socket (D-06).
+        """
+        if orpheus is None:  # pragma: no cover - exercised only without the wheel
+            logger.warning(
+                "orpheus not installed; agent %s uses socket RPC only",
+                self._agent_id,
+            )
+            return
         ring_path = self._paths.agent_ring_path(self._agent_id, direction="in")
         self._ring = orpheus.OrpheusRing(
             str(ring_path), "writer", True, _RING_SLOT_SIZE, _RING_SLOT_COUNT, "fifo"
@@ -101,6 +124,8 @@ class EphemeralRingConnector:
 
         """
         if self._ring is None:
+            return False
+        if encode_signal is None:  # pragma: no cover - orpheus absent
             return False
         try:
             payload = encode_signal(op, self._agent_id, args, slot_size=_RING_SLOT_SIZE)
@@ -312,6 +337,8 @@ class CoordSession:
             a routine "nothing to poll yet" case, not an error.
 
         """
+        if orpheus is None:  # pragma: no cover - orpheus absent
+            return []
         if self._out_ring is None:
             out_path = self._paths.agent_ring_path(self.agent_id, direction="out")
             if not out_path.exists():
@@ -323,6 +350,8 @@ class CoordSession:
 
     def send_on_channel(self, ring_path: str, payload: bytes) -> bool:
         """Write one message on an already-open channel ring. See contact.send()."""
+        if orpheus is None:  # pragma: no cover - orpheus absent
+            return False
         ring = orpheus.OrpheusRing(
             ring_path, "writer", False, _CHANNEL_SLOT_SIZE, _CHANNEL_SLOT_COUNT, "fifo"
         )
@@ -330,6 +359,8 @@ class CoordSession:
 
     def read_channel(self, ring_path: str) -> list[bytes]:
         """Drain every pending message on an already-open channel ring."""
+        if orpheus is None:  # pragma: no cover - orpheus absent
+            return []
         ring = orpheus.OrpheusRing(
             ring_path, "reader", False, _CHANNEL_SLOT_SIZE, _CHANNEL_SLOT_COUNT, "fifo"
         )

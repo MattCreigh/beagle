@@ -48,8 +48,15 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-import orpheus
-from beacon_lib.codec import decode_signal
+# orpheus / beacon_lib are the optional proprietary ring transport. Without
+# them the server still serves the store over its socket (RPC path); only the
+# ring fast-path drain is disabled.
+try:
+    import orpheus
+    from beacon_lib.codec import decode_signal
+except ImportError:  # pragma: no cover - exercised only when the wheel is absent
+    orpheus = None  # type: ignore[assignment]
+    decode_signal = None  # type: ignore[assignment]
 
 from beagle.beacon import contact
 from beagle.beacon.archive import elect_flush_owner, flush_archive
@@ -240,6 +247,10 @@ class RingPoller:
         as a reader with reset=False, mirroring the in-ring convention.
         """
         in_path = self._paths.agent_ring_path(agent_id, direction="in")
+        if orpheus is None:  # pragma: no cover - orpheus absent
+            # Ring transport unavailable; keep the store socket as the only
+            # path. Do not provision ring files.
+            return
         ring = orpheus.OrpheusRing(
             str(in_path), "reader", False, _RING_SLOT_SIZE, _RING_SLOT_COUNT, "fifo"
         )
@@ -276,7 +287,7 @@ class RingPoller:
         """
         with self._lock:
             ring = self._rings.get(agent_id)
-        if ring is None:
+        if ring is None or decode_signal is None:  # pragma: no cover - orpheus absent
             return 0
         applied = 0
         while True:
@@ -306,7 +317,8 @@ class RingPoller:
             client.close()
 
     def _run_loop(self, client: StoreClient) -> None:
-        poller = orpheus.OrpheusRingPoller()
+        ring_transport = orpheus is not None
+        poller = orpheus.OrpheusRingPoller() if ring_transport else None
         registered: set[str] = set()
         last_sweep = time.monotonic()
         has_had_members = False
@@ -314,13 +326,19 @@ class RingPoller:
         while not self._stop.is_set():
             with self._lock:
                 current_ids = set(self._rings)
-                for agent_id in current_ids - registered:
-                    poller.add_ring(self._rings[agent_id])
-                    registered.add(agent_id)
-                registered &= current_ids
+                if poller is not None:
+                    for agent_id in current_ids - registered:
+                        poller.add_ring(self._rings[agent_id])
+                        registered.add(agent_id)
+                    registered &= current_ids
                 agent_ids = list(self._rings)
 
-            poller.wait(timeout_ms=_POLLER_WAIT_MS)
+            if poller is not None:
+                poller.wait(timeout_ms=_POLLER_WAIT_MS)
+            else:
+                # No ring transport: keep the loop ticking so teardown and
+                # channel-sweep still run.
+                time.sleep(_POLLER_WAIT_MS / 1000.0)
 
             for agent_id in agent_ids:
                 self.drain_one(agent_id, client)

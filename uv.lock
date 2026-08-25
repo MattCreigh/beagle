@@ -284,6 +284,7 @@ dependencies = [
     { name = "ddgs" },
     { name = "defusedxml" },
     { name = "faiss-cpu" },
+    { name = "fakeredis" },
     { name = "fastmcp" },
     { name = "google-re2" },
     { name = "httpx" },
@@ -319,7 +320,6 @@ code-parsing = [
     { name = "tree-sitter-languages" },
 ]
 dev = [
-    { name = "fakeredis" },
     { name = "hypothesis" },
     { name = "mypy" },
     { name = "pytest" },
@@ -351,7 +351,7 @@ requires-dist = [
     { name = "ddgs", specifier = ">=9.0" },
     { name = "defusedxml", specifier = ">=0.7.1" },
     { name = "faiss-cpu", specifier = "==1.13.2" },
-    { name = "fakeredis", marker = "extra == 'dev'", specifier = "==2.37.1" },
+    { name = "fakeredis", specifier = "==2.37.1" },
     { name = "fastmcp", specifier = "==3.4.7" },
     { name = "google-re2", specifier = "==1.1.20251105" },
     { name = "httpx", specifier = ">=0.28.0" },
