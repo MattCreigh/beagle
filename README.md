@@ -2,6 +2,12 @@
 
 Multi-agent workflow orchestration engine
 
+[![Test Suite](https://github.com/MattCreigh/beagle/actions/workflows/beagle-test.yml/badge.svg)](https://github.com/MattCreigh/beagle/actions/workflows/beagle-test.yml)
+[![Doctrine Gates](https://github.com/MattCreigh/beagle/actions/workflows/beagle-doctrine-gates.yml/badge.svg)](https://github.com/MattCreigh/beagle/actions/workflows/beagle-doctrine-gates.yml)
+[![Security Audit](https://github.com/MattCreigh/beagle/actions/workflows/beagle-security-audit.yml/badge.svg)](https://github.com/MattCreigh/beagle/actions/workflows/beagle-security-audit.yml)
+[![SBOM](https://github.com/MattCreigh/beagle/actions/workflows/beagle-sbom.yml/badge.svg)](https://github.com/MattCreigh/beagle/actions/workflows/beagle-sbom.yml)
+[![Version Consistency](https://github.com/MattCreigh/beagle/actions/workflows/beagle-version-check.yml/badge.svg)](https://github.com/MattCreigh/beagle/actions/workflows/beagle-version-check.yml)
+[![Version 1.4.0](https://img.shields.io/badge/version-1.4.0-blue.svg)](pyproject.toml)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![License: Proprietary](https://img.shields.io/badge/License-Proprietary-red.svg)](LICENSE)
 [![Ruff](https://img.shields.io/badge/linter-ruff-green.svg)](https://docs.astral.sh/ruff/)

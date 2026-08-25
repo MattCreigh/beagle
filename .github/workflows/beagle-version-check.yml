@@ -64,6 +64,27 @@ jobs:
             exit 1
           fi
 
+      - name: Assert README version badge matches pyproject
+        run: |
+          # The README now carries a static version badge (user-facing info).
+          # Single-sourcing is preserved by pinning the badge text to
+          # pyproject.toml here: the badge must exist and must equal the
+          # pyproject version, or the build fails. Bump both together at
+          # release time (the badge is the only sanctioned version literal
+          # in the README; the no-stray-literals check below still applies).
+          BADGE_VERSION=$(grep -oE 'badge/version-[0-9]+\.[0-9]+\.[0-9]+' README.md | head -n1 | cut -d- -f2-)
+          PYPROJECT_VERSION=$(grep -E '^version\s*=' pyproject.toml | head -1 | sed -E 's/version\s*=\s*"([^"]+)".*/\1/')
+          echo "badge:     $BADGE_VERSION"
+          echo "pyproject: $PYPROJECT_VERSION"
+          if [ -z "$BADGE_VERSION" ]; then
+            echo "::error::README.md is missing a version badge (img.shields.io/badge/version-X.Y.Z)"
+            exit 1
+          fi
+          if [ "$BADGE_VERSION" != "$PYPROJECT_VERSION" ]; then
+            echo "::error::Version mismatch! README badge is $BADGE_VERSION but pyproject.toml is $PYPROJECT_VERSION"
+            exit 1
+          fi
+
       - name: Check no-hardcoded-version-string
         run: |
           # Run the hook against all changed python files in the PR
