@@ -21,8 +21,6 @@ import contextvars
 import gc
 import json
 import logging
-
-import platformdirs
 import os
 import re
 import stat
@@ -35,6 +33,8 @@ from collections import OrderedDict
 from datetime import timedelta
 from pathlib import Path
 from typing import Any
+
+import platformdirs
 
 from beagle.security.validation import validate_cypher_identifier
 

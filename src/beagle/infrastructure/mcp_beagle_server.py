@@ -247,12 +247,13 @@ def read_registry(*, refresh_cache: bool = False) -> RegistryState:
     if refresh_cache:
         reset_config_path_cache()
     state = RegistryState(path=registry_path())
-    if not state.path.is_file():
+    registry = state.path
+    if registry is None or not registry.is_file():
         return state
     try:
         import tomllib
 
-        with state.path.open("rb") as fh:
+        with registry.open("rb") as fh:
             data = tomllib.load(fh)
     except (OSError, ValueError) as exc:
         state.error = f"unreadable: {exc}"
