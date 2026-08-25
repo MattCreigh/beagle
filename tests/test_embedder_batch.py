@@ -31,6 +31,37 @@ from beagle.infrastructure.services.embedding import (
 )
 
 
+class _TransportSyncStub:
+    """Stands in for transports.active().sync_client() — records POSTs."""
+
+    def __init__(self, recorder):
+        self._recorder = recorder
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+    def post(self, url, json=None, headers=None):  # type: ignore[no-untyped-def]
+        self._recorder.posts.append({"url": url, "json": json, "headers": headers or {}})
+        return self._recorder.response
+
+
+def _stub_transport(monkeypatch, recorder):
+    """Route the embedder's sync client through the recorded stub.
+
+    The embedder builds clients via beagle.core.transports (the OSS
+    connection seam), not raw httpx — patch the seam, not the library.
+    """
+
+    class _T:
+        def sync_client(self, **kwargs):  # type: ignore[no-untyped-def]
+            return _TransportSyncStub(recorder)
+
+    monkeypatch.setattr(emb_mod, "_transport", lambda: _T())
+
+
 class _RecordedClient:
     """Fake httpx.Client that records every POST request and returns a
     deterministic batch response.
@@ -38,6 +69,18 @@ class _RecordedClient:
 
     def __init__(self) -> None:
         self.posts: list[dict[str, object]] = []
+
+    @property
+    def response(self):  # type: ignore[no-untyped-def]
+        """Deterministic batch response for the last recorded POST."""
+        n = len(self.posts[-1]["json"]["input"]) if self.posts else 1  # type: ignore[index]
+        resp = MagicMock()
+        resp.status_code = 200
+        resp.json.return_value = {
+            "model": self.posts[-1]["json"]["model"],  # type: ignore[index]
+            "embeddings": [[0.1] * _EMBED_DIMENSION for _ in range(n)],
+        }
+        return resp
 
     def __call__(self, *args, **kwargs):  # context-manager entry
         return self
@@ -67,8 +110,6 @@ def test_local_ollama_uses_batch_embed_endpoint(monkeypatch):
     /api/embeddings (single), and the payload must contain an
     ``input`` list — proving it's a real batch request.
     """
-    monkeypatch.setattr(emb_mod, "httpx", MagicMock())
-
     # Build an embedder in local mode without touching network.
     inst = OllamaCloudEmbedder.__new__(OllamaCloudEmbedder)
     inst._provider = "local"
@@ -78,7 +119,7 @@ def test_local_ollama_uses_batch_embed_endpoint(monkeypatch):
     inst._api_key = None
 
     recorder = _RecordedClient()
-    monkeypatch.setattr(emb_mod.httpx, "Client", recorder)
+    _stub_transport(monkeypatch, recorder)
 
     texts = ["alpha", "beta", "gamma", "delta", "epsilon"]
     result = inst._embed_batch(texts)
@@ -104,8 +145,6 @@ def test_local_ollama_uses_batch_embed_endpoint(monkeypatch):
 
 def test_cloud_uses_batch_embed_endpoint_with_auth(monkeypatch):
     """The cloud variant routes the same way but adds the bearer token."""
-    monkeypatch.setattr(emb_mod, "httpx", MagicMock())
-
     inst = OllamaCloudEmbedder.__new__(OllamaCloudEmbedder)
     inst._provider = "cloud"
     inst._model = "nomic-embed-text"
@@ -114,7 +153,7 @@ def test_cloud_uses_batch_embed_endpoint_with_auth(monkeypatch):
     inst._api_key = "secret-test-key"
 
     recorder = _RecordedClient()
-    monkeypatch.setattr(emb_mod.httpx, "Client", recorder)
+    _stub_transport(monkeypatch, recorder)
 
     texts = ["x", "y"]
     inst._embed_batch(texts)

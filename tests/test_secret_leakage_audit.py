@@ -88,7 +88,8 @@ class TestNoSecretLeakage:
 
     def test_secrets_loader_never_logs_values(self):
         """secrets_loader.py specifically never logs secret values."""
-        sl = Path("src/beagle/secrets_loader.py")
+        repo_root = Path(__file__).resolve().parent.parent
+        sl = repo_root / "src" / "beagle" / "secrets_loader.py"
         content = sl.read_text(encoding="utf-8")
         # The module should never log `value` or the loaded secret directly
         for i, line in enumerate(content.splitlines(), 1):

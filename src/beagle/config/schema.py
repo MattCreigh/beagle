@@ -775,6 +775,79 @@ class ConnectionsConfig:
     transport: str = "http"  # "http" | installed plugin name
 
 
+# ---------------------------------------------------------------------------
+# v14.0: Six typed SSOT sections (Beagle Configuration Ecosystem Rebuild).
+# These dataclasses back the spec's six consolidated sections. They are
+# ADDITIVE — the oracle-critical sections ([goose], [models], [llm], [budget],
+# [mcp], [paths], [health], [sandbox.microvm], …) remain the runtime SSOT for
+# their respective subsystems. These new sections provide the typed,
+# consolidated spec view over the same operational knobs.
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class SystemConfig:
+    """Consolidated system-level settings (v14.0 [system])."""
+
+    workspace_root: str = ""
+    data_root: str = "~/.beagle"
+    log_level: str = "INFO"
+    max_query_length: int = 50000
+    budget_usd_default: float = 10.0
+    budget_usd_hard_cap: float = 50.0
+
+
+@dataclass
+class ContextManagementConfig:
+    """Consolidated context-management policy (v14.0 [context_management])."""
+
+    pre_compact_threshold: float = 0.58
+    compaction_engine: str = "turboquant_3bit"
+    auto_dream_enabled: bool = True
+    skip_tools_regex: str = (
+        "beagle_session_bootstrap|report_context_usage|check_and_fold_context"
+    )
+
+
+@dataclass
+class InferenceConfig:
+    """Consolidated inference-provider policy (v14.0 [inference])."""
+
+    provider_registry: str = "~/.config/beagle/beagle_inference_config/providers.toml"
+    active_fleet_card: str = "fleet_ollama_cloud"
+    allowlist_strict: bool = True
+    fallback_budget_hops: int = 3
+
+
+@dataclass
+class IpcAndToolsConfig:
+    """Consolidated IPC/tool-surface policy (v14.0 [ipc_and_tools])."""
+
+    orpheus_ring_path: str = "/run/orpheus/nexus"
+    ghost_vault_socket: str = "/run/server_1/orpheus/ghost.sock"
+    mcp_transport: str = "stdio"
+    tool_registry_path: str = "~/.config/beagle/style_guides/guides/03_tool_registry.toml"
+
+
+@dataclass
+class SecurityAndSandboxConfig:
+    """Consolidated security/sandbox policy (v14.0 [security_and_sandbox])."""
+
+    fail_closed_firewall: bool = True
+    secret_scrubbing: bool = True
+    microvm_enabled: bool = False
+    microvm_deny_fallback: bool = True
+
+
+@dataclass
+class ValidationGatesConfig:
+    """Consolidated validation-gate policy (v14.0 [validation_gates])."""
+
+    qa_gate_binary: str = "/opt/Projects/bin/qup"
+    test_runner_binary: str = "/opt/Projects/bin/tup"
+    max_cvcp_revisions: int = 3
+
+
 @dataclass
 class WorkflowConfig:
     """Combined configuration for workflow execution."""
@@ -828,6 +901,15 @@ class WorkflowConfig:
     workflow_discovery: WorkflowDiscoveryConfig = field(default_factory=WorkflowDiscoveryConfig)
     state: StateConfig = field(default_factory=StateConfig)
     event_bus: EventBusConfig = field(default_factory=EventBusConfig)
+    # v14.0: Six typed SSOT sections (Beagle Configuration Ecosystem Rebuild).
+    system: SystemConfig = field(default_factory=SystemConfig)
+    context_management: ContextManagementConfig = field(default_factory=ContextManagementConfig)
+    inference: InferenceConfig = field(default_factory=InferenceConfig)
+    ipc_and_tools: IpcAndToolsConfig = field(default_factory=IpcAndToolsConfig)
+    security_and_sandbox: SecurityAndSandboxConfig = field(
+        default_factory=SecurityAndSandboxConfig
+    )
+    validation_gates: ValidationGatesConfig = field(default_factory=ValidationGatesConfig)
 
 
 # ---------------------------------------------------------------------------

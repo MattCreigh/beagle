@@ -77,6 +77,41 @@ class _RegistryStore:
         self._ctx: dict[str, Any] | None = None
 
 
+class _EmptyRoleView:
+    """Neutral stand-in for an unconfigured preset role.
+
+    Renders as the EMPTY STRING in Jinja ({{ preset.meta }} -> "") while
+    still exposing scalar attributes for dotted access.
+    """
+
+    model = ""
+    provider = ""
+    temperature = 0.4
+    fqid = ""
+    strategy = ""
+
+    def __str__(self) -> str:
+        return ""
+
+
+class _EmptyRoleDict(dict):
+    """dict that yields a neutral preset view for unknown roles.
+
+    Configless contract: ``{{ preset.anything }}`` renders empty scalars
+    (model="", provider="") rather than raising StrictUndefined.
+    """
+
+    def __missing__(self, key: str) -> Any:
+        return _EmptyRoleView()
+
+
+class _EmptyFallbackDict(dict):
+    """dict that yields an empty chain list for unknown roles."""
+
+    def __missing__(self, key: str) -> list[dict[str, Any]]:
+        return []
+
+
 _store = _RegistryStore()
 
 
@@ -504,6 +539,12 @@ def build_template_context() -> dict[str, Any]:
             for d in preset.deployment_chain()
         ]
 
+    if not presets_ctx:
+        # Configless registry: templates referencing {{ preset.<role> }} must
+        # render provider-neutral empties instead of raising StrictUndefined.
+        presets_ctx = _EmptyRoleDict()
+    if not fallback_ctx:
+        fallback_ctx = _EmptyFallbackDict()
     providers_ctx: dict[str, dict[str, Any]] = {}
     for name, prov in _store.providers.items():
         providers_ctx[name] = {

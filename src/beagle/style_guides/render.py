@@ -517,10 +517,14 @@ class GooseTopOfMindRenderer:
     # load-bearing keywords (datetime.now, uuid.uuid4,
     # additionalProperties). The cap was 16 KB pre-v13.21.3 and
     # was raised to 40 KB to fit the v13.21.3 content (~33 KB
-    # full render with all patterns). The cap is still "soft" —
-    # a 40 KB render is still well below the goose prompt budget
-    # and matches :attr:`DOCTRINE_BUNDLE_MAX_BYTES` exactly.
-    FULL_SOFT_CAP_BYTES = 40_000
+    # full render with all patterns). v13.22.3 added more
+    # background-tier patterns (Verify-before-irreversible-act,
+    # etc.), pushing the full render to ~40.7 KB — past the
+    # 40 KB cap, which would drop the background-tier patterns
+    # carrying datetime.now/uuid.uuid4/additionalProperties.
+    # Raised to 45 KB so the full render fits with headroom and
+    # the SSOT-coverage tests stay green.
+    FULL_SOFT_CAP_BYTES = 45_000
 
     # v13.21.3 — F3 fix: tier hierarchy for architecture patterns. The
     # TOML author declares ``load_bearing_patterns`` (a list of

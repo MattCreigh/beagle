@@ -21,6 +21,7 @@ direct module import (from ... import mcp_rag_server).
 from __future__ import annotations
 
 import asyncio
+import importlib.util
 import json
 import sys
 from pathlib import Path
@@ -340,6 +341,10 @@ class TestMCPServerErrorHandling:
         assert parsed["status"] in ("error", "no_results", "ok")
 
     @pytest.mark.asyncio
+    @pytest.mark.skipif(
+        importlib.util.find_spec("beagle_openclaw") is None,
+        reason="optional beagle-openclaw plugin absent",
+    )
     async def test_openclaw_nonexistent_task(self):
         """OpenClaw should handle nonexistent task gracefully."""
         mcp_openclaw = infra.mcp_openclaw_server
@@ -387,6 +392,10 @@ class TestMCPConcurrency:
             assert "lancedb_available" in parsed
 
     @pytest.mark.asyncio
+    @pytest.mark.skipif(
+        importlib.util.find_spec("beagle_openclaw") is None,
+        reason="optional beagle-openclaw plugin absent",
+    )
     async def test_concurrent_list_tasks(self):
         """Multiple concurrent openclaw_list_tasks should complete safely."""
         mcp_openclaw = infra.mcp_openclaw_server

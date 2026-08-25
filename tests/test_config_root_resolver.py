@@ -54,7 +54,11 @@ def test_empty_user_config_dir_does_not_shadow_fallback(monkeypatch, tmp_path) -
     from beagle.config._config_path import find_config_root
 
     root = find_config_root()
-    assert root.name != "beagle", f"empty XDG dir shadowed the fallback: {root}"
+    # OSS contract: an unpopulated XDG dir is the STABLE terminal root (the
+    # wheel ships no bundled fallback), not something to be shadowed.
+    assert root == empty_xdg / "beagle", (
+        f"unpopulated XDG root must be returned as-is; got {root}"
+    )
 
 
 def test_find_config_root_honors_beagle_config_root_env(monkeypatch, tmp_path) -> None:

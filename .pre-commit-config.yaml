@@ -1,0 +1,140 @@
+# Pre-commit configuration for Beagle Goose Agentic Workflow
+# Install: pip install pre-commit && pre-commit install
+#
+# v13.21.5: Expanded from ruff+pytest to include mypy, vulture, and
+# a no-hardcoded-version-string hook (see scripts/hooks/no_hardcoded_version.py).
+
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    # v13.22.3: Bumped from v0.9.1 to v0.16.0 — v0.9.1 didn't recognise
+    # ``UP046`` (non-pep695-generic-class, added in v0.13.0) so the
+    # ``ignore = [..., "UP046", ...]`` entry in pyproject.toml made
+    # pre-commit fail with "Unknown rule selector" on every commit,
+    # forcing --no-verify and breaking the hook pipeline. The system
+    # ``ruff`` binary (used outside pre-commit) is already 0.16.0;
+    # bumping the hook pin matches it.
+    rev: v0.16.0
+    hooks:
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+      - id: ruff-format
+
+  - repo: local
+    hooks:
+      - id: pytest
+        name: pytest
+        entry: python3 -m pytest
+        language: system
+        types: [python]
+        args: ['tests/', '-v', '--tb=short', '-x']
+        pass_filenames: false
+        stages: [pre-push]
+
+      # ── mypy: type-check on push (slow, but catches real bugs) ───────────
+      - id: mypy
+        name: mypy (strict)
+        entry: mypy
+        language: system
+        types: [python]
+        files: '^src/beagle/'
+        args: ['--config-file=mypy.ini', 'src/beagle/']
+        pass_filenames: false
+        stages: [pre-push]
+
+      # ── vulture: dead-code detection ────────────────────────────────────
+      - id: vulture
+        name: vulture (dead code)
+        entry: vulture
+        language: system
+        types: [python]
+        args: ['src/beagle/', '.vulture_whitelist.py']
+        pass_filenames: false
+        stages: [pre-push]
+
+      # ── hook-health gate ──────────────────────────────────────────────
+      # v1.2.0 (CC-5, BGL-036): makes a silent hook failure fail a gate.
+      # 2679 hook failures over 13 sessions produced no alarm and no test
+      # failure. This gate reads the goose log, the git index mode, the
+      # interpreter, and the context-report freshness, and exits 1 on any
+      # finding. Never append `|| true` — a gate that cannot fail is not a
+      # gate.
+      - id: check-hook-health
+        name: check-hook-health (silent hook failure gate)
+        entry: python3 scripts/check_hook_health.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+      # ── no hardcoded version strings ────────────────────────────────────
+      # Rejects any new occurrence of `# v1`, `# v2` etc. in *new* code.
+      # Exempts:
+      #   - the canonical `__version__` SSOT in src/beagle/__init__.py
+      #   - audit-trail comments of the form `# v13.x: <justification>`
+      #     in test/ and security/ modules
+      #   - this file
+      - id: no-hardcoded-version-string
+        name: no-hardcoded-version-string
+        entry: python3 scripts/hooks/no_hardcoded_version.py
+        language: system
+        types: [python]
+        pass_filenames: true
+        stages: [pre-commit]
+
+      # v1.1.1 (A4): rejects hardcoded host paths (/home/ /opt/ /mnt/)
+      # in the reviewed source that are not in the explicit allowlist.
+      # Kept in lockstep with the CI doctrine gate of the same name.
+      - id: no-hardcoded-host-paths
+        name: no-hardcoded-host-paths
+        entry: python3 scripts/check_host_paths.py
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]
+
+      # ── quality-ratchet gate ───────────────────────────────────────────
+      # Golden-master quality ratchet: checks that no counted defect metric has increased.
+      - id: check-quality-ratchet
+        name: check-quality-ratchet (quality metrics ratchet)
+        entry: python3 scripts/check_quality_ratchet.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+      # ── Beagle bootstrap hook ────────────────────────────────────────────
+      # v13.22.3: wires the four systems the user asked to be
+      # plumbed — RAGStalenessTracker + auto_hydrate (hotswap) +
+      # recipe_agent_bridge + on_post_compaction. Runs on every
+      # goose session start (pre-commit fires it on every commit
+      # when ``files: ''`` so it covers session-start, pre-push,
+      # and manual CLI invocations alike).
+      #
+      # entry names .venv/bin/python, not python3. Under language: system a
+      # bare python3 resolves to /usr/bin/python3, which has none of the
+      # project's dependencies — every step failed with
+      # ModuleNotFoundError('tenacity') while the hook reported status "ok"
+      # and pre-commit reported "Passed". .venv is a symlink to the deployed
+      # venv, so this tracks whatever sklninstl installed.
+      - id: beagle-bootstrap
+        name: beagle-bootstrap (RAG rehydrate + agent sync + rehydration register)
+        entry: .venv/bin/python scripts/hooks/beagle_bootstrap.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+      # ── Beagle post-fold hook ────────────────────────────────────────────
+      # v13.22.3: marks the RAG stale and saves a compaction
+      # checkpoint whenever context folds. Wired so the next
+      # rag_search call automatically reingests via auto_hydrate.
+      # Run on every commit (always_run: true) so a session whose
+      # last action was a fold doesn't ship with stale RAG.
+      # entry: see the note on beagle-bootstrap above — .venv/bin/python, never
+      # a bare python3.
+      - id: beagle-post-fold
+        name: beagle-post-fold (RAG stale marker + rehydration checkpoint)
+        entry: .venv/bin/python scripts/hooks/beagle_post_fold.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]

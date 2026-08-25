@@ -111,12 +111,16 @@ class TestValidateFilePath:
         is_valid, _ = validate_file_path("src/main.py")
         assert is_valid is True
 
-    def test_allows_project_paths(self):
+    def test_allows_project_paths(self, monkeypatch):  # type: ignore[no-untyped-def]
         """Project paths are allowed."""
+        # Relative paths resolve against CWD inside the validator; anchor to
+        # the repository root so the containment check sees a real file.
+        repo_root = Path(__file__).resolve().parent.parent
+        monkeypatch.chdir(repo_root)
         is_valid, _ = validate_file_path(
-            "beagle/core/nodes.py",
+            "src/beagle/core/nodes.py",
             allow_absolute=False,
-            base_dir="/home/server/Projects/beagle",
+            base_dir=str(repo_root),
         )
         assert is_valid is True
 

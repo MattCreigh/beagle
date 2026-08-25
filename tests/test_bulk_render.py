@@ -345,7 +345,7 @@ def test_bulk_render_against_actual_projects_dir() -> None:
         "skylon_plugin_spin",
         "skylon_plugin_wifi",
         "skylon_plugin_docker",
-        "skylon_plugin_logdaemon",
+        "skylon_plugin_logdaemon.RETIRED",
         "skylon_plugin_maintenance",
         "skylon_plugin_tui",
         "skylon_plugin_webui",

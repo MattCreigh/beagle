@@ -225,10 +225,10 @@ class TestGetAgentFallbackChain:
             profile = get_agent("anything")
             # Provider falls to hardcoded default (ollama_cloud).
             assert profile.provider == "ollama_cloud"
-            # Provider-neutral: no model preset ships; the fallback model is
-            # "" until the operator configures one ([goose].default_model or
-            # model presets). See README "Provider-neutral LLM configuration".
-            assert profile.model == ""
+            # v1.0.9 (audit C1) / v14.0: the fallback model resolves via the
+            # fleet-card registry SSOT — the [presets.default] role in
+            # fleet_ollama_cloud.toml is the workhorse. It is NOT "".
+            assert profile.model == "deepseek-v4-flash:0731-cloud"
             assert profile.temperature == 0.4
 
 
@@ -347,9 +347,10 @@ class TestGetCheapAgent:
             # No config at all, so this falls all the way back to the
             # hardcoded default (ollama_cloud).
             assert profile.provider == "ollama_cloud"
-            # Provider-neutral: no preset ships; the fallback cheap-model is
-            # "" until the operator configures one.
-            assert profile.model == ""
+            # v1.0.9 (audit C1) / v14.0: the fallback cheap-model resolves via
+            # the fleet-card registry SSOT — the [presets.default] role is the
+            # workhorse when no cheaper preset ships. It is NOT "".
+            assert profile.model == "deepseek-v4-flash:0731-cloud"
 
     def test_cheap_agent_from_config_toml(self):
         """With config.toml cheap_model set, get_cheap_agent() should use it."""
@@ -460,6 +461,7 @@ class TestLLMConfigFallback:
         from beagle.config.agent_config import _HARDCODED_DEFAULTS, _default_model
 
         assert _HARDCODED_DEFAULTS["provider"] == "ollama_cloud"
-        # Provider-neutral: no model preset ships, so the accessor resolves to
-        # "" until the operator configures [goose].default_model or presets.
-        assert _default_model() == ""
+        # v1.0.9 (audit C1) / v14.0: the accessor resolves the default model
+        # via the fleet-card registry SSOT — [presets.default] in
+        # fleet_ollama_cloud.toml is the workhorse. It is NOT "".
+        assert _default_model() == "deepseek-v4-flash:0731-cloud"

@@ -1121,3 +1121,40 @@ file = "src/beagle/webhooks.py"
 symbols = ["BUDGET_EXCEEDED", "BUDGET_WARNING", "MAX_DELIVERY_HISTORY"]
 status = "pending"
 note = "tranche-2: confirmed tunable at symbol level; candidate for a [defaults.*] move in a later tranche"
+
+# OSS release (2026-08-24): connection-transport layer + optional-plugin shims
+[[entry]]
+file = "core/transports.py"
+symbols = ["_ENTRY_POINT_GROUP", "_DEFAULT_TRANSPORT"]
+status = "invariant"
+note = "entry-point group name is a packaging contract; http default is the OSS product contract (never config-defaulted to a proprietary transport)"
+
+[[entry]]
+file = "mcp_plugins.py"
+symbols = ["_ENTRY_POINT_GROUP"]
+status = "invariant"
+note = "beagle.mcp_plugins group name is the plugin discovery contract"
+
+[[entry]]
+file = "infrastructure/_orpheus_optional.py"
+symbols = ["_INSTALL_HINT"]
+status = "invariant"
+note = "user-guidance message for the separately licensed wheel; single source of truth for the stub error"
+
+[[entry]]
+file = "infrastructure/rag_ingest_queue.py"
+symbols = ["DEFAULT_PREFIX", "LOCK_TTL_SECONDS"]
+status = "pending"
+note = "pre-existing queue tunables; queued for a [defaults.*] move tranche"
+
+[[entry]]
+file = "infrastructure/services/ghost_secrets.py"
+symbols = ["DEFAULT_SOCKET"]
+status = "pending"
+note = "pre-existing ghost-vault socket default; queued for a [defaults.*] move tranche"
+
+[[entry]]
+file = "lifecycle/orpheus_startup.py"
+symbols = ["_FALLBACK_RING_PARENT"]
+status = "invariant"
+note = "XDG runtime fallback parent for orpheus_ring; env-overridable via ORPHEUS_RING_DIR"

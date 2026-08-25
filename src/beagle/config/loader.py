@@ -27,6 +27,8 @@ from .schema import (
     BudgetConfig,
     CacheConfig,
     CircuitBreakerConfig,
+    ConnectionsConfig,
+    ContextManagementConfig,
     ContextThresholdConfig,
     CoordConfig,
     DecompositionConfig,
@@ -36,6 +38,8 @@ from .schema import (
     GooseConfig,
     HardwareConfig,
     HealthConfig,
+    InferenceConfig,
+    IpcAndToolsConfig,
     LearnedRoutingConfig,
     LifecycleConfig,
     LLMConfig,
@@ -57,12 +61,15 @@ from .schema import (
     ReproducibilityConfig,
     RuntimeConfig,
     SandboxMicroVMConfig,
+    SecurityAndSandboxConfig,
     SecurityConfig,
     StateConfig,
     StreamingConfig,
+    SystemConfig,
     TimeoutConfig,
     TracingConfig,
     ValidationConfig,
+    ValidationGatesConfig,
     WorkflowConfig,
     WorkflowDiscoveryConfig,
 )
@@ -762,6 +769,97 @@ def load_config(path: Path | str | None = None) -> WorkflowConfig:
     # v13.21: [complexity_routing] is read by config/model_resolver.py. We
     # acknowledge it here so the orphan-section guard recognizes a consumer.
 
+    # v14.0: Six typed SSOT sections (Beagle Configuration Ecosystem Rebuild).
+    # Each parses its consolidated TOML table into a typed dataclass. These
+    # are ADDITIVE — they provide the spec view; the subsystem-specific
+    # sections ([goose], [models], [llm], [sandbox.microvm], …) remain the
+    # runtime SSOT for their owners.
+    if "system" in data:
+        sysc = data["system"]
+        config.system = SystemConfig(
+            workspace_root=sysc.get("workspace_root", config.system.workspace_root),
+            data_root=sysc.get("data_root", config.system.data_root),
+            log_level=sysc.get("log_level", config.system.log_level),
+            max_query_length=sysc.get("max_query_length", config.system.max_query_length),
+            budget_usd_default=sysc.get("budget_usd_default", config.system.budget_usd_default),
+            budget_usd_hard_cap=sysc.get("budget_usd_hard_cap", config.system.budget_usd_hard_cap),
+        )
+
+    if "context_management" in data:
+        cm = data["context_management"]
+        config.context_management = ContextManagementConfig(
+            pre_compact_threshold=cm.get(
+                "pre_compact_threshold", config.context_management.pre_compact_threshold
+            ),
+            compaction_engine=cm.get(
+                "compaction_engine", config.context_management.compaction_engine
+            ),
+            auto_dream_enabled=cm.get(
+                "auto_dream_enabled", config.context_management.auto_dream_enabled
+            ),
+            skip_tools_regex=cm.get(
+                "skip_tools_regex", config.context_management.skip_tools_regex
+            ),
+        )
+
+    if "inference" in data:
+        inf = data["inference"]
+        config.inference = InferenceConfig(
+            provider_registry=inf.get("provider_registry", config.inference.provider_registry),
+            active_fleet_card=inf.get("active_fleet_card", config.inference.active_fleet_card),
+            allowlist_strict=inf.get("allowlist_strict", config.inference.allowlist_strict),
+            fallback_budget_hops=inf.get(
+                "fallback_budget_hops", config.inference.fallback_budget_hops
+            ),
+        )
+
+    if "ipc_and_tools" in data:
+        ipc = data["ipc_and_tools"]
+        config.ipc_and_tools = IpcAndToolsConfig(
+            orpheus_ring_path=ipc.get("orpheus_ring_path", config.ipc_and_tools.orpheus_ring_path),
+            ghost_vault_socket=ipc.get(
+                "ghost_vault_socket", config.ipc_and_tools.ghost_vault_socket
+            ),
+            mcp_transport=ipc.get("mcp_transport", config.ipc_and_tools.mcp_transport),
+            tool_registry_path=ipc.get(
+                "tool_registry_path", config.ipc_and_tools.tool_registry_path
+            ),
+        )
+
+    if "security_and_sandbox" in data:
+        ss = data["security_and_sandbox"]
+        config.security_and_sandbox = SecurityAndSandboxConfig(
+            fail_closed_firewall=ss.get(
+                "fail_closed_firewall", config.security_and_sandbox.fail_closed_firewall
+            ),
+            secret_scrubbing=ss.get("secret_scrubbing", config.security_and_sandbox.secret_scrubbing),
+            microvm_enabled=ss.get("microvm_enabled", config.security_and_sandbox.microvm_enabled),
+            microvm_deny_fallback=ss.get(
+                "microvm_deny_fallback", config.security_and_sandbox.microvm_deny_fallback
+            ),
+        )
+
+    if "validation_gates" in data:
+        vg = data["validation_gates"]
+        config.validation_gates = ValidationGatesConfig(
+            qa_gate_binary=vg.get("qa_gate_binary", config.validation_gates.qa_gate_binary),
+            test_runner_binary=vg.get(
+                "test_runner_binary", config.validation_gates.test_runner_binary
+            ),
+            max_cvcp_revisions=vg.get(
+                "max_cvcp_revisions", config.validation_gates.max_cvcp_revisions
+            ),
+        )
+
+    # v14.0: [connections] — outbound connection transport selection. Fixes
+    # the pre-existing loader-branch gap (WorkflowConfig.connections had no
+    # parser branch, so the orphan-guard test reported it unreachable).
+    if "connections" in data:
+        conn = data["connections"]
+        config.connections = ConnectionsConfig(
+            transport=conn.get("transport", config.connections.transport),
+        )
+
     return config
 
 
@@ -825,6 +923,13 @@ KNOWN_TOP_LEVEL = frozenset(
         "memory_consolidation",  # SP-9: AutoDream memory consolidation
         "streaming",  # SP-9: token streaming with early termination
         "runtime",  # B2: sub-agent execution runtime selection ([runtime].plugin)
+        "connections",  # v14.0: outbound connection transport selection
+        "system",  # v14.0: consolidated system settings
+        "context_management",  # v14.0: consolidated context-management policy
+        "inference",  # v14.0: consolidated inference-provider policy
+        "ipc_and_tools",  # v14.0: consolidated IPC/tool-surface policy
+        "security_and_sandbox",  # v14.0: consolidated security/sandbox policy
+        "validation_gates",  # v14.0: consolidated validation-gate policy
     }
 )
 

@@ -10,6 +10,7 @@ from __future__ import annotations
 import contextlib
 import locale
 import os
+from collections.abc import Iterator
 
 import pytest
 
@@ -18,7 +19,7 @@ from beagle.style_guides import injector
 
 
 @pytest.fixture
-def c_locale(monkeypatch):
+def c_locale(monkeypatch) -> Iterator[None]:
     """Force the C locale for the duration of a test.
 
     IMPORTANT: The process-global locale (``locale.setlocale(LC_ALL, ...)``)
@@ -62,7 +63,8 @@ def c_locale(monkeypatch):
                 os.environ[key] = val
 
 
-def test_config_toml_loads_under_c_locale(c_locale):
+@pytest.mark.usefixtures("c_locale")
+def test_config_toml_loads_under_c_locale():
     config_path = cast_ingestion._find_config_toml()
     assert config_path is not None
     with open(config_path, encoding="utf-8") as f:
@@ -70,8 +72,12 @@ def test_config_toml_loads_under_c_locale(c_locale):
     assert "incremental_ingest" in contents
 
 
-def test_style_guide_toml_loads_under_c_locale(c_locale):
-    guide = injector.StyleGuideLoader().guides_dir / "beagle_environment.toml"
+@pytest.mark.usefixtures("c_locale")
+def test_style_guide_toml_loads_under_c_locale():
+    # v14.0: beagle_environment.toml was archived to guides/_archive/ during
+    # the renumber; it still carries the box-drawing UTF-8 content this test
+    # exercises under the C locale.
+    guide = injector.StyleGuideLoader().guides_dir / "_archive" / "beagle_environment.toml"
     assert guide.exists()
     with open(guide, encoding="utf-8") as f:
         contents = f.read()

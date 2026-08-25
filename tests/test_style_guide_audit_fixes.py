@@ -41,13 +41,21 @@ def test_loader_get_by_stem_works_for_all_canonical_guides():
     from beagle.style_guides.loader import StyleGuideLoader
 
     loader = StyleGuideLoader()
+    # v14.0: the doctrine guides were renumbered 0X_*.toml in the canonical
+    # config root; the legacy canonical stems (beagle_environment, ...) were
+    # archived to guides/_archive/. The current top-level SSOT is the
+    # renumbered 0X_* set + the surviving unnumbered guides.
     for stem in (
+        "01_core_doctrine",
+        "02_host_runtime",
+        "03_tool_registry",
+        "04_lang_python",
+        "05_lang_systems",
+        "06_domain_frontend",
+        "07_domain_devops",
+        "08_security_baseline",
         "beagle_core_directives",
-        "beagle_environment",
-        "beagle_project_contract",
-        "agentic_orchestration",
-        "general_cli",
-        "llm_bridge_contract",
+        "local_tool_inventory",
         "python_backend",
         "security_baseline",
     ):

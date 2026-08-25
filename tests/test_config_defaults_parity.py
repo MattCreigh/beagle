@@ -33,8 +33,27 @@ def test_no_bundled_config_ships() -> None:
     )
 
 
-def test_configless_defaults_are_correct() -> None:
+def test_configless_defaults_are_correct(monkeypatch, tmp_path) -> None:
     """Fresh install (empty XDG dir) yields safe, provider-neutral defaults."""
+    # Isolate from any operator-seeded ~/.config/beagle on the test host.
+    xdg = tmp_path / "xdg"
+    (xdg / "beagle").mkdir(parents=True)
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(xdg))
+    monkeypatch.delenv("BEAGLE_CONFIG_ROOT", raising=False)
+    monkeypatch.delenv("BEAGLE_CONFIG_TOML", raising=False)
+    from beagle.config._config_path import reset_config_path_cache
+    from beagle.config.loader import reset_config_cache
+
+    reset_config_path_cache()
+    reset_config_cache()
+    try:
+        _assert_neutral_defaults()
+    finally:
+        reset_config_path_cache()
+        reset_config_cache()
+
+
+def _assert_neutral_defaults() -> None:
     cfg = get_config()
     assert cfg.connections.transport == "http"  # never auto-activate plugins
     assert cfg.goose.default_pool_chain == []  # no provider presets
