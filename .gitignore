@@ -45,3 +45,6 @@ htmlcov/
 .env
 *.key
 secrets.yaml
+
+# Local machine-specific ops scripts (deploy targets live outside the repo)
+scripts/sync-to-opt-venv.sh
