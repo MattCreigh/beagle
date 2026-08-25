@@ -51,3 +51,6 @@ scripts/sync-to-opt-venv.sh
 
 # Containerisation pipeline — local-only workspace (never shipped to the repo)
 /beagle_containerisation/
+
+# Per-checkout session-fork protocol notes (never shipped)
+/SESSION_FORKS.md
