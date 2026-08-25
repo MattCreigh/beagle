@@ -177,13 +177,22 @@ See `config.toml` for the full schema.
 
 ## MCP Protocol Servers
 
-Beagle exposes three Model Context Protocol servers:
+Beagle exposes ONE Model Context Protocol server, registered in goose as `beagle`:
 
-1. **`beagle-rag`** — Semantic code search (vector retrieval plus graph traversal)
-2. **`beagle-openclaw`** — Task queue management (create, monitor, cancel, schedule tasks)
-3. **`beagle-utility`** — Consolidated workflow orchestration, code analysis, and web search
+```
+python3 -m beagle.infrastructure.mcp_beagle_server
+```
 
-Entry points are defined in `pyproject.toml` under `[project.entry-points."mcp.servers"]`.
+The unified surface (`src/beagle/infrastructure/mcp_beagle_server.py`) absorbs:
+
+1. **RAG group** — semantic code search (vector retrieval plus graph traversal);
+   aggregate health/metrics are exposed as `rag_health_check` / `rag_get_metrics`
+2. **Utility group** — workflow orchestration, code analysis, web research,
+   meta-process tuning
+3. **[tool]-standard plugins** — declared in `<config_root>/plugins/tools.toml`,
+   mounted/unmounted at runtime via `plugin_reload()` (hotswap; no restart).
+   The OpenClaw task-queue plugin (create/monitor/cancel/schedule tasks) is the
+   first-class example.
 
 ---
 

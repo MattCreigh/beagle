@@ -105,19 +105,32 @@ pip install ./beagle_orpheus-<ver>-<platform>.whl   # registers beagle.transport
 
 ## MCP servers & plugins
 
-Two surfaces, clean separation:
+ONE stdio surface, registered in goose as `beagle`:
 
-| Server | Part of | Purpose |
-|---|---|---|
-| `beagle` | core distribution | workflow orchestration, code/web/RAG tools |
-| `beagle-openclaw` | separate plugin repo (own root under Skylon_Ecosystem) | task-queue controller delegating execution via Orpheus/Skylon |
+```
+/opt/beagle/beagle_venv/bin/python3 -m beagle.infrastructure.mcp_beagle_server
+```
 
-Additional MCP plugins are auto-detected through the
-`beagle.mcp_plugins` entry-point group. Each plugin is fully self-contained:
-its own repository, root directory, TOML config gate, and console script.
-Detection only *lists* them — activation happens in the plugin's own
-configuration (e.g. copying `config.toml.example` → `config.toml` with
-`enabled = true`).
+The unified server (`src/beagle/infrastructure/mcp_beagle_server.py`) absorbs
+the RAG group (`rag_*`, `graph_*`, renamed `rag_health_check` / `rag_get_metrics`)
+and the utility group (workflow orchestration, research/code/web tools,
+meta-process tuning) plus two management tools: `plugin_status` and
+`plugin_reload`.
+
+### [tool] standard — TOML-configured plugins with hotswap
+
+External MCP plugins (OpenClaw and future ones) are declared in the registry
+TOML at `<config_root>/plugins/tools.toml` — never hardcoded. Each `[[tool]]`
+entry names an entry point (group `beagle.mcp_plugins`) or an importable
+module exposing `mcp: FastMCP`; an optional `is_enabled()` self-gate inside
+the plugin is ANDed with the registry `enabled` flag. Editing the TOML plus
+one `plugin_reload()` call mounts or unmounts a plugin's commands at runtime —
+no restart (`[meta].hotswap_enabled = true`). Detection without declaration is
+reported by `plugin_status()` and never activates anything.
+
+The OpenClaw task-queue controller ships as its own plugin repo (own root
+under Skylon_Ecosystem); once installed into the Beagle venv and listed in
+`tools.toml`, its commands are included automatically.
 
 ## Development
 
