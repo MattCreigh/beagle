@@ -281,9 +281,9 @@ class TransportRegistry:
 def _configured_transport() -> str | None:
     """Read ``[connections].transport`` from ~/.config/beagle (best effort)."""
     try:
-        from ..config.loader import load_merged
+        from ..config.loader import get_config
 
-        cfg = load_merged()
+        cfg = get_config()
         value = getattr(getattr(cfg, "connections", None), "transport", None)
         return str(value) if value else None
     except Exception as exc:  # noqa: BLE001 - config absence must never break selection

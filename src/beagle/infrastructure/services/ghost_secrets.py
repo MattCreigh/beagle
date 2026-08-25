@@ -11,10 +11,9 @@ vault is not installed.
 
 from __future__ import annotations
 
+from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from typing import Any
-
-from importlib.metadata import PackageNotFoundError, version
 
 DEFAULT_SOCKET = "/run/ghost-vault/docker.sock"
 

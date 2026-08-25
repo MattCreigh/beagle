@@ -247,7 +247,7 @@ class CompressedAgentState(AgentState):
 class CompressedKVPool:
     """Shared pool for TurboQuant KV caches across agents."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._pool: dict[str, Any] = {}
 
     def get(self, cache_id: str) -> Any:

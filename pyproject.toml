@@ -113,6 +113,7 @@ beagle = [
     "prompts/*.md",
     "recipes/*.xml",
     "config/defaults_registry.toml",
+    "workflows_builtin/*.yaml",
     "templates/definitions/*.toml",
     "infrastructure/Dockerfile.*",
     "infrastructure/docker-compose.yml",
@@ -129,3 +130,9 @@ ignore = ["E501"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+
+[tool.mypy]
+python_version = "3.12"
+mypy_path = "src"
+ignore_missing_imports = true
+
