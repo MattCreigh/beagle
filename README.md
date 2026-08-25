@@ -32,25 +32,55 @@ user-editable configuration lives under `~/.config/beagle` (XDG).
 - **Deep Forks** — `core/graph.py` branches state structurally.
   `pyrsistent.PMap`/`PVector` makes forks O(1). A fork copies only the
   modified path on write. `pyrsistent` is optional. Without `pyrsistent`, the
-  engine falls back to a full `deepcopy`.
+  engine falls back to a full `deepcopy`. Every branch of a DAG gets its own
+  immutable world: parallel sub-agents never race on shared state,
+  checkpoint/resume becomes trivial (states are values, not heaps), and a
+  failed speculative branch costs one pointer drop — not a corrupted run.
 - **TurboQuant** — TurboQuant compresses numeric KV-cache and embedding data
   in RAM at 3 bits per value. It applies rotation, per-coordinate scalar
   quantization, and 1-bit QJL residual correction (Zandieh et al., Google
   Research, ICLR 2026). See `core/turboquant.py` and `docs/TURBOQUANT.md`.
   TurboQuant never compresses string or bytes data. It compresses numeric
-  vector workloads only.
+  vector workloads only. Against 16-bit storage that is ≈5× more context
+  held per gigabyte — history gets *compressed*, not *truncated*, which is
+  the difference between a 40-turn investigation and one that forgets its
+  own findings at turn eight.
 - **AdaptiveRouter** — AdaptiveRouter measures latency/quality tradeoffs at
   runtime. It escalates or downgrades the model per node (`core/router.py`).
   AdaptiveRouter routes models; it does not quantify vectors. The design keeps
-  it deliberately distinct from TurboQuant.
+  it deliberately distinct from TurboQuant. Spend therefore follows
+  difficulty: trivial nodes resolve on small cheap models, and only nodes
+  whose measured quality degrades escalate to the heavy fleet.
 - **A2A Protocol v2** — Agents exchange Ed25519-signed inter-agent messages
   under role-based access control. Wildcards (`*`, `a2a:*`) form a matching
   syntax only. Unbound identities default to the read-only `observer` role.
+  Agent identity is cryptographic, not conventional: a compromised or
+  hallucinating agent cannot forge its neighbours, and the signed message
+  log doubles as a tamper-evident audit trail of who-told-whom.
 - **Hybrid RAG** — Hybrid RAG retrieves over a dense-embedding store by
   vector similarity. It traverses graphs for multi-hop structural retrieval.
   Ingest runs through the CAST pipeline (AST → chunk → graph → embed).
   Operators set the embedding model and dimension once in the config's
-  `[embed]` section.
+  `[embed]` section. Retrieval is AST-grounded: graph hops walk real code
+  structure (callers, callees, imports, class hierarchies), so answers cite
+  symbols that actually exist instead of plausible-sounding ones — and
+  content-hash incremental ingest means redeploys cost seconds, not full
+  re-embeds.
+- **Context engineering that survives long runs** — a token-aware
+  preprocessor, adaptive compressor, live window metrics, and a five-stage
+  compaction ladder keep agents inside budget. TurboQuant folds compress
+  evicted context to ~3 bits/value in RAM; semantic rehydration restores
+  exactly what the next phase needs. Embedding-based dedup caches repeated
+  prompt scaffolding across nodes. Context is a *managed resource* here,
+  not string concatenation until the provider returns 400 — see
+  *Context Engineering* below.
+- **Orpheus IPC** — The optional `beagle-orpheus` transport adds native
+  lock-free shared-memory ring-buffer IPC between MCP servers and the
+  orchestrator. Packets are FlatBuffers-framed with CRC32 checksums; a
+  stuck-slot watchdog guards every ring; rings stay bounded and
+  pre-allocated. This is the high-throughput coordination plane that makes
+  dense multi-agent fan-out practical — auto-detected when installed,
+  activated only by explicit operator choice (see *Connection transports*).
 - **Provider-neutral LLM access** — Beagle speaks the OpenAI-compatible
   chat/completions surface. No provider presets ship with the product; you
   choose the endpoint and models.
@@ -242,12 +272,35 @@ bundled in the package.
 | **A2A Protocol v2** | `core/a2a_protocol.py` | `A2AGateway`, `A2AAgent`, `A2AClient` | Ed25519-signed inter-agent messaging with `OIDCVerifier` and `RBACPolicy` (wildcard matching syntax; unbound identity defaults to read-only `observer` role) |
 | **A2A Messages** | `core/a2a_types.py` (re-exported by `core/a2a_protocol.py`) | `A2AMessage`, `MessageType` (enum) | Typed messages: `HANDSHAKE`, `REQUEST`, `RESPONSE`, `STREAM`, `EVENT`, `COORDINATION` |
 | **Agent Card** | `core/a2a_types.py` (re-exported by `core/a2a_protocol.py`) | `AgentCard` | Self-describing agent metadata (capabilities, endpoint, auth requirements) |
-| **Context Preprocessor** | `context/context_preprocessor.py` | `ContextPreprocessor` | Token-aware chunking |
-| **Context Optimizer** | `context/context_optimizer.py` | `ContextOptimizer` | Adaptive compression (`CompressionLevel`, `ContextStrategy`) |
-| **Context Window** | `context/context_window.py` | `ContextWindowManager` | Live `ContextMetrics` tracking; alerts on budget threshold |
-| **TurboQuant folds** | `context/compressed_store.py`, `context/rehydration.py` | — | Compressed context folds with semantic rehydration after compaction |
-| **Prompt Cache** | `context/prompt_cache.py` | `PromptCache`, `PromptMetadata` | Static prompt-part caching for deduplication across nodes |
-| **Fork Context** | `context/fork_context.py` | `ForkContext` | Scoped context isolation for parallel agent branches |
+
+*Context management is its own subsystem — see [Context Engineering](#context-engineering) below.*
+
+### Context Engineering
+
+Long-horizon workflows die by context exhaustion, not by bad reasoning.
+Beagle treats context as a *managed resource* with a full lifecycle —
+measure → compress → fold → rehydrate — instead of string concatenation
+until the provider returns 400.
+
+| Component | Module | Symbol / surface | Description |
+|---|---|---|---|
+| **Token-aware chunking** | `context/context_preprocessor.py` | `ContextPreprocessor` | Splits inputs on token boundaries, never mid-construct |
+| **Adaptive compression** | `context/context_optimizer.py` | `ContextOptimizer`, `CompressionLevel`, `ContextStrategy` | Picks a compression strategy per payload class instead of one blunt truncation |
+| **Live window metrics** | `context/context_window.py` | `ContextWindowManager`, `ContextMetrics` | Real-time token accounting; alerts fire at budget thresholds |
+| **Compaction trigger ladder** | `config/schema.py` + `context/trigger.py` | `ContextThresholdConfig` | Five thresholds — `warning` → `pre_compact` → `compact` → `hard_compact` → `critical` — escalate through fold cycles before anything is lost |
+| **Compaction controller** | `context/compaction_controller.py`, `context/context_compaction_hook.py` | — | Owns the fold cycle; hooks into every node boundary |
+| **Fold watchdog** | `context/watchdog_actor.py` | — | Bounded-timeout actor: a wedged compaction cannot stall the workflow (`[context].watchdog_seconds`) |
+| **TurboQuant folds** | `context/compressed_store.py` | — | Evicted context persists as ~3-bit TurboQuant folds in RAM, not as deleted text |
+| **Semantic rehydration** | `context/rehydration.py`, `context/post_compaction_rehydration.py` | — | After compaction, query the folds semantically and restore exactly what the next phase needs |
+| **Static-part caching** | `context/prompt_cache.py` | `PromptCache`, `PromptMetadata` | Deduplicates repeated prompt scaffolding across nodes |
+| **Embedding dedup** | `context/semantic_prompt_cache.py` | — | Near-duplicate prompts collapse to cached results (cosine-gated) |
+| **Fork isolation** | `context/fork_context.py` | `ForkContext` | Parallel branches get isolated context scopes — no cross-branch bleed |
+| **Fresh-index guarantee** | `context/rag_staleness.py` | `RAGStalenessTracker` | Fingerprint gate over the RAG index: rebuilds only when the target actually changed; bounded exit-join so CLI runs never hang on embeds |
+| **Session accounting** | `context/session_usage.py`, `context/session_model.py` | — | Per-session token/cost ledgers feeding cost governance |
+
+The ladder is the point: most frameworks have one cliff ("prompt too long →
+truncate and pray"). Beagle has five graded responses, and even past the last
+one the evicted material stays queryable in compressed form.
 
 ### CVCP — Cross-Verification Collaboration Protocol
 
