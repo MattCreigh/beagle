@@ -1,9 +1,10 @@
 # Copyright (c) 2026 Matt Creigh. All rights reserved.
-"""Wire the hardcoded-defaults gate into the pytest suite.
+"""Wire the hardcoded-defaults detector into the pytest suite.
 
-plans/beagle-config-defaults-abstraction.xml CD-4 / AC-3: running the suite
-must run the gate, so a new magic literal cannot merge even when the script
-is not invoked by hand.
+Running the suite must prove the scanner works, so a regression in
+detection cannot land unnoticed. The classification registry was retired
+when all user-editable configuration moved to ``~/.config/beagle``; the
+scanner now runs report-only unless an explicit ``--registry`` is given.
 """
 
 from __future__ import annotations
@@ -28,8 +29,8 @@ def test_gate_selftest_detects_planted_violation() -> None:
     assert result.returncode == 0, f"selftest failed:\n{result.stdout}\n{result.stderr}"
 
 
-def test_src_tree_is_clean_against_registry() -> None:
-    """Zero unclassified tunable literals under src/beagle."""
+def test_report_only_scan_runs_clean_process() -> None:
+    """Report-only mode over src/beagle completes with exit 0 (no registry)."""
     result = subprocess.run(
         [sys.executable, str(_SCRIPT)],
         capture_output=True,
@@ -38,4 +39,5 @@ def test_src_tree_is_clean_against_registry() -> None:
         cwd=_REPO_ROOT,
         check=False,
     )
-    assert result.returncode == 0, f"gate findings:\n{result.stdout}\n{result.stderr}"
+    assert result.returncode == 0, f"report scan failed:\n{result.stdout}\n{result.stderr}"
+    assert "report-only" in result.stdout, f"unexpected summary:\n{result.stdout}"

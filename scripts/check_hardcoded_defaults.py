@@ -1,11 +1,14 @@
 # Copyright (c) 2026 Matt Creigh. All rights reserved.
-"""Fail CI on new hardcoded tunable defaults entering src/beagle.
+"""Scan src/beagle for hardcoded tunable defaults (detector / reporter).
 
-Enforces plans/beagle-config-defaults-abstraction.xml (CD-4, decision D-03):
-a tunable default — a numeric or string literal at a constructor keyword, or
-a module-level SCREAMING_CASE constant — must either live in config or be
-classified in ``src/beagle/config/defaults_registry.toml``. Anything found by
-this scan and NOT covered by a registry row is a failure.
+A tunable default — a numeric or string literal at a constructor keyword, or
+a module-level SCREAMING_CASE constant — should live in code constants or the
+typed config schema (``beagle/config/schema.py``). This tool FINDS literals;
+an optional ``--registry TOML`` marks known-accepted sites, in which case any
+uncovered finding fails the run (exit 1). Without a registry the scan is
+report-only (exit 0): the bundled classification registry was retired when
+all user-editable configuration moved to ``~/.config/beagle`` (XDG) — the
+package ships zero bundled config.
 
 Two finding kinds:
 
@@ -14,15 +17,15 @@ Two finding kinds:
 
 Registry rows match by file substring plus an optional symbol list ("*"
 matches every symbol in the file). Statuses are informational for humans;
-the gate only cares about coverage.
+the gated mode only cares about coverage.
 
 Usage:
     python3 scripts/check_hardcoded_defaults.py [--src DIR] [--registry FILE]
     python3 scripts/check_hardcoded_defaults.py --json   # machine-readable
     python3 scripts/check_hardcoded_defaults.py --selftest
 
-Exit codes: 0 clean (or selftest passed), 1 findings (or selftest failed),
-2 usage error.
+Exit codes: 0 clean/report-only (or selftest passed), 1 findings in gated
+mode (or selftest failed), 2 usage error.
 """
 
 from __future__ import annotations
@@ -36,7 +39,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 DEFAULT_SRC = "src/beagle"
-DEFAULT_REGISTRY = "src/beagle/config/defaults_registry.toml"
 
 
 @dataclass(frozen=True)
@@ -194,7 +196,13 @@ def main(argv: list[str] | None = None) -> int:
     """
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--src", default=DEFAULT_SRC, help="Source root to scan")
-    parser.add_argument("--registry", default=DEFAULT_REGISTRY, help="Allowlist TOML")
+    parser.add_argument(
+        "--registry",
+        default=None,
+        help="Optional allowlist TOML; omit for a report-only scan "
+        "(the bundled classification registry is retired — user config "
+        "lives in ~/.config/beagle, nothing ships in the package)",
+    )
     parser.add_argument("--json", action="store_true", dest="as_json", help="JSON output")
     parser.add_argument("--selftest", action="store_true", help="Verify detection works")
     args = parser.parse_args(argv)
@@ -206,16 +214,19 @@ def main(argv: list[str] | None = None) -> int:
     if not src_root.is_dir():
         parser.error(f"--src {src_root} is not a directory")
 
-    reg = load_registry(Path(args.registry))
-    findings = [f for f in collect(src_root) if not reg.covers(f.file, f.symbol)]
+    findings = collect(src_root)
+    if args.registry:
+        reg = load_registry(Path(args.registry))
+        findings = [f for f in findings if not reg.covers(f.file, f.symbol)]
     if args.as_json:
         print(json.dumps([f.__dict__ for f in findings], indent=2))
     else:
         for f in findings:
             print(f"{f.file}:{f.line}: {f.kind} {f.symbol} ({f.detail})")
-        summary = "CLEAN" if not findings else f"{len(findings)} UNCLASSIFIED"
-        print(f"check_hardcoded_defaults: {summary}")
-    return 1 if findings else 0
+        mode = "gated" if args.registry else "report-only"
+        summary = "CLEAN" if not findings else f"{len(findings)} TUNABLE LITERALS"
+        print(f"check_hardcoded_defaults[{mode}]: {summary}")
+    return (1 if findings else 0) if args.registry else 0
 
 
 def _selftest() -> int:

@@ -689,10 +689,11 @@ formatted for diagnosis. Coverage floor: 60 % (`fail_under = 60`).
 
 ### 7.3 Environment Configuration
 
-Precedence everywhere: OS environment variable > user config root > repo
-config > bundled wheel defaults. The configuration root resolver order is:
-`$BEAGLE_CONFIG_ROOT`, platform user-config directory, repo-local config,
-bundled `default_config/`.
+Precedence everywhere: OS environment variable > user config root > in-code
+defaults. The configuration root resolver order is:
+`$BEAGLE_CONFIG_ROOT`, platform user-config directory (`~/.config/beagle`),
+repo-local config. Nothing configurable ships inside the wheel; run
+`beagle config init` to seed the user config root from programmatic defaults.
 
 Core runtime variables:
 
