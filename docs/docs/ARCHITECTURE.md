@@ -212,8 +212,10 @@ The unified surface (`src/beagle/infrastructure/mcp_beagle_server.py`) absorbs:
 
 ## Workflow Templates
 
-Workflows are defined in TOML format under `src/beagle/metaprompts/`. Built-in
-templates cover three families:
+Workflows are defined as YAML phase-DAG specs under the canonical config root —
+`~/.config/beagle/coding_agent_config/metaprompts/` (the directory the loader
+resolves via `find_metaprompts_dir()`). Workflows are structured to cover the
+common families:
 
 | Template Family | Purpose |
 |---|---|
@@ -221,7 +223,8 @@ templates cover three families:
 | `develop` | Feature implementation and code generation |
 | `self-improvement` | Self-improvement and optimization cycles |
 
-Custom workflows can be added by placing TOML templates in the same directory.
+Custom workflows can be added by placing YAML specs in that same directory; the
+distribution ships no in-package workflow copies.
 
 ---
 

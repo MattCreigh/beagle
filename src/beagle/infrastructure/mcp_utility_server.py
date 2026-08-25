@@ -1842,6 +1842,12 @@ except (ImportError, RuntimeError, OSError, ValueError) as exc:
 # ── Entry point ──────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
+    # Consistent --version across dev-tool entry points.
+    from .mcp_common import maybe_print_version
+
+    if maybe_print_version():
+        raise SystemExit(0)
+
     # Transport selection. The factory image runs the MCP server over the
     # network so the orchestrator (goose) can connect without a `docker exec`
     # stdio pipe. Selection logic:

@@ -2034,6 +2034,12 @@ async def graph_class_hierarchy(class_name: str) -> str:
 # Entry Point — stdio (default) or streamable-http (BEAGLE_EXECUTION_ENV=docker)
 # ──────────────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
+    # Consistent --version across dev-tool entry points.
+    from .mcp_common import maybe_print_version
+
+    if maybe_print_version():
+        raise SystemExit(0)
+
     # B5 (Option B): the RAG server now supports the same transport model as
     # the utility server. stdio is the default (local, no network exposure).
     # When BEAGLE_EXECUTION_ENV=docker, it runs streamable-http on

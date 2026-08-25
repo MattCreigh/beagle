@@ -8,8 +8,12 @@ command and its options.
 
 ```text
 $ beagle --version
-beagle 13.21.4
+beagle <version>
 ```
+
+The version string is resolved at runtime from the package SSOT
+(`beagle.constants.PACKAGE_VERSION`, sourced from `pyproject.toml`), so it
+always matches the installed release.
 
 | Flag        | Description                                          |
 |-------------|------------------------------------------------------|
@@ -78,9 +82,10 @@ Exit code is 0 if everything is healthy, 1 if any required check fails.
 ## `beagle config` — Show or validate configuration
 
 ```text
-beagle config --show          # show resolved config (with secrets redacted)
-beagle config --show --json   # machine-readable JSON
-beagle config --validate      # validate the configuration
+beagle config show            # show resolved config (with secrets redacted)
+beagle config show --json     # machine-readable JSON
+beagle config validate        # validate the configuration
+beagle config init            # seed ~/.config/beagle from code defaults
 ```
 
 ## `beagle health` — Run startup health checks
@@ -102,14 +107,14 @@ Replays a recorded run from the reproducibility store. With
 `--dry-run`, prints the description of the replay without
 executing it.
 
-## `beagle init` — Initialize Beagle
+## `beagle config init` — Initialize Beagle configuration
 
 ```text
-beagle init [--interactive]
+beagle config init [--force]
 ```
 
-Initializes the Beagle configuration in the current directory. With
-`--interactive`, walks the user through the setup.
+Seeds `~/.config/beagle` from programmatic defaults (creates
+`beagle_core_config/config.toml`). `--force` overwrites an existing file.
 
 ## `beagle stats` — Show runtime statistics
 
@@ -127,8 +132,7 @@ machine-readable.
 beagle visualize <workflow_name>
 ```
 
-Renders the DAG of a workflow as a Mermaid diagram (or a `dot`
-graph with `--format=dot`).
+Renders the DAG of a workflow as an ASCII diagram.
 
 ## `beagle checkpoint` — Manage checkpoints
 

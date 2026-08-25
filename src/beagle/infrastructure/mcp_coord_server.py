@@ -420,6 +420,12 @@ async def _run_limited() -> None:
 # ── Entry point ───────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
+    # Consistent --version across dev-tool entry points.
+    from .mcp_common import maybe_print_version
+
+    if maybe_print_version():
+        raise SystemExit(0)
+
     enforce_transport_security("stdio")
     logger.info("[MCP] Starting beagle-coord MCP server (stdio)")
     mcp.run(transport="stdio")

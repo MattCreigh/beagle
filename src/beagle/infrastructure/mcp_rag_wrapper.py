@@ -98,4 +98,9 @@ def main() -> int:
 
 
 if __name__ == "__main__":
+    # Consistent --version across dev-tool entry points.
+    from .mcp_common import maybe_print_version
+
+    if maybe_print_version():
+        raise SystemExit(0)
     sys.exit(main())

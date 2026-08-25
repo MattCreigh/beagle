@@ -125,11 +125,39 @@ def is_path_within(child: str | object, root: str | object) -> bool:
         return False
 
 
+def maybe_print_version(argv: list[str] | None = None) -> bool:
+    """If ``--version`` is present in argv, print the package version and return True.
+
+    Mirrors the root ``beagle --version`` flag across the dev-tool entry points
+    (MCP servers invoked as ``python -m beagle.infrastructure.mcp_*``) so every
+    surface reports the same SSOT version. Callers that return True should exit
+    without doing any other work.
+
+    Args:
+        argv: The argument vector to inspect. Defaults to ``sys.argv[1:]``.
+
+    Returns:
+        True if ``--version`` was requested and printed (caller should exit);
+        False otherwise.
+
+    """
+    import sys
+
+    args = list(sys.argv[1:] if argv is None else argv)
+    if "--version" not in args:
+        return False
+    from beagle.constants import PACKAGE_VERSION
+
+    print(f"beagle {PACKAGE_VERSION}")
+    return True
+
+
 __all__ = [
     "CorrelationIdFilter",
     "get_correlation_id",
     "get_metrics_summary",
     "is_path_within",
+    "maybe_print_version",
     "record_metric",
     "reset_metrics",
     "set_correlation_id",

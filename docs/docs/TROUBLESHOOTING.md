@@ -93,7 +93,7 @@ The checkpoint restore is waiting on a lock. Either:
 The orchestrator is failing before it can log the workflow ID.
 This usually means:
 
-- The config file is invalid → run `beagle config --validate`
+- The config file is invalid → run `beagle config validate`
 - A mandatory directory is missing → run `beagle health`
 - A secrets file is missing → check the configured secrets location
 
@@ -128,7 +128,7 @@ Check the cost-tracker output. Common causes:
 - High `max_hops` on `rag_search` (1 is fastest, 3 is most thorough)
 - Long prompts (the `compress_context` step is the slowest)
 - Model resolution picking an expensive model — see
-  `beagle config --show` for the active model
+  `beagle config show` for the active model
 
 ### Memory usage grows during long workflows
 

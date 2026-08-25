@@ -406,9 +406,9 @@ beagle doctor [--json]
 beagle health [--json] [--required-only]
 
 # Configuration
-beagle init [--interactive]
-beagle config --show [--json]
-beagle config --validate
+beagle config show [--json]
+beagle config validate
+beagle config init [--force]
 
 # Run history, checkpoints, replay, statistics
 beagle stats [--json]
@@ -760,7 +760,7 @@ Other principal sections: `[orchestrator]`, `[router]`, `[rag]`,
 
 ```bash
 beagle config schema      # full typed schema with constraints
-beagle config --show      # resolved effective config, secrets redacted
+beagle config show        # resolved effective config, secrets redacted
 ```
 
 ### 7.5 Production Deployment

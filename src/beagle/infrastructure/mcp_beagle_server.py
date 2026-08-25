@@ -641,6 +641,12 @@ def build_app() -> FastMCP:
 
 
 if __name__ == "__main__":
+    # Consistent --version across dev-tool entry points.
+    from .mcp_common import maybe_print_version
+
+    if maybe_print_version():
+        raise SystemExit(0)
+
     # SECURITY FLOOR: stdio only. HTTP transports require mandatory bearer
     # auth (doctrine); the unified surface is local-first and does not open
     # a network listener.

@@ -36,8 +36,12 @@ All user-editable configuration lives in ONE place:
 
 ```text
 ~/.config/beagle/              # the ONLY config root (XDG)
-├── beagle_core_config/config.toml
-├── style_guides/guides/*.toml     # optional doctrine files
+├── beagle_core_config/config.toml   # core behaviour/setup SSOT
+├── coding_agent_config/             # agents.toml, recipes/, workflows/, metaprompts/
+├── beagle_inference_config/         # providers.toml + model fleet cards
+├── style_guides/guides/*.toml       # optional doctrine files
+├── plugins/<name>/                  # per-plugin config
+├── deployments/                     # per-deployment overrides
 └── ...
 ```
 
