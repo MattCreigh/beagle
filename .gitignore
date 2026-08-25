@@ -57,6 +57,3 @@ scripts/sync-to-opt-venv.sh
 
 # Ephemeral pip-format exports (generated from uv.lock on demand)
 /requirements-frozen.txt
-
-# Dependency lockfile — resolved at install time, not shipped in the public repo
-uv.lock
