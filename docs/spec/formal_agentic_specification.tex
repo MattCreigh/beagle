@@ -1,0 +1,375 @@
+\documentclass[11pt]{article}
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{booktabs}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{graphicx}
+\usepackage{caption}
+\usepackage{float}
+
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{python}{
+    backgroundcolor=\color{backcolour},
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\small,
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=b,
+    keepspaces=true,
+    numbers=left,
+    numbersep=5pt,
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    tabsize=4,
+    language=Python
+}
+
+% Build note: the architecture figure's verbatim block uses Unicode
+% box-drawing glyphs; compile with XeLaTeX or LuaLaTeX (pdflatex will
+% drop or error on those codepoints).
+\usepackage{iftex}
+\ifluatex\else\ifxetex\else
+  \errmessage{Compile with LuaLaTeX or XeLaTeX: the architecture figure uses Unicode box-drawing glyphs unsupported by pdfLaTeX.}
+\fi\fi
+% Mono face must cover box-drawing U+2500..U+257F and U+27F6; DejaVu Sans
+% Mono does. Loaded by FILE PATH so resolution never depends on the
+% system fontconfig cache (fc-list may be absent on minimal hosts).
+\usepackage{fontspec}
+\defaultfontfeatures{Ligatures=TeX, Scale=MatchLowercase}
+\setmonofont{DejaVuSansMono.ttf}[
+  Path=/usr/share/fonts/truetype/dejavu/,
+  BoldFont=DejaVuSansMono-Bold.ttf,
+  ItalicFont=DejaVuSansMono-Oblique.ttf,
+  BoldItalicFont=DejaVuSansMono-BoldOblique.ttf]
+
+\title{Formal Agentic Specification and Prompting Doctrine\\\Large Version 1.0.1}
+\author{Golden Master Release with Adaptive Doctrine Enrichment}
+\date{August 25, 2026}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+This document defines a formal specification for deterministic multi-agent orchestration. Version 1.0.1 integrates the core doctrine of Version 1.0.0 with all amendments from RFC-2026-08 and the Adaptive Doctrine Enrichment (ADE) addendum, including formal remediations from the peer review. It establishes the Dual-Layer Abstraction Principle, multi-source epistemic oracles with snapshot anchoring, Beacon-based workspace concurrency, linear-time secret scanning, CVCP subgraph automata with refined dynamic budgets, quantized context compaction, and a controlled self-improvement mechanism (ADE) that detects and fills gaps in style guides and RAG knowledge while preserving determinism, safety, and budget constraints.
+\end{abstract}
+
+\paragraph{Document Status and Provenance.}
+Version 1.0.1 is a golden-master consolidation. The core doctrine sections
+(\S2--\S10) are carried forward unchanged from the prior master release and
+are intentionally \emph{not restated} in this document (see
+Section~\ref{sec:core-carried-forward}); their invariants remain binding and
+are cited throughout. The Adaptive Doctrine Enrichment (ADE) layer is new in
+this release. RFC-2026-08 is referenced as an external amendment record; it
+is not reproduced here.
+
+\tableofcontents
+\newpage
+
+% ======================================================================
+%   CORE DOCTRINE (consolidated; see Document Status and Provenance)
+% ======================================================================
+
+\section{Introduction and Dual-Layer Abstraction}
+\subsection{Dual-Layer Architectural Doctrine}
+The specification separates formal mathematical abstraction from concrete engine implementation.
+\begin{figure}[H]
+\centering
+\begin{verbatim}
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                      LAYER I: FORMAL ABSTRACTION LAYER                      │
+│   • Ontological Primitives (P)          • Monotonic Capability Lattice      │
+│   • Multi-Source Epistemic Oracles      • DAG Invariants & 10,000 BPS       │
+│   • Entrenched Doctrine Tiers (T, prec) • CVCP Subgraph Decision Automata   │
+└──────────────────────────────────────┬──────────────────────────────────────┘
+                                       │
+                    Lowering & Compilation Transformation
+                       [Psi]: FormalSpec --> EngineRuntime
+                                       │
+                                       ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    LAYER II: CONCRETE EXECUTABLE SUBSTRATE                  │
+│   • Style-Guide TOML SSOT               • SafeFileWriter (Lint Gate)        │
+│   • ContextInjector & TomHydrator       • Beacon UDS Lock Coordinator       │
+│   • MicroVMSandbox (/dev/kvm)           • TurboQuant 3-bit KV/Vector Fold   │
+│   • Unified FastMCP Stdio Surface       • linear-time RE2 Secret Scrubber   │
+└─────────────────────────────────────────────────────────────────────────────┘
+\end{verbatim}
+\caption{Dual-Layer Abstraction Principle}
+\end{figure}
+
+\subsection{Formal Lowering Function}
+The lowering function is a four-stage pipeline. Stage 1 merges
+tier-lowered rule fragments; stages 2--3 render and canonicalize. The merge
+--- not the canonicalizer --- owns conflict resolution and tier precedence.
+\begin{align}
+\mathcal{R}_{\text{merged}} &= \mathbf{MergeRules}\Big(
+      \mathbf{Lower}(T_1),\ \mathbf{Lower}(T_2(\sigma)),\
+      \mathbf{Lower}(T_4),\ \mathbf{Inject}_{T_3}(e),\
+      \mathbf{Hydrate}(\mathcal{M}_{\text{mem}}) \Big) \\
+\mathcal{X} &= \mathbf{RenderXML}\big(\mathcal{R}_{\text{merged}}\big) \\
+\mathbf{\Psi}(\sigma, e, \tau, \mathcal{M}_{\text{mem}}) &= \mathbf{C14N\_XML}\big(\mathcal{X}\big)
+\end{align}
+$\mathbf{MergeRules}$ is a deterministic total function: fragment union with
+implied-repeal resolution ordered by tier precedence ($T_1 \succ T_2 \succ
+T_3 \succ T_4$), ties broken by rule identifier (lexicographic).
+$\mathbf{Inject}_{T_3}$ and $\mathbf{Hydrate}$ produce \emph{candidate}
+fragments only; candidates become part of $\mathcal{R}_{\text{merged}}$
+solely through $\mathbf{MergeRules}$, never by bypassing it.
+
+% ======================================================================
+%   CONSOLIDATED CORE (carried forward)
+% ======================================================================
+
+\section{Consolidated Core Doctrine (Sections 2--10)}
+\label{sec:core-carried-forward}
+Sections 2--10 --- ontological primitives, multi-source epistemic oracles
+with snapshot anchoring, the entrenched doctrine tiers $(\mathbb{T}, \preceq)$
+and their amendment protocol, the monotonic capability lattice, DAG
+invariants and basis-point budgets, CVCP subgraph decision automata,
+quantized context compaction, linear-time secret scanning, and the
+MicroVM sandbox --- are carried forward \emph{verbatim} from the prior
+master release and are deliberately not restated in this consolidation.
+Their invariants remain binding; the ADE layer
+(Section~\ref{sec:adaptive_enrichment}) is defined strictly as an extension
+of, and is constrained by, those invariants.
+
+% ======================================================================
+%   ADAPTIVE DOCTRINE ENRICHMENT AND BACKGROUND EXECUTION
+% ======================================================================
+
+\section{Adaptive Doctrine Enrichment and Background Execution}
+\label{sec:adaptive_enrichment}
+
+\subsection{Overview}
+Version 1.0.1 extends the specification with a self-improving mechanism: Adaptive Doctrine Enrichment (ADE) and background subprocesses. The system can now detect gaps in its own doctrine (style guides, RAG knowledge) and propose remediations that are validated by the existing epistemic oracle and verification pipeline, then promoted only at safe epoch boundaries.
+
+\subsection{New Primitives and Their Formal Semantics}
+The primitive fleet is extended:
+\[
+\mathcal{P}' = \mathcal{P} \cup \{\mathbf{observe}, \mathbf{enrich}, \mathbf{curate}\}
+\]
+These primitives are strictly non-mutating with respect to $\mathcal{A}_{\text{workspace}}$:
+\[
+\mathbf{Mut}(\mathbf{observe}) = \emptyset, \quad \mathbf{Mut}(\mathbf{enrich}) = \emptyset, \quad \mathbf{Mut}(\mathbf{curate}) = \emptyset
+\]
+They operate on the extended artifact space:
+\[
+\mathcal{A}_{\text{artifact}}' = \mathcal{A}_{\text{artifact}} \cup \{\mathcal{S}_{\text{gaps}}, \mathcal{S}_{\text{proposals}}, \mathcal{S}_{\text{curated\_patch}}\}
+\]
+Emission functions:
+\[
+\mathbf{Emit}(p) =
+\begin{cases}
+    \{\mathcal{S}_{\text{gaps}}\}, & p = \mathbf{observe} \\
+    \{\mathcal{S}_{\text{proposals}}\}, & p = \mathbf{enrich} \\
+    \{\mathcal{S}_{\text{curated\_patch}}\}, & p = \mathbf{curate}
+\end{cases}
+\]
+Capability class mapping:
+\[
+\mathbf{ClassOf}(\mathbf{observe}) = \mathbf{verifier}, \quad
+\mathbf{ClassOf}(\mathbf{enrich}) = \mathbf{reasoner}, \quad
+\mathbf{ClassOf}(\mathbf{curate}) = \mathbf{verifier}
+\]
+
+\subsubsection{Emission versus Mutation}
+$\mathbf{Mut}(p) = \emptyset$ asserts that no new primitive is ever granted
+\texttt{exec}-equivalent authority over $\mathcal{W}_{\text{workspace}}$.
+Emission is a distinct, weaker operation:
+\[
+\mathbf{Persist}: \mathcal{P}' \times \mathcal{A}_{\text{artifact}}' \to
+\mathcal{A}_{\text{artifact}}' \setminus \mathcal{W}_{\text{workspace}},
+\qquad
+\mathbf{range}(\mathbf{Persist}) \cap \mathcal{W}_{\text{workspace}} = \emptyset
+\]
+$\mathbf{Emit}(p) = S$ denotes $\mathbf{Persist}$ of an immutable,
+content-addressed record into the staging artifact space. Staged artifacts
+are inert: they never enter the active prompt frame or doctrine build until
+promoted by the epoch-gated mechanism of
+Section~\ref{sec:epoch-gated-promotion}.
+
+\subsubsection{Tool Grants}
+\begin{table}[H]
+\centering
+\caption{Static Tool Grants for New Primitives}
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Primitive} & \textbf{Static Grant $\mathcal{T}(p)$} & \textbf{Risk Ceiling} \\
+\midrule
+$\mathbf{observe}$ & \texttt{file\_read, code\_search, rag\_search, query\_fold, web\_search} & \texttt{LOW} \\
+$\mathbf{enrich}$ & \texttt{rag\_search, web\_search, code\_context, file\_discovery} & \texttt{LOW} \\
+$\mathbf{curate}$ & \texttt{file\_read, code\_search, code\_context, graph\_callers} & \texttt{LOW} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Gap Detection and Proposal Generation}
+The \texttt{observe} primitive continuously analyzes artifacts and logs to detect doctrine gaps. A gap is defined by:
+\[
+\mathbf{GapDetected}(c, \tau) \iff \exists\, \text{pattern} \in \mathbf{Patterns}(\tau) : \neg \mathbf{CoveredByDoctrine}(\text{pattern}, \mathbb{D}) \land \mathbf{Frequency}(\text{pattern}) \ge \theta_{\text{freq}}
+\]
+Upon detection, \texttt{observe} emits $\mathcal{S}_{\text{gaps}}$.
+
+\paragraph{Operator Grounding (implementability contract).}
+The gap predicate is decidable only once its operators are grounded:
+\begin{itemize}
+    \item $\mathbf{Patterns}(\tau)$: recurring tool-call and error signatures
+        extracted from Beacon ring telemetry over analysis window $\tau$
+        (default $7$ days), deduplicated by normalized signature hash.
+    \item $\mathbf{Frequency}(\text{pattern})$: occurrence count within $\tau$,
+        normalized by distinct session count; the pattern must appear in
+        $\ge 2$ distinct sessions.
+    \item $\mathbf{CoveredByDoctrine}(\text{pattern}, \mathbb{D})$: false iff a
+        doctrine-corpus retrieval ($\texttt{rag\_search}$, top-$k=5$) returns
+        no hit at or above similarity threshold $\theta_{\text{sim}}$.
+    \item Defaults: $\theta_{\text{freq}} \ge 3$, $\theta_{\text{sim}}$ fixed per
+        embedding model card. All four operators are deterministic given the
+        telemetry snapshot; \texttt{observe} pins the snapshot id so gap
+        reports are replayable.
+\end{itemize}
+
+The \texttt{enrich} primitive consumes gap reports and generates proposals:
+\[
+p = \langle \text{id}, \text{target\_tier}, \text{target\_scope}, \text{content}, \text{justification} \rangle
+\]
+Each proposal must include citations to source material. Uncited proposals are labeled \texttt{HYPOTHESIS} and cannot be promoted without further evidence.
+
+\subsection{Curation and Validation}
+The \texttt{curate} primitive validates staged proposals against four gates:
+\begin{enumerate}
+    \item \textbf{Citation Verification}: Proposals must pass the 3-level citation oracle (trace inspection, boundary check, verbatim match).
+    \item \textbf{Conflict Detection}: No conflict with existing rules after implied repeal resolution.
+    \item \textbf{Entrenchment Preservation}: If targeting $T_1$ or $T_4$, the proposal must be a restriction (narrowing), not widening.
+    \item \textbf{Budget Ceiling}: The byte size of the proposed addition must fit within the tier budget, i.e.\ $\|\text{content}\|_{\text{bytes}} \le \mathbf{Cap}(T_i)$ for target tier $T_i$, where $\mathbf{Cap}$ is the tier byte-budget function defined in the core budgets section (default $2048$ bytes for $T_3$ extensions).
+    \item \textbf{Source Trust Tiering}: Every citation must resolve to a source in a trusted origin class (first-party repository files, first-party documentation). Web-sourced citations are admissible only if (i) two independent origins agree on the cited content, and (ii) any proposal targeting $T_2$ or above is additionally flagged for human review at promotion. This closes the soundness hole where attacker-controlled web content passes verbatim-match verification while being untrustworthy.
+\end{enumerate}
+
+\subsection{Background Subprocesses and Budget Separation}
+Background processes run as daemons, separate from the main DAG. They form a set $\mathcal{B}$ with their own budget envelope.
+
+\textbf{Dual-Envelope Budget Conservation (Remediation 1):}
+Let $\pi$ be the fixed unit-pricing schedule (USD per token class),
+published before any run. The envelopes are USD allocations:
+\[
+E_{\text{main}} + E_{\text{bg}} \le \text{Budget}_{\text{hard\_limit\_usd}}
+\]
+Each envelope is decomposed internally as a basis-point partition over its
+own vertices, and realized cost is priced through $\pi$:
+\[
+\sum_{v \in V_{\text{main}}} \beta_{\text{main}}(v) = 10000 \text{ BPS},
+\qquad
+\sum_{v \in V_{\text{main}}} \pi\big(\text{usage}(v)\big) \le E_{\text{main}}
+\]
+\[
+\sum_{b \in \mathcal{B}} \beta_{\text{bg}}(b) \le 10000 \text{ BPS},
+\qquad
+\sum_{b \in \mathcal{B}} \pi\big(\text{usage}(b)\big) \le E_{\text{bg}}
+\]
+Basis points express \emph{relative priority within an envelope}; dollars
+express \emph{absolute spend against that envelope}. Exhausting
+$E_{\text{bg}}$ halts background daemons only; it never deducts from
+$E_{\text{main}}$ (TC-12), and vice versa.
+
+\subsection{Epoch-Gated Promotion and Tier-Gated Escalation}
+\label{sec:epoch-gated-promotion}
+\textbf{Epoch-Gated Atomic Promotion (Remediation 2):} Proposals are promoted only at workflow boundaries when $\mathbf{ActiveRuns} = 0$, under a Beacon lock, with re-compilation of the doctrine and emission of a new hash.
+
+\textbf{Promotion Liveness (lease-based locks):} the Beacon lock is a
+\emph{lease}, not a bare mutex: it carries a TTL with holder heartbeat. A
+promoter that dies mid-promotion releases the lock by TTL expiry; any peer
+may then take over after expiry without manual intervention, so a crashed
+promotion can delay but never permanently deadlock doctrine evolution.
+Abandoned partial promotions are rolled back from the pre-promotion hash
+before takeover.
+
+\textbf{Serialized Batch Application:} all proposals validated since the
+last promotion are applied as one serialized batch under a single lock
+acquisition. Two proposals whose target scopes overlap conflict unless one
+strictly dominates the other by tier precedence; conflicting equal-tier
+proposals are both denied (fail-closed) and returned to \texttt{enrich}
+with the conflict reason. Silent last-writer-wins is prohibited.
+
+\label{sec:doctrine-compilation}
+\textbf{Doctrine Compilation.} Promotion concludes by compiling the merged
+doctrine into the active artifact set; compilation enforces all byte-cap
+gates ($\mathbf{Cap}(T_i)$ per tier) and fails closed on violation. This
+compilation step is what conformance test TC-15 exercises.
+
+\textbf{Mandatory Human Escalation for T1/T4 (Remediation 3):} Any proposal targeting $T_1$ or $T_4$ triggers \texttt{ESCALATE} and requires authenticated human signature before promotion.
+
+\subsection{Doctrine Pruning and Anti-Bloat}
+\textbf{AutoDream Pruning Operator (Remediation 4):} To respect byte caps, a pruning operator compacts low-utility rules:
+\[
+\mathbf{Prune}_{\text{doctrine}}(T_i) =
+\begin{cases}
+T_i, & \|T_i\|_{\text{bytes}} \le \mathbf{Cap}(T_i) \\
+\mathbf{CompressAndDeduplicate}\big(\mathbf{SortByUtility}(T_i)\big), & \|T_i\|_{\text{bytes}} > \mathbf{Cap}(T_i)
+\end{cases}
+\]
+where $\mathbf{Cap}(T_i)$ is the tier byte-budget function from the core
+budgets section ($2048$ bytes is the $T_3$ default).
+
+\paragraph{Utility and Determinism.}
+Rule utility is $U(r) = \alpha \cdot \mathrm{matches}(r, W) -
+\delta \cdot \|r\|_{\text{bytes}}$, where $\mathrm{matches}(r, W)$ counts
+invocation-telemetry hits over lookback window $W$ (default $30$ days,
+sourced from Beacon invocation records). $\mathbf{SortByUtility}$ orders by
+$U$ descending with rule-identifier lexicographic order as total-order
+tie-breaker, so pruning output is a deterministic function of the telemetry
+snapshot id. $\mathbf{CompressAndDeduplicate}$ removes rules whose
+normalized content hashes collide (keeping the highest-utility instance),
+then replaces each surviving low-utility rule body with a content-addressed
+TurboQuant fold pointer retrievable via \texttt{query\_fold}; archived
+bodies remain auditably recoverable and never silently vanish. Pruned
+rules that receive no hits across two consecutive windows are deleted;
+all others are archived.
+
+\subsection{Formal Integration with Existing Invariants}
+The new primitives and background processes preserve:
+\begin{itemize}
+    \item Mutation isolation: only \texttt{exec} writes workspace.
+    \item Monotonic tool grants.
+    \item DAG acyclicity (background processes are a separate acyclic graph).
+    \item Dual budget conservation.
+    \item Entrenchment with human gate for T1/T4.
+\end{itemize}
+
+\subsection{Extended Conformance Tests}
+\begin{table}[H]
+\centering
+\caption{Additional Conformance Tests (TC-10 to TC-15)}
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Test} & \textbf{Invariant} & \textbf{Assertion} \\
+\midrule
+TC-10 & Main flow non-blocking & Background observe/enrich crashes do not interrupt active DAG. \\
+TC-11 & No staging auto-merge & Unvalidated proposals never appear in active prompt frame. \\
+TC-12 & Dual-envelope budget isolation & Background budget exhaustion does not deduct from main DAG. \\
+TC-13 & Human gate on T1/T4 & Proposals targeting T1/T4 halt at ESCALATE, reject autonomous commit. \\
+TC-14 & Epoch-gated promotion & Doctrine TOML updates blocked while ActiveRuns > 0. \\
+TC-15 & Auto-pruning ceiling & When $\|T_3(e)\| > \mathbf{Cap}(T_3)$, AutoDream GC compacts below cap before doctrine compilation (Section~\ref{sec:doctrine-compilation}) fails the byte-cap gate. \\
+TC-16 & Serialized epoch application & Conflicting equal-tier proposals in one batch are both denied; no silent last-writer-wins merge occurs. \\
+TC-17 & Curate staging isolation & Every $\mathbf{Persist}$ performed by \texttt{curate} lands in $\mathcal{A}'_{\text{artifact}} \setminus \mathcal{W}_{\text{workspace}}$; workspace byte-identical before/after. \\
+TC-18 & Source-trust gate & A proposal citing a single untrusted web origin is denied at gate 5 even though its citation passes verbatim verification. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ======================================================================
+% CONCLUSION UPDATED
+% ======================================================================
+\section{Conclusion}
+Version 1.0.1 merges the formal agentic doctrine with a self-improving adaptive layer. The system now not only executes deterministic workflows with fail-closed security and verifiable grounding, but also continuously improves its own domain knowledge and rule set under strict mathematical control. The dual-envelope budget model, epoch-gated promotion, human escalation for entrenched tiers, and automatic pruning ensure that autonomous learning does not compromise determinism, safety, or cost predictability. Conforming orchestrators achieve a new level of robustness: a system that can evolve while remaining auditably correct.
+
+\end{document}

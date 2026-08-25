@@ -1,0 +1,20 @@
+\contentsline {paragraph}{Document Status and Provenance.}{1}{section*.1}%
+\contentsline {section}{\numberline {1}Introduction and Dual-Layer Abstraction}{2}{section.1}%
+\contentsline {subsection}{\numberline {1.1}Dual-Layer Architectural Doctrine}{2}{subsection.1.1}%
+\contentsline {subsection}{\numberline {1.2}Formal Lowering Function}{2}{subsection.1.2}%
+\contentsline {section}{\numberline {2}Consolidated Core Doctrine (Sections 2--10)}{2}{section.2}%
+\contentsline {section}{\numberline {3}Adaptive Doctrine Enrichment and Background Execution}{3}{section.3}%
+\contentsline {subsection}{\numberline {3.1}Overview}{3}{subsection.3.1}%
+\contentsline {subsection}{\numberline {3.2}New Primitives and Their Formal Semantics}{3}{subsection.3.2}%
+\contentsline {subsubsection}{\numberline {3.2.1}Emission versus Mutation}{3}{subsubsection.3.2.1}%
+\contentsline {subsubsection}{\numberline {3.2.2}Tool Grants}{3}{subsubsection.3.2.2}%
+\contentsline {subsection}{\numberline {3.3}Gap Detection and Proposal Generation}{3}{subsection.3.3}%
+\contentsline {paragraph}{Operator Grounding (implementability contract).}{4}{section*.5}%
+\contentsline {subsection}{\numberline {3.4}Curation and Validation}{4}{subsection.3.4}%
+\contentsline {subsection}{\numberline {3.5}Background Subprocesses and Budget Separation}{4}{subsection.3.5}%
+\contentsline {subsection}{\numberline {3.6}Epoch-Gated Promotion and Tier-Gated Escalation}{5}{subsection.3.6}%
+\contentsline {subsection}{\numberline {3.7}Doctrine Pruning and Anti-Bloat}{5}{subsection.3.7}%
+\contentsline {paragraph}{Utility and Determinism.}{5}{section*.6}%
+\contentsline {subsection}{\numberline {3.8}Formal Integration with Existing Invariants}{6}{subsection.3.8}%
+\contentsline {subsection}{\numberline {3.9}Extended Conformance Tests}{6}{subsection.3.9}%
+\contentsline {section}{\numberline {4}Conclusion}{6}{section.4}%

@@ -8,6 +8,50 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) conventions.
 
 ## [Unreleased]
 
+### Licensing replaced with a single custom proprietary licence
+
+- `LICENSE` is now the **Beagle License Agreement v1.0** (copyright Matthew
+  David Calder Creigh): free for personal, non-commercial use; any entity may
+  evaluate internally for 30 days; commercial use — INCLUDING internal company
+  use — requires a paid licence under separate written agreement.
+- Removed the PolyForm split (`LICENSE-NONCOMMERCIAL`) and the
+  `COMMERCIAL-LICENSE.md` summary; README and CONTRIBUTING updated to match.
+  Contributions grant codified in LICENSE §5; the optional `beagle-orpheus`
+  wheel remains separately licensed (LICENSE §10).
+
+### Config SSOT is `~/.config/beagle` — nothing configurable ships in src
+
+- Retired `src/beagle/config/defaults_registry.toml` and its
+  `[tool.setuptools.package-data]` entry: the source tree and wheel carry
+  ZERO bundled configuration; all user-editable config lives under
+  `~/.config/beagle` (XDG), seeded by `beagle config init`.
+- `scripts/check_hardcoded_defaults.py` is now a report-only detector by
+  default (explicit `--registry FILE` opts back into gated mode); selftest
+  unchanged. `tests/test_no_new_magic_values.py` runs the selftest plus a
+  report-only scan.
+- Docs corrected to the no-bundled-config contract: CONFIG_DEFAULTS,
+  minimal-install, and the operations manual (no `default_config/`, no
+  phantom `[governance]` extra, precedence order fixed).
+
+### Documentation restructure
+
+- Flattened the accidental `docs/docs/` nesting to `docs/` — every
+  README/CONTRIBUTING doc link now resolves.
+- Removed exact-duplicate `examples/examples/`; removed the derived
+  `docs/generated/SYSTEM_SPECIFICATION_…_v1.3.0.md` (the hand-maintained
+  manual in `docs/` is canonical and fresher); removed the host-specific
+  generated snapshot `docs/LOCAL_TOOL_REGISTRY.toml`.
+- Fixed broken/stale references: TROUBLESHOOTING relative links,
+  PRESET_CARDS module paths (`src/config/` → `src/beagle/config/`),
+  dead `plans/` citations in COORD_BACKENDS/PRESET_CARDS.
+
+### Release hygiene
+
+- `.gitignore`: ignore `dist/`, `.hypothesis/`, `.import_linter_cache/`,
+  `.benchmarks/`.
+- Track `uv.lock` (reproducible installs) and `docs/spec/`.
+
+
 ### Quality gates: mypy zero-error + ratchet re-baseline (2026-08-23)
 
 - Clear all 20 remaining mypy errors (11 files) — `mypy src` is now a true

@@ -3,7 +3,7 @@ __pycache__/
 *.py[cod]
 *.egg-info/
 build/
-dist/*.tar.gz
+dist/
 .venv/
 venv/
 
@@ -11,8 +11,13 @@ venv/
 .mypy_cache/
 .pytest_cache/
 .ruff_cache/
+.import_linter_cache/
+.benchmarks/
 .coverage
 htmlcov/
+
+# Property-based testing artifacts
+.hypothesis/
 
 # Runtime state — never in the repo
 .beagle/
