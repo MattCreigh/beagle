@@ -1,0 +1,150 @@
+name: Beagle Doctrine Gates
+
+# v13.22.3: dedicated gate job for the doctrine enforcement layer
+# (exception-debt, broad-except justification, truncated UUIDs, TOML
+# coherence, version consistency). These run independently of the
+# main test suite because:
+#   1. They are FAST (under 30 s total) and act as a hard pre-merge
+#      barrier — a single failure must block the PR, not a re-run.
+#   2. Some are order-dependent with the main suite (the test_locale
+#      fixture polluted random-order runs prior to v13.22.4); the
+#      doctrine gate runs FIRST so a clean run on doctrine
+#      guarantees a clean main-suite run.
+#   3. Operators want a single "doctrine compliance" badge.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  doctrine:
+    name: Doctrine gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: 'pip'
+
+      - name: Install project + dev deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .[dev]
+
+      # The exception-debt guard. The fig-leaf 4-tuple
+      # (ImportError, AttributeError, RuntimeError, OSError) must
+      # carry both the NARROWED label AND a RATIONALE= justification;
+      # the --strict flag makes the gate non-blocking-by-default into
+      # a hard failure.
+      - name: Exception-debt hard-fail
+        run: |
+          python scripts/check_exception_debt.py --strict
+
+      # The broad-except doctrine. The codebase has ~400 except
+      # Exception sites; the doctrine requires either:
+      #   - the comment "# broad catch intentional" / "# broad:" /
+      #     "# noqa: BLE001" / "# doctrine-allow: broad-catch"
+      #   - a narrowed catch tuple like (RuntimeError, ValueError,
+      #     OSError, TimeoutError)
+      - name: Broad-except justification
+        run: |
+          pytest tests/test_doctrine_broad_except.py -v --no-header
+
+      # The truncated-UUID doctrine. uuid4() must always be used
+      # untruncated; 122-bit entropy is the requirement.
+      - name: No truncated UUIDs
+        run: |
+          pytest tests/test_doctrine_compliance.py -v --no-header
+
+      # The TOML doctrine coherence check. The forbidden / forbidden_meta
+      # arrays must stay in lockstep; the test catches drift.
+      - name: TOML doctrine coherence
+        run: |
+          pytest tests/test_tom_doctrine_coherence.py -v --no-header
+
+      # The version-consistency check. pyproject, __init__,
+      # CHANGELOG, and Dockerfile must all reference the same version.
+      - name: Version consistency
+        run: |
+          pytest tests/test_version_consistency.py -v --no-header
+
+      # The config-orphan check. Every section in config.toml must
+      # be read by at least one loader. Catches stale / dead sections.
+      - name: Config no-orphans
+        run: |
+          pytest tests/test_config_no_orphans.py -v --no-header
+
+      # The host-path gate (v1.1.1 portability, A4). Rejects hardcoded
+      # /home/ /opt/ /mnt/ literals in the reviewed source that are not
+      # explicitly allowlisted. This is a HARD gate: it must be able to
+      # fail a PR. Do not append `|| true`.
+      - name: No hardcoded host paths
+        run: |
+          python scripts/check_host_paths.py \
+            tests/ src/beagle/config src/beagle/style_guides
+
+  random-pytest:
+    # v13.22.4: hard-fail gate that runs pytest with multiple
+    # random seeds. Prior to v13.22.4, the test_locale fixture
+    # leaked the C locale across tests, producing 130 phantom
+    # UnicodeDecodeError failures. Running pytest -p randomly
+    # with a fixed seed is the regression detector.
+    name: Random-order pytest gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [doctrine]
+
+    strategy:
+      fail-fast: false
+      matrix:
+        seed: [1, 42, 777]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: 'pip'
+
+      - name: Install project + dev deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .[dev]
+          pip install pytest-randomly
+
+      - name: Run pytest with random order (seed ${{ matrix.seed }})
+        # 0-fail requirement per doctrine. The audit v13.22.3 found
+        # 150 random-order failures, ~130 of which were the locale
+        # fixture pollution fixed in commit f12af74.
+        run: |
+          pytest tests/ -p randomly --randomly-seed=${{ matrix.seed }} -q
+        env:
+          PYTHONDONTWRITEBYTECODE: 1
+          PYTHONUNBUFFERED: 1
+
+      - name: Upload pytest junit xml
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-junit-seed-${{ matrix.seed }}
+          path: junit.xml
+          retention-days: 7

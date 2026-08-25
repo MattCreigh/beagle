@@ -1,0 +1,35 @@
+# CODEOWNERS — automatic PR reviewer routing
+# Each line is a file pattern followed by one or more owners.
+# Order matters: later patterns override earlier ones.
+# See https://docs.github.com/en/repositories/creating-and-managing-repositories/about-code-owners
+
+# Default owners for everything not otherwise matched.
+*                                       @beagle-maintainers
+
+# Core orchestration & agent logic
+/src/beagle/core/                       @beagle-core-team
+
+# Security-sensitive code
+/src/beagle/security/                   @beagle-security-team
+/src/beagle/secrets_loader.py           @beagle-security-team
+/docs/SECURITY.md                       @beagle-security-team
+/docs/threat-model.md                   @beagle-security-team
+/docs/SECURITY_WHITEPAPER.md            @beagle-security-team
+
+# MCP server implementations
+/src/beagle/infrastructure/             @beagle-mcp-team
+
+# Build, CI, packaging
+/pyproject.toml                         @beagle-infra-team
+/.pre-commit-config.yaml                @beagle-infra-team
+/.github/workflows/                     @beagle-infra-team
+
+# Documentation
+/docs/                                  @beagle-docs-team
+/README.md                              @beagle-docs-team
+/CHANGELOG.md                           @beagle-docs-team
+/CONTRIBUTING.md                        @beagle-docs-team
+
+# Tests
+/tests/                                 @beagle-core-team
+/tests/test_security_*.py               @beagle-security-team

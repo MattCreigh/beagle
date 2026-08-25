@@ -132,9 +132,10 @@ Property-based tests (using `hypothesis`) are required for:
 2. **Commit with conventional messages**:
    `feat(rag): add per-tenant rate limiting`
 3. **Push & open a PR** against `main`.
-4. **CI must be green**: lint, type-check, tests, security scan.
-5. Security-sensitive files (`beagle/security/**`) require maintainer
-   sign-off in review.
+4. **CI must be green**: lint, type-check, tests, security scan
+   (`.github/workflows/`).
+5. **CODEOWNERS** auto-assigns reviewers; security-sensitive paths route
+   to `@beagle-security-team`.
 6. **Squash-merge** with a conventional-commit message.
 
 ---

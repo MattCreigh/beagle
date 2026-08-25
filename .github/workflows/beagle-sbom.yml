@@ -1,0 +1,122 @@
+name: Beagle SBOM (Software Bill of Materials)
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  # Required to upload SARIF to the Security tab and to commit SBOM artifacts
+  security-events: write
+  actions: read
+
+jobs:
+  sbom:
+    name: Generate CycloneDX SBOM
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Install cyclonedx-bom
+        run: |
+          pip install cyclonedx-bom
+
+      - name: Sync deps (dev extras)
+        run: |
+          uv sync --all-extras
+
+      - name: Generate SBOM (CycloneDX JSON)
+        run: |
+          cyclonedx-py environment \
+            --output-format JSON \
+            --output-file sbom.cdx.json \
+            --spec-version 1.5 \
+            --pyproject pyproject.toml || true
+          # Fall back to pip-installed-tree-based generation if pyproject
+          # resolution fails:
+          if [ ! -s sbom.cdx.json ]; then
+            cyclonedx-py requirements \
+              --output-format JSON \
+              --output-file sbom.cdx.json \
+              --spec-version 1.5 \
+              requirements.txt || true
+          fi
+
+      - name: Generate SBOM (CycloneDX XML)
+        run: |
+          cyclonedx-py environment \
+            --output-format XML \
+            --output-file sbom.cdx.xml \
+            --spec-version 1.5 \
+            --pyproject pyproject.toml || true
+          if [ ! -s sbom.cdx.xml ]; then
+            cyclonedx-py requirements \
+              --output-format XML \
+              --output-file sbom.cdx.xml \
+              --spec-version 1.5 \
+              requirements.txt || true
+          fi
+
+      - name: Validate SBOM is non-empty
+        run: |
+          test -s sbom.cdx.json
+          test -s sbom.cdx.xml
+          echo "SBOM JSON size: $(wc -c < sbom.cdx.json) bytes"
+          echo "SBOM XML  size: $(wc -c < sbom.cdx.xml) bytes"
+
+      - name: Upload SBOM as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-cyclonedx
+          path: |
+            sbom.cdx.json
+            sbom.cdx.xml
+          retention-days: 90
+
+      - name: Upload SBOM to GitHub Security (Code Scanning)
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        # CycloneDX isn't SARIF, but the action accepts arbitrary SARIF
+        # bundles. If the format is rejected, the job still succeeds
+        # because the artifact is the canonical record.
+        with:
+          sarif_file: sbom.cdx.json
+        continue-on-error: true
+
+  release-sbom:
+    name: Attach SBOM to release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [sbom]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Download SBOM artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: sbom-cyclonedx
+          path: sbom
+
+      - name: Upload SBOM to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            sbom/sbom.cdx.json
+            sbom/sbom.cdx.xml
+          fail_on_unmatched_files: true

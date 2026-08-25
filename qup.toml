@@ -1,0 +1,16 @@
+# QaUpper project config — beagle repo.
+# This repo's import closure (src-layout beagle -> langchain/langgraph/lancedb/
+# kuzu) makes cold checker runs far exceed qup's defaults on a loaded CPU-only
+# host (2026-08-23: one test file needed >7min wall for mypy cold analysis).
+# Per-tool timeouts raised accordingly; nothing is disabled.
+[checkers.mypy]
+timeout_s = 240.0
+
+[checkers.semgrep]
+timeout_s = 240.0
+
+[checkers.vulture]
+timeout_s = 120.0
+
+[checkers.ruff]
+timeout_s = 120.0

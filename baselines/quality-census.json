@@ -1,0 +1,236 @@
+{
+  "measurement_date": "2026-08-21",
+  "measurement_baseline_commit": "3ec52f0",
+  "metrics": {
+    "Q-01": {
+      "name": "Cypher queries built by f-string interpolation",
+      "count": 2,
+      "target": 0,
+      "severity": "high"
+    },
+    "Q-02": {
+      "name": "ruff S-rule security findings",
+      "count": 56,
+      "target": 0,
+      "severity": "high"
+    },
+    "Q-03": {
+      "name": "asyncio.create_task without a retained reference",
+      "count": 26,
+      "target": 0,
+      "severity": "high"
+    },
+    "Q-04": {
+      "name": "inline ruff: ignore[BLE001] suppressions",
+      "count": 164,
+      "target": 0,
+      "severity": "high"
+    },
+    "Q-05": {
+      "name": "except Exception sites",
+      "count": 273,
+      "target": 0,
+      "severity": "high",
+      "owner": "IP-1"
+    },
+    "Q-06": {
+      "name": "# type: ignore comments",
+      "count": 458,
+      "target": 50,
+      "severity": "high"
+    },
+    "Q-07": {
+      "name": "ANN401 explicit Any in signatures",
+      "count": 229,
+      "target": 30,
+      "severity": "med"
+    },
+    "Q-08": {
+      "name": "missing annotations (ANN001/201/202/002/003/204)",
+      "count": 354,
+      "target": 0,
+      "severity": "med"
+    },
+    "Q-09": {
+      "name": "C901 functions over cyclomatic complexity 10",
+      "count": 99,
+      "target": 0,
+      "severity": "high"
+    },
+    "Q-10": {
+      "name": "PLR0912 too-many-branches",
+      "count": 53,
+      "target": 0,
+      "severity": "med"
+    },
+    "Q-11": {
+      "name": "PLR0915 too-many-statements",
+      "count": 42,
+      "target": 0,
+      "severity": "med"
+    },
+    "Q-12": {
+      "name": "PLR0913/PLR0917 too-many-arguments",
+      "count": 89,
+      "target": 0,
+      "severity": "med"
+    },
+    "Q-13": {
+      "name": "modules over 900 lines",
+      "count": 16,
+      "target": 0,
+      "severity": "med"
+    },
+    "Q-14": {
+      "name": "PLW0603 global statements",
+      "count": 176,
+      "target": 0,
+      "severity": "med"
+    },
+    "Q-15": {
+      "name": "SLF001 private-member access across boundaries",
+      "count": 124,
+      "target": 0,
+      "severity": "med"
+    },
+    "Q-16": {
+      "name": "TID252 relative imports",
+      "count": 284,
+      "target": 0,
+      "severity": "low"
+    },
+    "Q-17": {
+      "name": "PLC0415 function-local imports",
+      "count": 786,
+      "target": 0,
+      "severity": "med"
+    },
+    "Q-18": {
+      "name": "G004 logging f-strings",
+      "count": 1236,
+      "target": 0,
+      "severity": "med"
+    },
+    "Q-19": {
+      "name": "PLR2004 magic value comparisons",
+      "count": 224,
+      "target": 0,
+      "severity": "low"
+    },
+    "Q-20": {
+      "name": "FBT001/002/003 boolean traps",
+      "count": 275,
+      "target": 0,
+      "severity": "low"
+    },
+    "Q-21": {
+      "name": "ERA001 commented-out code",
+      "count": 38,
+      "target": 0,
+      "severity": "med"
+    },
+    "Q-22": {
+      "name": "T201 print() in library code",
+      "count": 17,
+      "target": 0,
+      "severity": "med"
+    },
+    "Q-23": {
+      "name": "missing docstrings (D101/102/103/105/107)",
+      "count": 355,
+      "target": 0,
+      "severity": "med"
+    },
+    "Q-24": {
+      "name": "D413 missing blank line after last section",
+      "count": 870,
+      "target": 0,
+      "severity": "low"
+    },
+    "Q-25": {
+      "name": "TRY003/EM101/EM102 exception message style",
+      "count": 559,
+      "target": 0,
+      "severity": "low"
+    },
+    "Q-26": {
+      "name": "legacy / backward-compat mentions",
+      "count": 131,
+      "target": 0,
+      "severity": "med",
+      "owner": "IP-3 partial"
+    },
+    "Q-27": {
+      "name": "line coverage percent",
+      "count": 55,
+      "target": 85,
+      "severity": "high"
+    },
+    "Q-28": {
+      "name": "skip / skipif markers",
+      "count": 51,
+      "target": 0,
+      "severity": "high"
+    },
+    "Q-29": {
+      "name": "xfail markers",
+      "count": 3,
+      "target": 0,
+      "severity": "high"
+    },
+    "Q-30": {
+      "name": "time.sleep in tests",
+      "count": 29,
+      "target": 0,
+      "severity": "med"
+    },
+    "Q-31": {
+      "name": "test files with no assert",
+      "count": 2,
+      "target": 0,
+      "severity": "med"
+    },
+    "Q-32": {
+      "name": "tracked files under preserved_aside/",
+      "count": 12,
+      "target": 0,
+      "severity": "med"
+    },
+    "Q-33": {
+      "name": "build caches and artefacts inside the tree",
+      "count": 7,
+      "target": 0,
+      "severity": "med"
+    },
+    "Q-34": {
+      "name": "tracked files under archive/",
+      "count": 65,
+      "target": 65,
+      "severity": "none"
+    },
+    "Q-35": {
+      "name": "CPY001 missing copyright notice",
+      "count": 363,
+      "target": 363,
+      "severity": "none"
+    },
+    "Q-36": {
+      "name": "aeca-walltime-for-interval \u2014 wall clock used to measure elapsed time",
+      "count": 15,
+      "target": 0,
+      "severity": "high"
+    },
+    "Q-37": {
+      "name": "aeca-silently-degraded-feature",
+      "count": 1,
+      "target": 0,
+      "severity": "high"
+    },
+    "Q-38": {
+      "name": "aeca-tempfile-delete-false",
+      "count": 1,
+      "target": 0,
+      "severity": "med"
+    }
+  }
+}

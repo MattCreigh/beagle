@@ -1,0 +1,87 @@
+name: Version Consistency Check
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  version-consistency:
+    name: Verify __version__ matches git tag
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Extract __version__ from package
+        id: version
+        run: |
+          # v1.0.4 (audit E2): since v1.0.0 the package lives in src/ (the
+          # `beagle` package IS the src/ directory via package-dir mapping), so
+          # `from beagle import __version__` previously failed on a fresh
+          # checkout because neither the package was installed nor src/ put on
+          # the path. Setting PYTHONPATH=src makes the import resolve without a
+          # slow full install; the version gate must not depend on PyPI.
+          PYTHON_VERSION=$(PYTHONPATH=src python3 -c "from beagle import __version__; print(__version__)")
+          echo "version=$PYTHON_VERSION" >> $GITHUB_OUTPUT
+          echo "Package version: $PYTHON_VERSION"
+
+      - name: Compare against git tag (if tagged)
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          PKG_VERSION="${{ steps.version.outputs.version }}"
+          TAG_VERSION="${GITHUB_REF#refs/tags/v}"
+          echo "Package: $PKG_VERSION"
+          echo "Tag:     $TAG_VERSION"
+          if [ "$PKG_VERSION" != "$TAG_VERSION" ]; then
+            echo "::error::Version mismatch! Package is $PKG_VERSION but tag is $TAG_VERSION"
+            exit 1
+          fi
+
+      - name: Compare against pyproject.toml
+        run: |
+          PKG_VERSION="${{ steps.version.outputs.version }}"
+          PYPROJECT_VERSION=$(grep -E '^version\s*=' pyproject.toml | head -1 | sed -E 's/version\s*=\s*"([^"]+)".*/\1/')
+          echo "Package:    $PKG_VERSION"
+          echo "pyproject:  $PYPROJECT_VERSION"
+          if [ "$PKG_VERSION" != "$PYPROJECT_VERSION" ]; then
+            echo "::error::Version mismatch! Package is $PKG_VERSION but pyproject.toml is $PYPROJECT_VERSION"
+            exit 1
+          fi
+
+      - name: Check no-hardcoded-version-string
+        run: |
+          # Run the hook against all changed python files in the PR
+          # (the local pre-commit hook enforces the same rule on the
+          # developer's machine).
+          pip install pre-commit
+          pre-commit run no-hardcoded-version-string --all-files
+          # A finding here fails the build (v1.2.0, QA-5, BGL-072).
+
+      - name: Assert the README carries no version literal
+        run: |
+          # v1.2.0 (QA-5, BGL-075): commit deea840 made README.md
+          # deliberately version-agnostic — the installed version is
+          # single-sourced from pyproject.toml and resolved at import
+          # time. A version literal in README.md would re-introduce the
+          # drift this gate exists to prevent, so this step fails the
+          # build when one appears.
+          if grep -oE "v[0-9]+\.[0-9]+\.[0-9]+" README.md; then
+            echo "::error::README.md contains a version literal; it must stay version-agnostic"
+            exit 1
+          fi
