@@ -40,7 +40,7 @@ class _TransportSyncStub:
     def __enter__(self):
         return self
 
-    def __exit__(self, *exc):
+    def __exit__(self, *_):
         return False
 
     def post(self, url, json=None, headers=None):  # type: ignore[no-untyped-def]
@@ -56,7 +56,7 @@ def _stub_transport(monkeypatch, recorder):
     """
 
     class _T:
-        def sync_client(self, **kwargs):  # type: ignore[no-untyped-def]
+        def sync_client(self, **_kwargs):  # type: ignore[no-untyped-def]
             return _TransportSyncStub(recorder)
 
     monkeypatch.setattr(emb_mod, "_transport", lambda: _T())
@@ -82,7 +82,7 @@ class _RecordedClient:
         }
         return resp
 
-    def __call__(self, *args, **kwargs):  # context-manager entry
+    def __call__(self, *_args, **_kwargs):  # context-manager entry
         return self
 
     def __enter__(self):
@@ -197,7 +197,7 @@ def test_batch_failure_falls_back_to_sentence_transformers(monkeypatch):
     # Stub the fallback to return deterministic vectors so the
     # assertions are tight.
     class _StubFallback:
-        def encode(self, texts, **kwargs):
+        def encode(self, texts, **_kwargs):
             return [[0.5] * _EMBED_DIMENSION for _ in texts]
 
     monkeypatch.setattr(inst, "_get_fallback_embedder", lambda: _StubFallback())
