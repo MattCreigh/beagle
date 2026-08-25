@@ -160,3 +160,5 @@ See [LICENSE](LICENSE) for the full terms. In short:
 4. Contributions are welcomed under the grant in LICENSE §5.
 5. The optional `beagle-orpheus` wheel is separately licensed proprietary
    software (evaluation free; production paid).
+
+Commercial licences: **matthewcreigh99@gmail.com**.
