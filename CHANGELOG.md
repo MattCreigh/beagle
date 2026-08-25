@@ -57,7 +57,6 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) conventions.
   `.benchmarks/`.
 - Track `uv.lock` (reproducible installs) and `docs/spec/`.
 
-
 ### Quality gates: mypy zero-error + ratchet re-baseline (2026-08-23)
 
 - Clear all 20 remaining mypy errors (11 files) — `mypy src` is now a true
