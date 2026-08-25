@@ -25,7 +25,7 @@ import logging
 import os
 import re
 import time
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 from typing import Any
 
@@ -47,7 +47,7 @@ _DEFAULT_TOKEN_BUDGET = 2000
 TOKEN_BUDGET = _DEFAULT_TOKEN_BUDGET
 
 
-class PruneStrategy(str, Enum):
+class PruneStrategy(StrEnum):
     """Strategy for pruning memory index entries when over budget.
 
     - ``oldest_first``: Remove oldest "Recent Findings" entries first (original behavior).

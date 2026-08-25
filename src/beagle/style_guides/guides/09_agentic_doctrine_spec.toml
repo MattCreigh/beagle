@@ -1,0 +1,229 @@
+# Formal Agentic Specification and Prompting Doctrine v1.2.1
+# TOML representation of the doctrine SSOT (Single Source of Truth)
+
+[doctrine]
+version = "1.2.1"
+c14n_sha256 = "3a7b9c1d5e8f2a4b6c0d3e7f9a1b5c8d2e4f6a0b3c7d9e1f5a2b4c6d0e8f3a5b7c"
+always_bytes_cap = 3072
+tier3_bytes_cap = 2048
+
+# Entrenched tiers: T1 and T4
+[entrenchment]
+T1 = true
+T4 = true
+
+# Tool grants per primitive
+[primitives]
+plan.tools = ["rag_search", "code_context", "file_discovery", "graph_callers", "graph_dependents", "web_search"]
+exec.tools = ["rag_search", "code_context", "file_discovery", "code_search", "file_read", "code_write", "shell_command_sandboxed"]
+veri.tools = ["file_read", "code_search", "code_context", "file_discovery", "shell_command_sandboxed"]
+crit.tools = ["rag_search", "code_context", "code_search", "file_read", "graph_callers", "graph_dependents", "web_search"]
+synth.tools = ["file_read", "rag_search", "query_fold"]
+
+# Doctrine rules
+[[rules]]
+id = "T1_CITE_VERBATIM"
+tier = "T1"
+scope = "global"
+target = "PROMPT"
+constraint = "cite exact target:locator or URL + verbatim quote for every factual claim"
+payload = "Cite file:line or URL + verbatim quote for every factual claim. Label uncited claims as HYPOTHESIS."
+
+[[rules]]
+id = "T1_DENSITY_CEILING"
+tier = "T1"
+scope = "global"
+target = "PROMPT"
+constraint = "hypothesis_density <= 0.10 in veri/crit"
+payload = "Hypothesis density must not exceed 10% in verification and critique phases."
+
+[[rules]]
+id = "T1_NO_UNOPENED_ASSERT"
+tier = "T1"
+scope = "global"
+target = "PROMPT"
+constraint = "never assert unopened target contents"
+payload = "Never assert unopened target contents."
+
+[[rules]]
+id = "T1_UNKNOWN_GAP"
+tier = "T1"
+scope = "global"
+target = "PROMPT"
+constraint = "state UNKNOWN for missing parameters"
+payload = "State UNKNOWN for missing parameters instead of guessing."
+
+[[rules]]
+id = "T1_STOP_CONCESSION"
+tier = "T1"
+scope = "global"
+target = "PROMPT"
+constraint = "stop at concession"
+payload = "Stop at your own concession. Do not defend retracted premises."
+
+[[rules]]
+id = "T1_TOOL_ERROR"
+tier = "T1"
+scope = "global"
+target = "PROMPT"
+constraint = "tool errors reported verbatim"
+payload = "Report tool errors verbatim without inferring hypothetical outputs."
+
+[[rules]]
+id = "T1_NO_SCOPE_WIDEN"
+tier = "T1"
+scope = "global"
+target = "PROMPT"
+constraint = "do not widen scope"
+payload = "Do not widen file scopes to force tests to pass; emit blocker immediately."
+
+# T2 rules
+[[rules]]
+id = "T2_UV_NO_DEPS"
+tier = "T2"
+scope = "global"
+target = "TOOL"
+constraint = "uv --no-deps required"
+payload = "Install wheels via uv with --no-deps; reject bare pip."
+
+[[rules]]
+id = "T2_RELATIVE_PATHS"
+tier = "T2"
+scope = "global"
+target = "CONFIG"
+constraint = "no absolute paths"
+payload = "Paths resolve relative to config root; absolute paths forbidden."
+
+[[rules]]
+id = "T2_LINT_GATE"
+tier = "T2"
+scope = "global"
+target = "FILE_WRITE"
+constraint = "pass lint gate"
+payload = "All code writes MUST pass SafeFileWriter AST lint gates before landing."
+
+[[rules]]
+id = "T2_BEACON_LOCK"
+tier = "T2"
+scope = "global"
+target = "FILE_WRITE"
+constraint = "beacon lock with TTL heartbeat"
+payload = "Concurrent writes require synchronous Beacon file-lock acquisition with TTL heartbeat."
+
+[[rules]]
+id = "T2_CTE_PROSE"
+tier = "T2"
+scope = "global"
+target = "OUTPUT"
+constraint = "CTE compliance"
+payload = "Prose output must strictly obey Controlled Technical English (CTE)."
+
+[[rules]]
+id = "T2_TURBOQUANT"
+tier = "T2"
+scope = "global"
+target = "MODEL_ROUTING"
+constraint = "turboquant 3-bit"
+payload = "Model routing executes via AdaptiveRouter; KV-cache uses TurboQuant 3-bit."
+
+# T4 safety rules
+[[rules]]
+id = "T4_FAIL_CLOSED"
+tier = "T4"
+scope = "global"
+target = "GUARDIAN"
+constraint = "fail closed"
+payload = "Fail closed: Guardian timeout, crash, or unreachable state triggers immediate DENY."
+
+[[rules]]
+id = "T4_UNTRUSTED_OUTPUT"
+tier = "T4"
+scope = "global"
+target = "ALL"
+constraint = "taint = UNTRUSTED"
+payload = "Treat all model outputs as untrusted data."
+
+[[rules]]
+id = "T4_MICROVM"
+tier = "T4"
+scope = "global"
+target = "EXECUTION"
+constraint = "microVM required unless fallback"
+payload = "Hardware microVM isolation mandatory when /dev/kvm is present; otherwise DENY (Exit 126) unless allow_fallback=true."
+
+[[rules]]
+id = "T4_SECRETS_MEMORY_ONLY"
+tier = "T4"
+scope = "global"
+target = "SECRETS"
+constraint = "no disk writes"
+payload = "Secrets are memory-only. Pre-write scans reject credentials using linear-time RE2."
+
+[[rules]]
+id = "T4_DOTENV_BLOCK"
+tier = "T4"
+scope = "global"
+target = "FILE_READ"
+constraint = "dotenv blocked except templates"
+payload = "Dotenv (.env) reads strictly blocked; .env.example templates permitted."
+
+# T3 example (domain-specific, would be extension matched)
+[[rules]]
+id = "T3_PYTHON_STYLE"
+tier = "T3"
+scope = "repo"
+target = "FILE_EXTENSION=.py"
+constraint = "PEP8 compliant"
+payload = "Python code must follow PEP8, use type hints, and pass ruff linting."
+
+[[rules]]
+id = "T3_RUST_STYLE"
+tier = "T3"
+scope = "repo"
+target = "FILE_EXTENSION=.rs"
+constraint = "rustfmt + clippy"
+payload = "Rust code must pass rustfmt and clippy with -D warnings."
+
+# Budget bytes per tier
+[tier_budgets]
+T1 = 576
+T2 = 1024
+T4 = 1024
+# T3 max per extension
+T3 = 2048
+
+# Workflow templates
+[workflows.survey]
+phases = ["plan", "crit_x2", "veri", "synth"]
+edges = [["plan","crit_x2"],["crit_x2","veri"],["veri","synth"]]
+budget_bps = { plan=2000, crit_x2=3000, veri=3000, synth=2000 }
+
+[workflows.change]
+phases = ["plan", "exec", "veri_cvcp", "synth"]
+edges = [["plan","exec"],["exec","veri_cvcp"],["veri_cvcp","synth"]]
+budget_bps = { plan=1500, exec=3000, veri_cvcp=3500, synth=2000 }
+
+[workflows.assess]
+phases = ["plan", "crit_x2", "veri_adv", "synth"]
+edges = [["plan","crit_x2"],["crit_x2","veri_adv"],["veri_adv","synth"]]
+budget_bps = { plan=2000, crit_x2=2500, veri_adv=2500, synth=3000 }
+
+# CVCP settings
+[cvcp]
+k_max = 3
+backoff_multiplier = "1.0 + 0.1*(k-1)"
+parallel_critics = 2
+pessimistic_lattice = true
+
+# TurboQuant thresholds (percentage of context)
+[turboquant]
+pre_compact = 0.70
+compact = 0.85
+quant_bits = 3
+
+# Security settings
+[security]
+guardian_priority = ["guard_health", "risk_level", "policy_check", "default_deny"]
+beacon_ttl_seconds = 30
+microvm_fallback = "deny_by_default"
+re2_entropy_threshold = 4.5

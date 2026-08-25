@@ -211,12 +211,34 @@ def find_auth_dir() -> Path:
 def find_guides_dir() -> Path:
     """Return the style-guides directory (doctrine SSOT).
 
-    The canonical ``~/.config/beagle/style_guides/guides`` is the only
-    location — this distribution ships no bundled doctrine TOMLs. A missing
-    directory simply means zero guides are loaded; ``beagle config init``
-    seeds starter files for users who want file-based doctrine.
+    Layered resolution (highest precedence first):
+
+      1. ``$BEAGLE_STYLE_GUIDES_DIR`` env var — explicit override.
+      2. Operator config root: ``<config_root>/style_guides/guides`` — when
+         populated (has at least one ``.toml``), it is the authority and we
+         defer to it ENTIRELY. This is the TOML-settable surface: an operator
+         who wants file-based doctrine seeds it (``beagle config init``) and
+         every guide is loaded from there, not the shipped defaults.
+      3. In-package default: ``src/beagle/style_guides/guides`` (the doctrine
+         defaults shipped with the wheel). This is what a clean checkout / CI
+         uses when no operator config root is populated.
+
+    A missing directory at every layer simply means zero guides are loaded.
     """
-    return find_config_root() / "style_guides" / "guides"
+    # 1. Explicit env override.
+    env_override = os.environ.get("BEAGLE_STYLE_GUIDES_DIR")
+    if env_override:
+        return Path(env_override).expanduser()
+
+    # 2. Operator config root (defer entirely when populated).
+    config_root_guides = find_config_root() / "style_guides" / "guides"
+    if config_root_guides.is_dir() and _dir_has(config_root_guides, ("*.toml",)):
+        return config_root_guides
+
+    # 3. In-package default doctrine (bundled).
+    #    This module lives at <pkg>/config/_config_path.py, so parents[1] is
+    #    the package root.
+    return Path(__file__).resolve().parents[1] / "style_guides" / "guides"
 
 
 def find_context_management_toml() -> Path:

@@ -1,0 +1,35 @@
+# =============================================================================
+# 07_domain_devops.toml — DevOps & Infrastructure (Tier 3)
+# =============================================================================
+# Exhaustive guardrails for infrastructure / CI-CD / containers at an
+# enterprise bar. Applies to .yml, .yaml, .toml, .sh, .service.
+# Rendered into XML.
+# =============================================================================
+
+[meta]
+name = "DevOps and Infrastructure"
+applies_to = [".yml", ".yaml", ".toml", ".sh", ".service"]
+tier = 3
+version = "14.0"
+
+# ── Infrastructure ─────────────────────────────────────────────────────────
+[infrastructure]
+health_check_policy = "MANDATORY_ON_ALL_CONTAINERS"
+service_security = "NO_NEW_PRIVILEGES_NON_ROOT"
+cache_mounts = "TMPFS_ONLY"
+env_file_persistence = "FORBIDDEN"
+secret_delivery = "memory-only / vault; never env files with plaintext secrets"
+container_images = "pinned digests; minimal base; non-root user; read-only rootfs where possible"
+
+# ── CI/CD ──────────────────────────────────────────────────────────────────
+[cicd]
+idempotent = "every pipeline step idempotent and re-runnable"
+verify = "lint + type + test + build gates mandatory before merge"
+secrets_in_ci = "secrets via the CI secret store only; never inline in YAML"
+artifacts = "reproducible builds; pinned toolchain versions"
+
+# ── Shell ──────────────────────────────────────────────────────────────────
+[shell]
+shellcheck = "all .sh pass shellcheck; no shell=True from application code"
+error_handling = "set -euo pipefail; explicit trap on exit"
+quoting = "always quote variables; never eval untrusted input"

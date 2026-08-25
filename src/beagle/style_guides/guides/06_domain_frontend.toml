@@ -1,0 +1,40 @@
+# =============================================================================
+# 06_domain_frontend.toml — Frontend Architecture (Tier 3)
+# =============================================================================
+# Exhaustive guardrails for TypeScript/React/CSS frontend engineering at an
+# enterprise bar. Applies to .ts, .tsx, .js, .css. Rendered into XML.
+# =============================================================================
+
+[meta]
+name = "Frontend Architecture"
+applies_to = [".ts", ".tsx", ".js", ".css"]
+tier = 3
+version = "14.0"
+
+# ── Standards ──────────────────────────────────────────────────────────────
+[standards]
+type_checking = "STRICT"
+component_model = "PURE_FUNCTIONAL"
+accessibility = "WCAG_AA"
+secret_exposure = "ZERO_TOLERANCE"
+state_management = "explicit, typed, immutable state; never global mutable singletons"
+
+# ── React / TSX ────────────────────────────────────────────────────────────
+[react]
+components = "pure functional components; never class components unless required"
+hooks = "custom hooks for reusable logic; never call hooks conditionally"
+props = "typed props interfaces; never implicit any"
+rendering = "memoization only where measured beneficial; never premature optimisation"
+effects = "useEffect with correct dependency arrays; never suppress exhaustive-deps silently"
+
+# ── CSS ────────────────────────────────────────────────────────────────────
+[css]
+methodology = "BEM or CSS Modules; never global cascade for component styles"
+responsive = "mobile-first; fluid layouts; viewport-safe typography"
+accessibility = "contrast >= WCAG_AA; focus-visible states; aria labels where semantic elements cannot convey"
+
+# ── JS / TS general ────────────────────────────────────────────────────────
+[general]
+no_any = "never 'any' at public boundaries; use unknown + narrowing"
+immutability = "never mutate props/state directly; use structural sharing"
+network = "every HTTP call explicit timeout; typed API layer; never expose secrets in client code"

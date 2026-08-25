@@ -1,0 +1,43 @@
+# =============================================================================
+# 05_lang_systems.toml — Systems Programming (Tier 3)
+# =============================================================================
+# Exhaustive guardrails for Rust/C++ systems programming at an enterprise
+# bar. Applies to .rs, .cpp, .h. Rendered into XML.
+# =============================================================================
+
+[meta]
+name = "Systems Programming"
+applies_to = [".rs", ".cpp", ".h"]
+tier = 3
+version = "14.0"
+
+# ── Architecture ───────────────────────────────────────────────────────────
+[architecture]
+memory_model = "ZERO_COPY"
+ipc_transport = "ORPHEUS_LOCK_FREE_RING"
+schema_validation = "FLATBUFFERS"
+ownership = "Rust: borrow checker enforced; never unsafe unless documented + justified"
+unsafe_policy = "unsafe blocks: every one documented with a SAFETY: comment and an auditable reason"
+
+# ── Rust-specific ──────────────────────────────────────────────────────────
+[rust]
+idiomatic = "use Rust idioms: Result<T,E> for fallible, Option<T> for absence"
+error_handling = "custom error enums with thiserror/anyhow; never unwrap()/expect() on untrusted paths"
+lifetimes = "explicit lifetimes at API boundaries; elide only when unambiguous"
+concurrency = "prefer std::sync / tokio; document Send/Sync bounds"
+zerocopy = "zero-copy views over memory-mapped data; never implicit copies in hot paths"
+unsafe = "unsafe blocks: documented SAFETY, bounded scope, tested in isolation"
+
+# ── C++-specific ───────────────────────────────────────────────────────────
+[cpp]
+smart_pointers = "unique_ptr/shared_ptr; never raw owning pointers at API boundaries"
+moves = "const-correctness and move semantics; prefer value semantics unless perf demands otherwise"
+raii = "RAII for all resources; no manual new/delete"
+templates = "constrained templates (concepts) rather than unconstrained; static_assert on invariants"
+exceptions = "exception-safe design; never throw across C ABI boundaries"
+
+# ── Mathematical representations ───────────────────────────────────────────
+[mathematical_representations]
+complexity = "state asymptotic bounds for every hot-path algorithm"
+cache_behaviour = "reason about cache-line size and false sharing explicitly"
+concurrency_bounds = "bound shared-buffer depth and producer/consumer rate mathematically"

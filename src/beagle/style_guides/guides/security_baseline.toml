@@ -1,0 +1,29 @@
+[meta]
+name = "Security Baseline"
+applies_to = ["*"]
+version = "1.0"
+
+[validation]
+rules = [
+    "Validate all external input at system boundaries",
+    "Use parameterized queries — never string interpolation for SQL/Cypher",
+    "Strip injection tags BEFORE html.escape(), not after",
+    "Use allowlists (frozenset) for dynamic identifiers like relation types",
+    "Check Path.relative_to() for path traversal, not str.startswith()",
+    "Use os.open() with explicit mode (0o600) for secret files",
+]
+
+[secrets]
+rules = [
+    "Load via secrets_loader.py — env vars first, then ~/.config/goose/secrets.yaml",
+    "Secrets file must be 0600 or 0400 permissions",
+    "Scrub secrets from logs using _SECRET_PATTERNS with 20+ char minimum",
+    "Use Path.name not full path in log messages for binaries",
+]
+
+[crypto]
+rules = [
+    "Ed25519 for A2A agent signing — raise RuntimeError if key missing",
+    "Use hashlib.sha256 with hexdigest()[:48] for guardian hashes",
+    "Never downgrade crypto — no MD5, no SHA1 for security purposes",
+]

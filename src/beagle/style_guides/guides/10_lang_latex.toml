@@ -1,0 +1,41 @@
+[meta]
+name = "LaTeX Formal Spec"
+applies_to = [".tex"]
+version = "1.0"
+
+# PAIRED-ARTIFACT LAW: every agent recipe, workflow, doctrine/spec module,
+# style guide, and tool contract is authored as TWO primary sources of truth:
+#   <artifact>.toml — machine-readable SSOT (rules, grants, budgets, tables)
+#   <artifact>.tex  — formal human spec explaining it with maths & equations
+# The XML prompt frame is NEVER a source artifact: X = Lambda(TOML, context)
+# is derived at runtime (and may be cached/logged per run-id), never edited.
+[formatting]
+document_class = "article, 11pt"
+required_packages = ["amsmath", "amssymb", "mathtools", "booktabs", "geometry", "hyperref"]
+max_sentence_length = "one idea per displayed equation"
+header_block = "first lines: title, artifact id, TOML version, c14n_sha256, date"
+
+[architecture]
+patterns = [
+    "Every spec artifact has BOTH a .toml SSOT and a .tex twin; neither ships alone",
+    "The prompt frame is derived: X = Lambda(TOML, ctx) — log it per run-id, never commit it as source",
+    "Header block mirrors the TOML: version and c14n_sha256 must match exactly (drift = build failure)",
+    "Label every formal object lbl:<toml-rule-id> so cross-references are anchored to SSOT ids, not prose",
+    "Mark machine-generated regions with '% <<<GENERATED from <file>.toml>>>' ... '% >>>END GENERATED'; regenerate, never hand-edit",
+    "Hand-curated regions carry the institutional maths: invariants, proofs, derivations, worked examples",
+    "State each invariant as a numbered theorem or aligned equation bound to its rule id",
+    "Decision tables use booktabs tabular with one row per TOML table entry",
+    "Budgets and caps appear as explicit inequalities (e.g. bytes(X) <= 3072, density <= 0.10)",
+    "Verifier mathematics uses the doctrine cascade o_k = o_0 * prod_i L_i when reasoning about evidence",
+    "Define every symbol at first use; no orphan notation",
+    "Compile gate: latexmk -pdf must succeed warning-clean before commit",
+]
+anti_patterns = [
+    "Hand-editing a GENERATED region (regenerate from TOML instead)",
+    "A .tex spec whose TOML twin is missing, or a .toml rule absent from its .tex section",
+    "Prose-only explanation where a formal statement (equation/table) is possible",
+    "Copying TOML payload text into .tex without anchoring it to the rule id (drift-prone duplication)",
+    "Unversioned or hash-less headers (cannot detect TOML/tex divergence)",
+    "Packages outside the required set without justification in the header block",
+    "Treating a compiled/cached XML frame as editable source",
+]

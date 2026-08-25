@@ -40,7 +40,12 @@ jobs:
 
       - name: Sync deps (dev extras)
         run: |
-          uv sync --all-extras
+          # --dev (not --all-extras): the `code_parsing` extra pulls
+          # tree-sitter-languages==1.10.2, which ships cp312-only wheels and
+          # cannot install on the cp313 CI runner. SBOM generation reads the
+          # resolved dependency graph (cyclonedx-py environment + uv export
+          # fallback); it does not need tree-sitter installed.
+          uv sync --dev
 
       - name: Generate SBOM (CycloneDX JSON)
         run: |

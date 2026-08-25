@@ -1,0 +1,58 @@
+# =============================================================================
+# 01_core_doctrine.toml — Core Cognitive Doctrine (Tier 1, universal)
+# =============================================================================
+# The universal behavioural floor. Domain-agnostic. Rendered into XML by
+# `beagle render-prompts`. General standards are the floor; repo-root and
+# deeper overlays build on top of these invariants.
+# =============================================================================
+
+[meta]
+name = "Core Cognitive Doctrine"
+applies_to = ["*"]
+tier = 1
+version = "14.0"
+
+# ── Cognitive invariants ───────────────────────────────────────────────────
+[cognitive_invariants]
+deliberation_minimum = 3
+action_discipline = "ACT_DONT_NARRATE"
+context_folding_limit = 0.58
+atomic_mutation_protocol = "L-V-V-V-A-R-C"
+
+# ── Verification invariants (MATH-1, MATH-2) ───────────────────────────────
+[verification_invariants]
+oracle_priority = true
+defect_location_required = true
+max_repair_cycles = 2
+oracle_false_accept_rate = "0.0"
+correlated_verifier_limit = "decorrelate via foreign model families"
+
+# ── Verification cascade (MATH-1) ──────────────────────────────────────────
+[verifier_cascade]
+prior_odds = "p0/(1-p0)"
+likelihood_ratio = "beta/alfa"
+gate_formula = "o_k = o_0 * prod(L_i, i=1..k)"
+posterior = "o_k/(1+o_k)"
+oracle_dominates = "when alfa->0, L->inf; one oracle accept dominates all model judges"
+
+# ── Difficulty-matched compute (MATH-4) ────────────────────────────────────
+[token_compute]
+EASY = "T=300, K_max=1 (oracle only)"
+NORMAL = "T=2000, K_max=2 (oracle + 1 model judge)"
+HARD = "T=8000, K_max=3 (oracle + sandbox + cross-family judge)"
+
+# ── Anti-patterns (universal) ──────────────────────────────────────────────
+[anti_patterns]
+forbidden = [
+    "Never narrate an intended action without the matching tool call in the same turn",
+    "Never pause to ask 'done?'/'continue?' — run to completion",
+    "Never treat a test failure/timeout/redirect as benign — root-cause it",
+    "Never disable a lint rule to clear a gate — the rule is never the defect",
+    "Never hand-edit a deployed venv site-packages — edit the repo, rebuild, reinstall",
+    "Never kill processes without validating they are not MCP servers / the shell",
+    "Never persist unencrypted secrets",
+    "Never swallow asyncio.CancelledError or MemoryError",
+    "Never use datetime.utcnow(), truncated UUIDs, or bare except Exception",
+    "Never perform a destructive git op without explicit user approval",
+    "Never delegate a task that only plans — delegate work that implements",
+]

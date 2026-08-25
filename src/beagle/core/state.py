@@ -23,7 +23,7 @@ import uuid
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Generic, TypeVar
+from typing import Any, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
@@ -295,7 +295,7 @@ _registry_lock = threading.Lock()
 _bootstrap_singleton_lock = threading.Lock()
 
 
-class Singleton(Generic[T], ABC):
+class Singleton[T](ABC):
     """Thread-safe singleton base class for synchronous resources."""
 
     def __init__(self, name: str | None = None) -> None:
@@ -376,7 +376,7 @@ class Singleton(Generic[T], ABC):
         return self._stats
 
 
-class AsyncSingleton(Generic[T], ABC):
+class AsyncSingleton[T](ABC):
     """Thread-safe async singleton base class for async resources."""
 
     def __init__(self, name: str | None = None) -> None:
@@ -430,7 +430,7 @@ class AsyncSingleton(Generic[T], ABC):
         return self._stats
 
 
-class PersistentSingleton(Generic[T], ABC):
+class PersistentSingleton[T](ABC):
     """Thread-safe singleton with disk persistence."""
 
     def __init__(self, persist_path: Path, name: str | None = None) -> None:

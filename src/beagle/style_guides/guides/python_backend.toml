@@ -1,0 +1,37 @@
+[meta]
+name = "Python Backend"
+applies_to = [".py"]
+version = "1.0"
+
+[formatting]
+indent = 4
+quotes = "double"
+max_line_length = 100
+trailing_comma = "always in multi-line"
+
+[architecture]
+patterns = [
+    "Use @dataclass for configuration and value objects",
+    "Use Pydantic BaseModel for validated external input",
+    "Prefer composition over inheritance",
+    "Use pathlib.Path over os.path",
+    "Use datetime.now(timezone.utc) never datetime.utcnow()",
+    "Use full uuid.uuid4() never truncated UUIDs",
+    "Use contextlib.suppress(SpecificException) not bare try/except/pass",
+    "Use raise ... from err for exception chaining",
+    "Use isinstance(x, (A, B)) not isinstance(x, A) or isinstance(x, B)",
+    "Use logging.getLogger('Beagle.{module_path}') for logger names",
+]
+
+[anti_patterns]
+forbidden = [
+    "Never use eval() or exec() on untrusted input",
+    "Never use shell=True in subprocess calls",
+    "Never use datetime.utcnow() — deprecated in Python 3.12+",
+    "Never use NamedTemporaryFile(delete=False) without explicit cleanup",
+    "Never use bare 'except Exception: pass' — catch specific exceptions",
+    "Never use str.startswith() for path traversal checks — use Path.relative_to()",
+    "Never truncate UUIDs — use full uuid4() for 122-bit entropy",
+    "Never use time.time() for intervals — use time.monotonic()",
+    "Never disable a lint rule to clear a lint gate. A lint finding is a defect of the input, not the rule; disabling the rule (project-local select/ignore config, removing a rule from .markdownlint.jsonc/ruff.toml, adding a `# noqa:` line) suppresses findings without fixing their cause and leaves a silent blind spot. Fix the input; raise the rule to the user if it is genuinely wrong for the project. The 2026-07-28 ghost_secrets_vault consolidation is the reference case: the agent disabled MD060 to make PLAN.md lint-clean rather than reformatting the separator rows. Canonical statement: beagle_environment.toml doctrine_floor_symmetric_rule.",
+]

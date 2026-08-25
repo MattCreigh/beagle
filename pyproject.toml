@@ -103,10 +103,12 @@ tui = [
 where = ["src"]
 
 [tool.setuptools.package-data]
-# No CONFIGURATION ships in the wheel: ALL user-editable config lives in
-# ~/.config/beagle (seed with `beagle config init`). These entries are
-# runtime ASSETS the code reads (skills, XML blocks, prompt templates,
-# recipes) — content, not configuration.
+# The DOCTRINE defaults ship with the wheel so a clean install (no config
+# root seeded) still loads a coherent Top-of-Mind and the doctrine-coherence
+# gates pass in CI. An operator who seeds `~/.config/beagle/style_guides`
+# (via `beagle config init`) DEFERS entirely to that config-root guide set —
+# the shipped guides are the fallback, not the override. All other
+# user-editable config lives in ~/.config/beagle, NOT in the wheel.
 beagle = [
     "py.typed",
     "skills/*.xml",
@@ -115,6 +117,7 @@ beagle = [
     "recipes/*.xml",
     "workflows_builtin/*.yaml",
     "templates/definitions/*.toml",
+    "style_guides/guides/*.toml",
     "infrastructure/Dockerfile.*",
     "infrastructure/docker-compose.yml",
 ]

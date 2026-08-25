@@ -42,10 +42,9 @@ from beagle.config._config_path import find_config_toml
 # Import config for centralized timeout settings
 from beagle.config.config import load_config
 from beagle.config.schema import EmbedConfig
+from beagle.core.transports import active as _transport
 
 _config = load_config()
-
-from beagle.core.transports import active as _transport
 
 logger = logging.getLogger("Beagle.infrastructure.services.embedding")
 
@@ -320,7 +319,7 @@ class OllamaCloudEmbedder:
                 OLLAMA_EMBED_MODEL</change>
             <reason>operator-requested: nomic/sentence-transformers stay the
                 defaults, but deployments may point at another model (e.g. a
-                model served by the server_1_dev ollama container) without
+                model served by a dedicated Ollama container) without
                 code edits</reason>
         </config-change>
         """

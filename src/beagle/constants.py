@@ -78,7 +78,12 @@ def _resolve_package_version() -> str:
             exc,
         )
 
-    pyproject = Path(__file__).resolve().parents[1] / "pyproject.toml"
+    # src-layout: this module is at <repo>/src/beagle/constants.py, so the
+    # pyproject.toml sits two parents up (parents[2] = repo root). parents[1]
+    # is src/, which contains no pyproject.toml. The version-check CI gate
+    # imports an uninstalled checkout, so this fallback is the path that
+    # actually runs there.
+    pyproject = Path(__file__).resolve().parents[2] / "pyproject.toml"
     try:
         with pyproject.open("rb") as fh:
             return str(tomllib.load(fh)["project"]["version"])

@@ -1,0 +1,35 @@
+# =============================================================================
+# 08_security_baseline.toml — Security Baseline Floor (Tier 4, immutable)
+# =============================================================================
+# The immutable security floor. Applies to everything. Rendered into XML.
+# This is the domain-agnostic minimum; language/domain guides extend it.
+# =============================================================================
+
+[meta]
+name = "Security Baseline Floor"
+applies_to = ["*"]
+tier = 4
+immutable = true
+version = "14.0"
+
+# ── Secrets ────────────────────────────────────────────────────────────────
+[secrets]
+delivery = "MEMORY_ONLY_JIT"
+sanitization = "LINEAR_RE2_PRE_INGEST"
+permissions = "secret files 0600 or 0400"
+no_plaintext = "never persist unencrypted secrets"
+
+# ── Sandbox ────────────────────────────────────────────────────────────────
+[sandbox]
+microvm = "DENY_BY_DEFAULT"
+ast_validation = "BLOCK_UNSAFE_SYSCALLS"
+fail_closed_firewall = true
+deny_fallback_to_subprocess = true
+
+# ── Validation ─────────────────────────────────────────────────────────────
+[validation]
+external_input = "validate all external input at system boundaries"
+allowlists = "frozenset for dynamic identifiers (relation types, etc.)"
+injection = "strip injection tags BEFORE html.escape(), not after"
+path_traversal = "Path.relative_to() only"
+queries = "parameterized queries only — never string interpolation for SQL/Cypher"

@@ -26,10 +26,8 @@ from beagle.config._config_path import find_agents_toml
 
 _INSTALLED_AGENTS_TOML = find_agents_toml()
 
-import pytest as _pytest
-
 if not _INSTALLED_AGENTS_TOML.is_file():
-    _pytest.skip(
+    pytest.skip(
         "agents.toml (operator fleet config) not installed — nothing to "
         "regression-test; seed ~/.config/beagle/coding_agent_config/agents.toml",
         allow_module_level=True,

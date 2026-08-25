@@ -1,0 +1,75 @@
+# =============================================================================
+# 04_lang_python.toml — Python Domain Engineering (Tier 3)
+# =============================================================================
+# Exhaustive guardrails for Python at a Magnificent-7 enterprise bar
+# (Google / Oracle / Block / Stripe standard). Domain-specific: applies to
+# .py. Rendered into XML.
+# =============================================================================
+
+[meta]
+name = "Python Domain Engineering"
+applies_to = [".py"]
+tier = 3
+version = "14.0"
+
+# ── Syntax & types ─────────────────────────────────────────────────────────
+[syntax_and_types]
+python_target = ">=3.12, <3.15"
+type_safety = "STRICT"
+type_checker = "mypy --strict"
+typing = "use typing.Optional/X | None, Protocol for structural types, TypeVar with bound/site variance"
+generics = "prefer Generic/TypeVar over Any; never Any at public boundaries"
+dataclasses_vs_pydantic = "dataclass for internal value objects; Pydantic BaseModel for validated external input"
+return_types = "every public function annotated; every function has a return type"
+nonlocal_closure = "use dataclasses or NamedTuple for multi-value returns, never bare tuples at API boundaries"
+datetime_rule = "datetime.now(timezone.utc) ONLY (never datetime.utcnow())"
+uuid_rule = "uuid.uuid4() 122-bit entropy ONLY (never truncated)"
+containment_check = "Path.relative_to() ONLY (never str.startswith) — symlink-bypass vector"
+
+# ── Concurrency ────────────────────────────────────────────────────────────
+[concurrency]
+async = "use asyncio; never raw asyncio.create_subprocess_exec — use the pooled executor"
+concurrency = "match hardware; never oversubscribe CPU-bound work on CPU_ONLY target"
+thread_safety = "immutable shared state; locks around mutable state; never rely on GIL for correctness"
+cancellation = "never swallow asyncio.CancelledError or MemoryError — they propagate by design"
+
+# ── Runtime resilience ─────────────────────────────────────────────────────
+[runtime_resilience]
+http_timeout_default = 30.0
+http_timeout_max_with_justification = 60.0
+exception_hierarchy = "SPECIFIC_ONLY: (RuntimeError, ValueError, OSError, TimeoutError)"
+no_bare_except = true
+retries = "exponential backoff with jitter; circuit breakers per external service"
+idempotency = "all mutating operations idempotent; validate reconstruction before apply"
+
+# ── Security (python-specific) ─────────────────────────────────────────────
+[security]
+secret_handling = "memory-only JIT; never plaintext on disk"
+subprocess = "never shell=True; pass argv lists"
+path_containment = "Path.relative_to(root) for containment"
+input_validation = "validate external input at boundaries; allowlists (frozenset) for identifiers"
+sql_cypher = "parameterized queries ONLY — never string interpolation"
+file_permissions = "os.open() with explicit mode 0o600 for secret files"
+crypto = "Ed25519 for signing; sha256(hexdigest[:48]) for guardian hashes; never MD5/SHA1 for security"
+
+# ── Best practices ─────────────────────────────────────────────────────────
+[best_practices]
+composition = "prefer composition over inheritance"
+pathlib = "use pathlib.Path over os.path"
+exception_chaining = "raise ... from err for chaining"
+logging = "one logger per module: logging.getLogger('Beagle.{module_path}')"
+dataclass_patterns = "use @dataclass for config and value objects"
+avoid = [
+    "Never eval()/exec() on untrusted input",
+    "Never use NamedTemporaryFile(delete=False) without explicit cleanup",
+    "Never use time.time() for intervals — use time.monotonic()",
+    "Never bare 'except Exception: pass'",
+]
+
+# ── Mathematical representations (algorithmic reasoning) ───────────────────
+[mathematical_representations]
+complexity_notation = "Big-O for time, Big-Omega for lower bound; state both when non-tight"
+invariants = "state loop invariants explicitly for non-trivial loops"
+numeric_stability = "prefer Decimal/ints for money; never float for currency (Block/Stripe standard)"
+recursion_depth = "convert tail-recursive/naive recursion to iteration or explicit stack when unbounded"
+concurrency_model = "define shared-state ownership precisely; use math to bound queue length / contention"

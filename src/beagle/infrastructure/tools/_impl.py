@@ -24,12 +24,11 @@ from beagle.config.config import (
 from beagle.core.graph import (
     run_workflow,
 )
+from beagle.core.transports import active as _transport
 from beagle.utils.mcp_rate_limit import RateLimiter
 
 # Project root for subprocess cwd and path resolution (not for sys.path).
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
-
-from beagle.core.transports import active as _transport
 
 logger = logging.getLogger("Beagle.mcp.utility._impl")
 
