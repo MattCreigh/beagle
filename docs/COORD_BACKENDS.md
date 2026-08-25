@@ -1,14 +1,13 @@
 # The coordination store backend slot
 
-`plans/beagle-coord-backend-slot.xml` records the full build (WP-B0
-through WP-B7). `docs/decisions/2026-08-21-coord-backend-slot.md` records
-decision D-B1 and its rejected alternatives. This document is the
-contract a backend author reads instead of that plan — someone who has
-not read the plan will write the next backend.
+`docs/decisions/2026-08-21-coord-backend-slot.md` records decision D-B1
+and its rejected alternatives. This document is the contract a backend
+author reads instead of that decision record — someone who has not read
+the decision will write the next backend.
 
 ## 1. What the slot is
 
-Beacon (`plans/beagle-beacon-coordination.xml`) needs a coordination
+The Beacon subsystem needs a coordination
 store: a key/value/hash/set/sorted-set/list store with TTL, reachable from
 every agent working in a directory. Beacon used to hardcode `fakeredis`
 over a unix socket as that store. This slot makes it replaceable: changing

@@ -94,6 +94,5 @@ beagle config cards    # List fleet cards in load order with roles and bundles
 
 ## See also
 
-- `src/config/_config_path.py` — `find_presets_dir()` / `find_preset_cards()`
-- `src/config/registry.py` — `reload_registry()`, `validate_cards()`
-- `plans/preset_card_system_v3.md` — the original design plan
+- `src/beagle/config/_config_path.py` — `find_presets_dir()` / `find_preset_cards()`
+- `src/beagle/config/registry.py` — `reload_registry()`, `validate_cards()`

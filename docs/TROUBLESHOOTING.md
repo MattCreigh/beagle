@@ -160,8 +160,8 @@ canonical setup.
 ## Still stuck?
 
 1. Run `beagle doctor --json` and check the output.
-2. Search the [docs/](../) directory.
-3. Check the [CHANGELOG](../../CHANGELOG.md) — your issue may
+2. Search the [docs/](.) directory.
+3. Check the [CHANGELOG](../CHANGELOG.md) — your issue may
    already be fixed in a newer release.
 4. Open a GitHub issue with the output of `beagle doctor --json`
    and the relevant log lines.
