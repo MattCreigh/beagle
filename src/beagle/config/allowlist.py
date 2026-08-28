@@ -24,11 +24,8 @@ Why a runtime allowlist (and not just config.toml being correct):
 from __future__ import annotations
 
 import logging
+import tomllib
 
-try:
-    import tomllib
-except ImportError:  # pragma: no cover — Python 3.11+ has tomllib
-    import tomli as tomllib
 from ._config_path import find_config_toml as _find_config_toml
 
 logger = logging.getLogger("Beagle.config.allowlist")

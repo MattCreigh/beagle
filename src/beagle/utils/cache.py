@@ -54,7 +54,7 @@ except ImportError:
 
     COMPRESSION_RATIO = 1.0
 
-    def simple_turboquant_compress(vectors: Any, bits: int = 3) -> tuple[bytes, int]:
+    def simple_turboquant_compress(vectors: np.ndarray, bits: int = 3) -> tuple[bytes, int]:
         return (b"", 0)
 
     def simple_turboquant_decompress(
@@ -62,10 +62,11 @@ except ImportError:
         seed: int,
         original_shape: tuple[int, ...],
         bits: int = 3,
-    ) -> Any:
-        if NUMPY_AVAILABLE and np is not None:
-            return np.array([0])
-        return [0]
+    ) -> np.ndarray:
+        # Signature must mirror the real turboquant function (mypy requires
+        # identical conditional-variant signatures). The fallback is only
+        # reachable when turboquant is absent; numpy is still available here.
+        return np.array([0])
 
 
 T = TypeVar("T")

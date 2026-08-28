@@ -8,16 +8,12 @@ from __future__ import annotations
 import logging
 import os
 import re
+import tomllib
 from dataclasses import MISSING
 from dataclasses import fields as _dc_fields
 from pathlib import Path
 from typing import Any
 
-# Python 3.11+ has tomllib in stdlib
-try:
-    import tomllib
-except ImportError:
-    import tomli as tomllib
 from ..runtime.goose_cli import default_goose_binary
 from .model_resolver import get_preset
 from .schema import (
