@@ -6,6 +6,75 @@
 
 Domain: **universal**
 
+## Core Cognitive Doctrine
+
+### Forbidden
+
+- Never narrate an intended action without the matching tool call in the same turn
+- Never pause to ask 'done?'/'continue?' — run to completion
+- Never treat a test failure/timeout/redirect as benign — root-cause it
+- Never disable a lint rule to clear a gate — the rule is never the defect
+- Never hand-edit a deployed venv site-packages — edit the repo, rebuild, reinstall
+- Never kill processes without validating they are not MCP servers / the shell
+- Never persist unencrypted secrets
+- Never swallow asyncio.CancelledError or MemoryError
+- Never use datetime.utcnow(), truncated UUIDs, or bare except Exception
+- Never perform a destructive git op without explicit user approval
+- Never delegate a task that only plans — delegate work that implements
+
+### cognitive_invariants
+
+- **deliberation_minimum**: 3
+- **action_discipline**: ACT_DONT_NARRATE
+- **context_folding_limit**: 0.58
+- **atomic_mutation_protocol**: L-V-V-V-A-R-C
+
+### verification_invariants
+
+- **oracle_priority**: True
+- **defect_location_required**: True
+- **max_repair_cycles**: 2
+- **oracle_false_accept_rate**: 0.0
+- **correlated_verifier_limit**: decorrelate via foreign model families
+
+### verifier_cascade
+
+- **prior_odds**: p0/(1-p0)
+- **likelihood_ratio**: beta/alfa
+- **gate_formula**: o_k = o_0 * prod(L_i, i=1..k)
+- **posterior**: o_k/(1+o_k)
+- **oracle_dominates**: when alfa->0, L->inf; one oracle accept dominates all model judges
+
+### token_compute
+
+- **EASY**: T=300, K_max=1 (oracle only)
+- **NORMAL**: T=2000, K_max=2 (oracle + 1 model judge)
+- **HARD**: T=8000, K_max=3 (oracle + sandbox + cross-family judge)
+
+## Security Baseline Floor
+
+### secrets
+
+- **delivery**: MEMORY_ONLY_JIT
+- **sanitization**: LINEAR_RE2_PRE_INGEST
+- **permissions**: secret files 0600 or 0400
+- **no_plaintext**: never persist unencrypted secrets
+
+### sandbox
+
+- **microvm**: DENY_BY_DEFAULT
+- **ast_validation**: BLOCK_UNSAFE_SYSCALLS
+- **fail_closed_firewall**: True
+- **deny_fallback_to_subprocess**: True
+
+### validation
+
+- **external_input**: validate all external input at system boundaries
+- **allowlists**: frozenset for dynamic identifiers (relation types, etc.)
+- **injection**: strip injection tags BEFORE html.escape(), not after
+- **path_traversal**: Path.relative_to() only
+- **queries**: parameterized queries only — never string interpolation for SQL/Cypher
+
 ## Beagle Core Directives
 
 Universal behavioural directives for the Goose Beagle Orchestrator. Auto-injected on every turn via tom extension. Migrated from .goosehints v9.0 — this is the canonical source for orchestration behaviour. Deployment-specific environment facts (hardware, paths, MCP tool surface) live in beagle_environment.toml and are delivered one-shot at session start via .goosehints.
@@ -53,7 +122,8 @@ Universal behavioural directives for the Goose Beagle Orchestrator. Auto-injecte
 - When delegating a task with hard constraints (file paths, forbidden actions, verification gates), pass them via the steering_prompt argument to run_beagle_workflow. Steering propagates to all sub-agents as a high-priority directive.
 - Codebase research: use beagle-rag MCP tools (rag_search, graph_callees, graph_callers, graph_imports, graph_class_hierarchy, graph_dependents); do not grep recursively if RAG can answer
 - Tool name compliance: only call tools that goose has registered. Do not invent tool names from training-corpus memory (no `read`, no `summarize`, no `Read`, no `WebFetch`). To read a file: shell + cat or sed -n. To get a code overview: code_context with query_type=overview. To compress a question into a summary: query_fold. IMPORTANT: The `read` tool in the beagleutilityserver is an alias for `beagle_session_bootstrap` — it is NOT a file reader. Hallucinating a generic `read` tool and calling it to read files will silently return session state instead of file content, corrupting the workflow. For file reading, you MUST use `shell` + `cat` or `sed`.
-- Verification gate: after substantive code changes, prefer running the Beagle develop workflow's verification phase (ruff + mypy + pytest) over self-reporting; the structured verdict gates success_criteria
+- Verification gate: after substantive code changes, run the test suite via the tup MCP server (run_tests) — goose MUST be connected to TestUpper (tup) over MCP and MUST use it to run ALL tests. Never a bare full pytest run. The structured verdict gates success_criteria
+- *Up invocation policy: consume ALL *Up-suite functionality through the routeUpper MCP router — rup_tool_list to discover surfaces, rup_call(tool="qup"|"tup"|"bup"|"qup"|"sup"|..., tool_name=<command>) to execute (e.g. qup run_gate / lint_for_llm for QA checks; bup run for builds). The console binaries (qup, tup, bup, …) remain for humans, shell scripts, and gate hooks ONLY — goose MUST NOT shell out to them when an MCP equivalent is rostered.
 - Fix features, never degrade: a broken feature is a bug to fix at root, not to disable / fallback-as-default / remove. Defensive fallbacks are acceptable AS BACKSTOPS only after the primary path is fixed
 
 ### Forbidden
@@ -92,6 +162,7 @@ Universal behavioural directives for the Goose Beagle Orchestrator. Auto-injecte
 - Never kill processes with kill(1), pkill(1), or killall(1) without FIRST validating every PID via ps -p <pid> -o comm= to confirm it is NOT an MCP server (mcp_rag_server, mcp_utility_server, mcp_openclaw_server), the goose binary itself, or the shell process that goose is using. Goose runs MCP servers as child processes under the same session — a blind kill -9 on stuck PTS processes or 'orphaned Python processes' will nuke the MCP tool surface and terminate the goose session. This is the #1 self-destruction pattern. To recover stuck MCP servers: restart goose, not kill.
 - Never use pkill -f python or killall python3 — both will match MCP server processes running under the deployed venv. If a Python process is genuinely hung, identify it by PID via ps with full command-line inspection, and only kill it if its command line does NOT contain mcp_rag_server, mcp_utility_server, or mcp_openclaw_server.
 - Never treat a test timeout, collection error, or CI failure as benign or 'expected' — every failure is a defect requiring root-cause investigation. A timeout means deadlock, infinite wait, or resource exhaustion. A 301/401 response is a contract violation. A skipped test that should run is a regression. Investigate all failures to root cause before moving on. The golden-master test suite must pass cleanly (0 failures, 0 errors) before any code change is complete.
+- Never run a bare full pytest run to verify code changes — goose MUST be connected to TestUpper (tup) over MCP and MUST use it (run_tests) to run ALL tests. tup formats failures for LLM debugging and is the canonical test runner. A bare `pytest` invocation bypasses tup's LLM-friendly output and is a doctrine violation.
 - Never let an API endpoint redirect (301/302) go silently unhandled — httpx.AsyncClient does NOT follow redirects by default. If an API returns 301, update the base URL to the canonical host. Test with live HTTP calls, not mocks.
 - Never make an HTTP call without an explicit timeout — every httpx request (get, post, put, delete) MUST carry timeout=seconds. A missing timeout means the call can block indefinitely, which causes the agent to hang silently with no tool calls, no error, and no recovery. The default timeout for all bridge HTTP calls is 30s. Timeouts above 60s require a documented justification and a circuit breaker wrapping the call. An agent that stops producing tool calls mid-task with no error is a hang — investigate the most recent HTTP call for a missing timeout first.
 - Never hardcode behavioural, routing, or delegation directives in renderer/Python code (e.g. style_guides/render.py). Behaviour is owned exclusively by the style-guide TOML (the SSOT); code may only RENDER doctrine from TOML, never assert its own mandate. A hardcoded directive that drifts from the TOML produces a self-contradictory Top-of-Mind, which measurably degrades instruction-following. Enforced by tests/test_tom_doctrine_coherence.py.
@@ -114,7 +185,7 @@ Universal behavioural directives for the Goose Beagle Orchestrator. Auto-injecte
 - **precedence**: The controller's plan + your steering_prompt are the brief. The user's original prompt is NOT your execution contract — the controller has already interpreted it. Carry out the assigned task step by step, verifying each gate as the controller specified.
 - **execution_loop_executor**: ACT, DON'T NARRATE: every turn that states an intended action MUST contain the tool call performing it in the SAME turn. RUN TO COMPLETION: never pause to ask 'done?'/'continue?'; drive the todo to zero. INFO-MSG IS TELEMETRY: a mid-task info-msg / context-usage block below the pre-compact threshold is silent telemetry — never reply to it in prose, never pause to decide about folding; continue immediately with the next tool call.
 - **resilience**: If a tool call fails, retry once with corrected arguments; if it fails again, surface the error in your final_answer and continue with what you can. Do not loop on the same failure. If context is compacted, call beagle_session_bootstrap and resume — never apologise, never ask, never stop.
-- **verification**: After substantive code changes, prefer running ruff + the relevant test file via pytest over self-reporting. If the controller's steering_prompt named a verification gate, honour it. Emit <final_answer> with: (1) what you did, (2) what you verified, (3) any blockers or follow-ups.
+- **verification**: After substantive code changes, run the test suite via the tup MCP server (run_tests) — goose MUST be connected to TestUpper (tup) over MCP and MUST use it to run ALL tests. Never a bare full pytest run. If the controller's steering_prompt named a verification gate, honour it. Emit <final_answer> with: (1) what you did, (2) what you verified, (3) any blockers or follow-ups.
 
 ## Security Baseline
 

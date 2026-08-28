@@ -111,7 +111,7 @@ class A2AClientBridge:
         try:
             from pathlib import Path
 
-            import nacl.signing  # type: ignore[import-untyped]
+            import nacl.signing
 
             key_path = Path(self.config.key_path).expanduser() / "signing.key"
             if key_path.exists():
@@ -133,7 +133,7 @@ class A2AClientBridge:
             ) from exc
         # No key file found — fail-closed to prevent unsigned requests
         try:
-            import nacl.signing  # type: ignore[import-untyped]
+            import nacl.signing
         except ImportError:
             raise RuntimeError(
                 "PyNaCl is REQUIRED for A2A signing (Ed25519). Install with: pip install pynacl"
@@ -158,11 +158,11 @@ class A2AClientBridge:
                 "Generate a key pair with: python -m beagle.bridges.a2a_client --gen-keys"
             )
         try:
-            import nacl.signing  # type: ignore[import-untyped]
+            import nacl.signing
 
             if isinstance(key, nacl.signing.SigningKey):
                 signed = key.sign(payload)
-                return signed.signature.hex()  # type: ignore[no-any-return]
+                return signed.signature.hex()
         except Exception as exc:  # broad catch intentional
             raise RuntimeError(f"Ed25519 signing failed: {exc}") from exc
         raise RuntimeError("Ed25519 signing failed — unexpected key type")
@@ -208,7 +208,7 @@ class A2AClientBridge:
                 for old_key, _ in by_ts[:drop_n]:
                     self._discovery_cache.pop(old_key, None)
             logger.info(f"[A2A Client] Discovered {len(cards)} agents at {agent_url}")
-            return cards  # type: ignore[no-any-return]
+            return cards
 
         except Exception as exc:  # ruff: ignore[BLE001]  # broad catch intentional
             logger.error(f"[A2A Client] Discovery failed for {agent_url}: {exc}")
@@ -262,7 +262,7 @@ class A2AClientBridge:
         signing_key = self._get_signing_key()
         try:
             if signing_key is not None:
-                import nacl.signing  # type: ignore[import-untyped]
+                import nacl.signing
 
                 if isinstance(signing_key, nacl.signing.SigningKey):
                     body["peer_public_key"] = signing_key.verify_key.encode().hex()
@@ -288,7 +288,7 @@ class A2AClientBridge:
                 logger.info(
                     f"[A2A Client] Remote agent '{agent_name}' completed: {result.get('status')}"
                 )
-                return result  # type: ignore[no-any-return]
+                return result
 
             except httpx.TimeoutException:
                 logger.error(f"[A2A Client] Remote agent '{agent_name}' timed out after {timeout}s")

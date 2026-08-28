@@ -26,7 +26,7 @@ from pathlib import Path
 from typing import Any
 
 try:  # proprietary transport — provided by the separately licensed beagle-orpheus wheel
-    from beagle_orpheus.compat import OrpheusClient  # type: ignore[import-not-found]
+    from beagle_orpheus.compat import OrpheusClient
 except ImportError:
     from beagle.infrastructure._orpheus_optional import OrpheusClient
 from beagle.metaprompts.task_schema import ModelConfig, TaskSpec
@@ -70,7 +70,7 @@ class Metaprompt:
     @classmethod
     def from_yaml(cls, yaml_path: Path, variables: dict[str, Any] | None = None) -> Metaprompt:
         """Load and compile a YAML metaprompt."""
-        import yaml  # type: ignore[import-untyped]
+        import yaml
 
         with open(yaml_path, encoding="utf-8") as f:
             data = yaml.safe_load(f)
@@ -210,7 +210,7 @@ class AgentHarness:
         try:
             # Verify Orpheus connectivity if available
             if self.orchestra_client:
-                connected = await self.orchestra_client.connect()  # type: ignore[misc]
+                connected = await self.orchestra_client.connect()
                 if not connected:
                     logger.warning(
                         f"[Harness:{self.agent_id}] Orpheus not available, will queue locally"
@@ -292,7 +292,7 @@ class AgentHarness:
 
         # Request pause via controller
         if self._task_id and self.orchestra_client:
-            await self.orchestra_client.call("pause_task", [self._task_id])  # type: ignore[misc]
+            await self.orchestra_client.call("pause_task", [self._task_id])
 
         self.state = HarnessState.PAUSED
         return True
@@ -308,7 +308,7 @@ class AgentHarness:
 
         # Resume via controller
         if self._task_id and self.orchestra_client:
-            await self.orchestra_client.call("resume_task", [self._task_id])  # type: ignore[misc]
+            await self.orchestra_client.call("resume_task", [self._task_id])
 
         self.state = HarnessState.RUNNING
         return True
@@ -320,7 +320,7 @@ class AgentHarness:
 
         # Cancel via controller
         if self._task_id and self.orchestra_client:
-            await self.orchestra_client.call("cancel_task", [self._task_id], {"reason": reason})  # type: ignore[arg-type,misc]
+            await self.orchestra_client.call("cancel_task", [self._task_id], {"reason": reason})
 
         self.state = HarnessState.CANCELLED
         logger.info(f"[Harness:{self.agent_id}] Cancelled: {reason}")
@@ -409,7 +409,7 @@ class AgentHarness:
         while True:
             status = controller.get_task_status(task_id)
             if status.get("status") in ("completed", "failed", "cancelled"):
-                return status  # type: ignore[no-any-return]
+                return status
             await asyncio.sleep(2)
 
     # --- Callbacks ---
