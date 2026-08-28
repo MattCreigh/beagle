@@ -52,8 +52,38 @@ class ToolPermissionContext:
 # Default permissive context
 DEFAULT_PERMISSION_CONTEXT = ToolPermissionContext()
 
-# Read-only restricted context (blocks tools that modify system)
-READ_ONLY_PERMISSION_CONTEXT = ToolPermissionContext.from_iterables(
-    deny_names={"write_file", "replace", "patch", "rm", "mkdir", "chmod", "chown"},
-    deny_prefixes=("git_", "npm_", "pip_", "docker_"),
+# Read-only restricted context. D-15 (release-readiness audit 2026-08-28):
+# the previous denylist version (blocking a handful of write tools + git/npm/
+# pip/docker prefixes) was FAIL-OPEN — any tool not on the deny list passed
+# through, including future mutating tools added to the surface. Rebuilt on
+# `allow_names` so it FAILS CLOSED: only the explicitly allowed read-only
+# tools pass. An allowlist is strict by construction (security_baseline.toml:
+# "allowlists (frozenset) for identifiers").
+_READ_ONLY_ALLOW = frozenset(
+    {
+        "read",
+        "grep",
+        "list",
+        "tree",
+        "search",
+        "query",
+        "get",
+        "show",
+        "inspect",
+        "describe",
+        "cat",
+        "head",
+        "tail",
+        "view",
+        "status",
+        "fetch",
+        "resolve",
+        "validate",
+        "lint",
+        "check",
+        "diff",
+        "log",
+        "help",
+    }
 )
+READ_ONLY_PERMISSION_CONTEXT = ToolPermissionContext(allow_names=set(_READ_ONLY_ALLOW))

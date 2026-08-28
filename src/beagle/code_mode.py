@@ -100,7 +100,7 @@ class ToolCall:
     call_id: str = ""
     depends_on: list[str] = field(default_factory=list)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not self.call_id:
             import uuid
 
@@ -142,6 +142,10 @@ class CodeModeExecutor:
         self._tool_registry: dict[str, Callable] = {}
         self._execution_history: list[ChainResult] = []
         self._semaphore = asyncio.Semaphore(max_concurrent)
+        # D-02/ASYNC110: one event per call id, set when its ChainResult is
+        # recorded. Dependency waits block on the event (no polling busy-wait)
+        # and the caller bounds the wait with self.timeout_seconds.
+        self._completion_events: dict[str, asyncio.Event] = {}
 
     def register_tool(self, tool: ToolDefinition, handler: Callable) -> None:
         """Register a tool with its handler function."""
@@ -177,61 +181,192 @@ class CodeModeExecutor:
             List of ChainResult in execution order
 
         """
+        results: dict[str, ChainResult] = {}
         if len(calls) > self.max_chain_length:
             logger.warning(
                 f"Chain length {len(calls)} exceeds max {self.max_chain_length}, truncating"
             )
+            # D-02: reject the dependents of any dropped call. A dependent
+            # left in the chain after its dependency is dropped would wait
+            # forever on a result that can never be produced.
+            dropped_ids = {c.call_id for c in calls[self.max_chain_length :]}
             calls = calls[: self.max_chain_length]
+            calls = [
+                c
+                for c in calls
+                if not (set(c.depends_on) & dropped_ids) or self._fail_orphan(c, dropped_ids, results)
+            ]
 
         context = context or {}
-        results: dict[str, ChainResult] = {}
-        execution_order = self._resolve_dependencies(calls)
+        execution_order, unsatisfiable = self._resolve_dependencies(calls)
+
+        # D-02: unsatisfiable calls (cyclic or missing dependency) are
+        # recorded as failed ChainResults instead of being executed with a
+        # dependency that can never be satisfied — the old behaviour fed
+        # them to an unbounded busy-wait.
+        for call in unsatisfiable:
+            failed = ChainResult(
+                call_id=call.call_id,
+                tool_name=call.tool_name,
+                success=False,
+                result=None,
+                error=(
+                    "Unsatisfiable dependencies "
+                    f"{sorted(set(call.depends_on) - self._satisfiable_ids(call, execution_order))}: "
+                    "cyclic or missing dependency in chain"
+                ),
+            )
+            self._record_result(call.call_id, failed, results)
 
         for call in execution_order:
-            # Wait for dependencies
+            # Wait for dependencies (bounded — see _wait_for_dependencies)
             if call.depends_on:
-                await self._wait_for_dependencies(call.depends_on, results)
+                try:
+                    await asyncio.wait_for(
+                        self._wait_for_dependencies(call.depends_on, results),
+                        timeout=self.timeout_seconds,
+                    )
+                except TimeoutError:
+                    failed = ChainResult(
+                        call_id=call.call_id,
+                        tool_name=call.tool_name,
+                        success=False,
+                        result=None,
+                        error=(
+                            f"Dependency wait exceeded {self.timeout_seconds}s; "
+                            "dependencies never completed"
+                        ),
+                    )
+                    self._record_result(call.call_id, failed, results)
+                    continue
 
             # Execute with semaphore
             async with self._semaphore:
                 result = await self._execute_single(call, context, results)
-                results[call.call_id] = result
-                self._execution_history.append(result)
+                self._record_result(call.call_id, result, results)
 
         return [results[c.call_id] for c in calls]
 
-    def _resolve_dependencies(self, calls: list[ToolCall]) -> list[ToolCall]:
-        """Resolve execution order based on dependencies."""
-        # Simple topological sort
+    def _record_result(
+        self,
+        call_id: str,
+        result: ChainResult,
+        results: dict[str, ChainResult],
+    ) -> None:
+        """Store a ChainResult and signal its completion event.
+
+        Dependency waits block on the per-id event (no polling); this is the
+        single place results enter the dict so the event always fires.
+        """
+        results[call_id] = result
+        self._execution_history.append(result)
+        self._completion_events.setdefault(call_id, asyncio.Event()).set()
+    def _fail_orphan(
+        self,
+        call: ToolCall,
+        dropped_ids: set[str],
+        results: dict[str, ChainResult],
+    ) -> bool:
+        """Record a failed ChainResult for a call whose dependency was truncated away.
+
+        Returns True (the call is removed from the execution set); the failure
+        record is its receipt.
+
+        """
+        missing = sorted(set(call.depends_on) & dropped_ids)
+        failed = ChainResult(
+            call_id=call.call_id,
+            tool_name=call.tool_name,
+            success=False,
+            result=None,
+            error=f"Depends on dropped call(s) after max_chain_length truncation: {missing}",
+        )
+        self._record_result(call.call_id, failed, results)
+        return True
+
+    @staticmethod
+    def _satisfiable_ids(call: ToolCall, execution_order: list[ToolCall]) -> set[str]:
+        """Dependency ids of ``call`` that the resolved order can actually satisfy."""
+        order_ids = [c.call_id for c in execution_order]
+        satisfiable: set[str] = set()
+        for dep in call.depends_on:
+            if dep in order_ids:
+                # Only deps scheduled EARLIER can be satisfied — a dep that
+                # runs later in the order is a cycle by construction.
+                if order_ids.index(dep) < order_ids.index(call.call_id):
+                    satisfiable.add(dep)
+        return satisfiable
+
+    def _resolve_dependencies(
+        self, calls: list[ToolCall]
+    ) -> tuple[list[ToolCall], list[ToolCall]]:
+        """Resolve execution order based on dependencies.
+
+        Returns:
+            Tuple of (executable calls in topological order, unsatisfiable
+            calls). A call is unsatisfiable when its dependency graph is
+            cyclic or names a dependency id that does not exist in the
+            chain. Unsatisfiable calls are never executed.
+
+        """
         resolved: list[ToolCall] = []
+        unsatisfiable: list[ToolCall] = []
         remaining = list(calls)
         satisfied: set[str] = set()
+        known_ids = {c.call_id for c in calls}
 
         while remaining:
             made_progress = False
             for call in remaining[:]:
-                if all(dep in satisfied for dep in call.depends_on):
-                    resolved.append(call)
-                    remaining.remove(call)
-                    satisfied.add(call.call_id)
-                    made_progress = True
+                deps = set(call.depends_on)
+                # A dependency unknown to the chain is unsatisfiable by
+                # construction (D-02: missing dep_id trigger).
+                if not (deps <= satisfied and deps <= known_ids):
+                    continue
+                resolved.append(call)
+                remaining.remove(call)
+                satisfied.add(call.call_id)
+                made_progress = True
 
             if not made_progress:
-                # Circular dependency or missing - just append remaining
-                resolved.extend(remaining)
+                # D-02: whatever remains is cyclic or blocked on a missing
+                # id — mark it failed instead of appending it to the
+                # execution order (the old behaviour hung the executor).
+                unsatisfiable.extend(remaining)
                 break
 
-        return resolved
+        return resolved, unsatisfiable
 
     async def _wait_for_dependencies(
         self,
         depends_on: list[str],
         results: dict[str, ChainResult],
     ) -> None:
-        """Wait for dependent calls to complete."""
+        """Wait for dependent calls to complete.
+
+        Uses an ``asyncio.Event`` per dependency id, set when a result for
+        that id is stored in ``results`` by :meth:`execute_chain`. The caller
+        bounds the whole wait with ``asyncio.wait_for`` (``self.timeout_seconds``),
+        so a dependency that never completes fails the wait instead of hanging
+        the executor (D-02).
+
+        Raises:
+            TimeoutError: Propagated when the caller's ``asyncio.wait_for``
+                budget expires because a dependency never completed.
+
+        """
         for dep_id in depends_on:
-            while dep_id not in results:
+            # An unknown dep_id is a caller error in the wait path (the
+            # resolution step already failed it up); a defensive event avoids
+            # an unbounded wait in every case.
+            event = self._completion_events.get(dep_id)
+            while event is None:
+                if dep_id in results:
+                    break
                 await asyncio.sleep(0.01)
+                event = self._completion_events.get(dep_id)
+            if event is not None and dep_id not in results:
+                await event.wait()
 
     async def _execute_single(
         self,
