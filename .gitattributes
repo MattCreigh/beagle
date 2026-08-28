@@ -1,0 +1,4 @@
+# Vendored third-party trees: mark as vendored so GitHub language stats
+# ignore them and diffs do not show them by default.
+src/beagle/frontends/pi/vendor/** linguist-vendored
+src/beagle/frontends/pi/vendor/** -diff
