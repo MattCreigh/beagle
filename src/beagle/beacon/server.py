@@ -52,12 +52,13 @@ from typing import Any
 # orpheus / beacon_lib are the optional proprietary ring transport. Without
 # them the server still serves the store over its socket (RPC path); only the
 # ring fast-path drain is disabled.
+decode_signal: Callable[[bytes], tuple[str, str, dict[str, Any]]] | None
 try:
     import orpheus
     from beacon_lib.codec import decode_signal
 except ImportError:  # pragma: no cover - exercised only when the wheel is absent
     orpheus = None
-    decode_signal: "Callable[[bytes], tuple[str, str, dict[str, Any]]] | None" = None
+    decode_signal = None
 
 from beagle.beacon import contact
 from beagle.beacon.archive import elect_flush_owner, flush_archive
