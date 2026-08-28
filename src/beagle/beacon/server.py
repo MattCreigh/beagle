@@ -52,7 +52,6 @@ from typing import Any
 # orpheus / beacon_lib are the optional proprietary ring transport. Without
 # them the server still serves the store over its socket (RPC path); only the
 # ring fast-path drain is disabled.
-decode_signal: Callable[[bytes], tuple[str, str, dict[str, Any]]] | None
 try:
     import orpheus
     from beacon_lib.codec import decode_signal

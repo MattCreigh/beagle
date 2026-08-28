@@ -35,7 +35,7 @@ from typing import Any
 try:
     import orpheus
 except ImportError:  # pragma: no cover - exercised only when the wheel is absent
-    orpheus = None  # type: ignore[assignment]
+    orpheus = None
 
 from beagle.beacon.backend import StoreClient
 from beagle.beacon.keys import BeaconPaths

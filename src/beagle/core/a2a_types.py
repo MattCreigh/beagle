@@ -288,6 +288,26 @@ class Task:
         data["status"] = self.status.value if isinstance(self.status, TaskStatus) else self.status
         return data
 
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> Task:
+        """Build a Task from a dict produced by ``to_dict`` (or a server payload)."""
+        status = data.get("status", TaskStatus.PENDING.value)
+        try:
+            status = TaskStatus(status) if isinstance(status, str) else status
+        except ValueError:
+            status = TaskStatus.PENDING
+        return cls(
+            id=data.get("id", str(uuid.uuid4())),
+            status=status,
+            agent_id=data.get("agent_id") or data.get("agentId"),
+            input_data=data.get("input_data") or data.get("input"),
+            output_data=data.get("output_data") or data.get("output"),
+            error=data.get("error"),
+            created_at=data.get("created_at") or data.get("createdAt", ""),
+            updated_at=data.get("updated_at") or data.get("updatedAt", ""),
+            metadata=data.get("metadata"),
+        )
+
 
 @dataclass
 class A2AConnection:

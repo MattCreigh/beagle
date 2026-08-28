@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import json
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
@@ -35,8 +36,8 @@ try:
     import orpheus
     from beacon_lib.codec import encode_signal
 except ImportError:  # pragma: no cover - exercised only when the wheel is absent
-    orpheus = None  # type: ignore[assignment]
-    encode_signal = None  # type: ignore[assignment]
+    orpheus = None
+    encode_signal = None
 
 from beagle.beacon import contact
 from beagle.beacon.archive import elect_flush_owner, flush_archive
@@ -260,7 +261,7 @@ class CoordSession:
 
     # -- ring path, fire-and-forget, falls back to the socket on failure --
 
-    def _ring_or_socket(self, op: str, args: dict[str, Any], socket_fallback) -> None:
+    def _ring_or_socket(self, op: str, args: dict[str, Any], socket_fallback: Callable[[], None]) -> None:
         if not self._ring.write(op, args):
             socket_fallback()
 

@@ -135,7 +135,7 @@ class BeagleToA2ABridge:
         try:
             from pathlib import Path
 
-            import nacl.signing  # type: ignore[import-untyped]
+            import nacl.signing
 
             key_path = Path(self.config.key_path).expanduser()
             key_path.mkdir(parents=True, exist_ok=True)
@@ -169,7 +169,7 @@ class BeagleToA2ABridge:
         Any unexpected failure here is a hard error, not a downgrade path.
         """
         try:
-            import nacl.signing  # type: ignore[import-untyped]
+            import nacl.signing
         except ImportError as exc:
             raise RuntimeError("PyNaCl is REQUIRED for A2A signing") from exc
 
@@ -187,7 +187,7 @@ class BeagleToA2ABridge:
             )
 
         signed = key.sign(payload)
-        return signed.signature.hex()  # type: ignore[no-any-return]
+        return signed.signature.hex()
 
     def _verify_signature(
         self, payload: bytes, signature: str, peer_key: bytes | None = None
@@ -204,7 +204,7 @@ class BeagleToA2ABridge:
             return True
 
         try:
-            import nacl.signing  # type: ignore[import-untyped]
+            import nacl.signing
         except ImportError:
             # SECURITY: Fail-closed — no HMAC fallback.
             logger.error(
@@ -323,12 +323,12 @@ class BeagleToA2ABridge:
             return
 
         try:
-            import uvicorn  # type: ignore[import-untyped]
-            from fastapi import FastAPI, Request  # type: ignore[import-untyped]
-            from fastapi.responses import JSONResponse  # type: ignore[import-untyped]
+            import uvicorn
+            from fastapi import FastAPI, Request
+            from fastapi.responses import JSONResponse
 
             app = FastAPI(title="Beagle A2A Bridge", version="1.0.0")
-            self._app = app  # type: ignore[assignment]
+            self._app = app
 
             # ── Rate limiting middleware ─────────────────────────────────────
             # Simple per-IP rate limit: max N requests per window.

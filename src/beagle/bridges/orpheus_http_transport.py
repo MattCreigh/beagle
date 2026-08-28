@@ -16,6 +16,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+from collections.abc import AsyncIterator
 from typing import TYPE_CHECKING, Any
 
 from ..events import BeagleEvent, get_event_bus
@@ -47,8 +48,8 @@ class OrpheusHTTPTransport:
 
     def __init__(self) -> None:
         self.config = get_cloud_config()
-        self._app = None
-        self._server = None
+        self._app: Any = None
+        self._server: Any = None
         self._subscribers: list[asyncio.Queue] = []
         self._bus = get_event_bus()
         # Reusable HTTP client (Phase 6 edge-inference optimisation).
@@ -89,23 +90,23 @@ class OrpheusHTTPTransport:
             return
 
         try:
-            import uvicorn  # type: ignore[import-untyped]
-            from fastapi import FastAPI, Request  # type: ignore[import-untyped]
-            from fastapi.responses import StreamingResponse  # type: ignore[import-untyped]
+            import uvicorn
+            from fastapi import FastAPI, Request
+            from fastapi.responses import StreamingResponse
 
             app = FastAPI(title="Orpheus HTTP Transport", version="1.0.0")
-            self._app = app  # type: ignore[assignment]
+            self._app = app
 
-            @app.post("/orpheus/publish")
+            @app.post("/orpheus/publish")  # type: ignore[untyped-decorator]
             async def publish_event(request: Request) -> dict:
                 """Publish an event to the Orpheus bus via HTTP POST."""
                 content_length = request.headers.get("content-length")
                 if content_length and int(content_length) > 10_000_000:
-                    from fastapi.responses import JSONResponse  # type: ignore[import-untyped]
+                    from fastapi.responses import JSONResponse
 
                     # FastAPI routes may return a Response object (HTTP 413)
                     # in addition to the declared dict happy-path payload.
-                    err_response: dict[str, Any] = JSONResponse(  # type: ignore[assignment]
+                    err_response: dict[str, Any] = JSONResponse(
                         content={"error": "Payload too large (max 10MB)"},
                         status_code=413,
                     )
@@ -125,13 +126,13 @@ class OrpheusHTTPTransport:
 
                 return {"status": "ok", "event_type": event_type}
 
-            @app.get("/orpheus/events")
+            @app.get("/orpheus/events")  # type: ignore[untyped-decorator]
             async def event_stream() -> StreamingResponse:
                 """SSE stream of Orpheus events."""
                 queue: asyncio.Queue = asyncio.Queue()
                 self._subscribers.append(queue)
 
-                async def generate():
+                async def generate() -> AsyncIterator[str]:
                     try:
                         while True:
                             try:
@@ -159,7 +160,7 @@ class OrpheusHTTPTransport:
                     },
                 )
 
-            @app.get("/orpheus/health")
+            @app.get("/orpheus/health")  # type: ignore[untyped-decorator]
             async def health() -> dict:
                 return {
                     "status": "ok",
@@ -172,8 +173,8 @@ class OrpheusHTTPTransport:
 
             logger.info(f"Orpheus HTTP transport starting on port {port}")
             config = uvicorn.Config(app, host="127.0.0.1", port=port, log_level="info")
-            self._server = uvicorn.Server(config)  # type: ignore[assignment]
-            await self._server.serve()  # type: ignore[attr-defined]
+            self._server = uvicorn.Server(config)
+            await self._server.serve()
 
         except ImportError:
             logger.warning("FastAPI/uvicorn not installed — Orpheus HTTP transport not started")

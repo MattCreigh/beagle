@@ -23,15 +23,15 @@ from typing import Any
 
 # OpenTelemetry integration (Phase 5)
 try:
-    from opentelemetry import trace  # type: ignore[import-untyped,attr-defined]
-    from opentelemetry.trace.status import StatusCode  # type: ignore[import-untyped,attr-defined]
+    from opentelemetry import trace
+    from opentelemetry.trace.status import StatusCode
 
     _tracer = trace.get_tracer("beagle.a2a", "13.4.0")
     _OTEL_AVAILABLE = True
 except ImportError:
     _OTEL_AVAILABLE = False
 
-    class _StubTracer:  # type: ignore[no-redef]
+    class _StubTracer:
         """No-op tracer when OpenTelemetry is not available."""
 
         def start_as_current_span(self, name: str, **_kwargs: Any) -> Any:
@@ -51,7 +51,7 @@ except ImportError:
 # send_task/get_task/subscribe_task. This module-level import prevents F821
 # while keeping the import guarded.
 try:
-    import aiohttp  # type: ignore[import-untyped]
+    import aiohttp
 except ImportError:
     aiohttp = None  # type: ignore[assignment]
 
@@ -295,7 +295,7 @@ class A2AAgent:
             ) as resp,
         ):
             response_data = await resp.json()
-            return response_data  # type: ignore[no-any-return]
+            return response_data
 
 
 class A2AClient:
@@ -306,7 +306,7 @@ class A2AClient:
         self.agent_card = agent_card
         self._session: Any = None  # aiohttp.ClientSession | None
 
-    async def _ensure_session(self):
+    async def _ensure_session(self) -> None:
         """Ensure aiohttp session exists."""
         if self._session is None:
             import aiohttp
@@ -333,7 +333,7 @@ class A2AClient:
         except ValueError:
             return 30.0
 
-    async def close(self):
+    async def close(self) -> None:
         """Close the client session."""
         if self._session:
             await self._session.close()
@@ -342,7 +342,7 @@ class A2AClient:
     async def get_agent_card(self) -> AgentCard:
         """Fetch agent card from endpoint."""
         await self._ensure_session()
-        async with self._session.get(f"{self.endpoint}/agent.json") as resp:  # type: ignore[attr-defined]
+        async with self._session.get(f"{self.endpoint}/agent.json") as resp:
             data = await resp.json()
             return AgentCard.from_dict(data)
 
@@ -371,7 +371,7 @@ class A2AClient:
 
             message = A2AMessage(method="tasks/send", params=params)
 
-            async with self._session.post(  # type: ignore[attr-defined]
+            async with self._session.post(
                 f"{self.endpoint}/rpc",
                 json=message.to_dict(),
                 timeout=aiohttp.ClientTimeout(total=request_timeout),
@@ -384,7 +384,7 @@ class A2AClient:
             raise RuntimeError(f"A2A error: {response.error}")
 
         task_data = response.result.get("task", {})  # type: ignore[union-attr]
-        return Task.from_dict(task_data)  # type: ignore[attr-defined,no-any-return]
+        return Task.from_dict(task_data)
 
     async def get_task(
         self,
@@ -400,7 +400,7 @@ class A2AClient:
             params={"taskId": task_id},
         )
 
-        async with self._session.post(  # type: ignore[attr-defined]
+        async with self._session.post(
             f"{self.endpoint}/rpc",
             json=message.to_dict(),
             timeout=aiohttp.ClientTimeout(total=request_timeout),
@@ -412,14 +412,14 @@ class A2AClient:
                 raise RuntimeError(f"A2A error: {response.error}")
 
             task_data = response.result.get("task", {})  # type: ignore[union-attr]
-            return Task.from_dict(task_data)  # type: ignore[attr-defined,no-any-return]
+            return Task.from_dict(task_data)
 
     async def subscribe_task(self, task_id: str) -> Any:
         """Subscribe to task updates via SSE."""
         await self._ensure_session()
         # D13: apply timeout to the long-lived SSE subscription as well.
         request_timeout = A2AClient._resolve_timeout(None)
-        async with self._session.get(  # type: ignore[attr-defined]
+        async with self._session.get(
             f"{self.endpoint}/tasks/{task_id}/subscribe",
             timeout=aiohttp.ClientTimeout(total=request_timeout),
         ) as resp:
@@ -576,7 +576,7 @@ class OIDCVerifier:
                 logger.warning("OIDC: Token expired")
                 return None
 
-            return claims  # type: ignore[no-any-return]
+            return claims
 
         except (ValueError, TypeError, UnicodeDecodeError) as e:
             # Malformed base64/JSON, a non-dict payload, or a bad encoding are
@@ -619,7 +619,7 @@ class OIDCVerifier:
                 issuer=self.issuer or None,
                 options={"verify_exp": True, "verify_aud": True},
             )
-            return claims  # type: ignore[no-any-return]
+            return claims
 
         except jwt.ExpiredSignatureError:
             logger.warning("OIDC: JWT token expired")
@@ -656,7 +656,7 @@ class OIDCVerifier:
                 return None
 
         try:
-            resp = httpx.get(self.jwks_url, timeout=5)  # type: ignore[attr-defined]
+            resp = httpx.get(self.jwks_url, timeout=5)
             resp.raise_for_status()  # surface HTTP errors as httpx/requests exceptions
             jwks = resp.json() if hasattr(resp, "json") else {}
             for key in jwks.get("keys", []):
@@ -832,7 +832,7 @@ class A2AGateway:
         agent_card: AgentCard,
         auth_token: str | None = None,
         oidc_token: str | None = None,
-    ):
+    ) -> None:
         """Register an agent with the gateway.
 
         Requires HMAC authentication via auth_token, or OIDC bearer token.
@@ -863,7 +863,7 @@ class A2AGateway:
             self.agents[agent_card.name] = agent_card
         logger.info(f"Registered agent: {agent_card.name}")
 
-    async def unregister_agent(self, agent_name: str):
+    async def unregister_agent(self, agent_name: str) -> None:
         """Unregister an agent."""
         async with self._lock:
             self.agents.pop(agent_name, None)
