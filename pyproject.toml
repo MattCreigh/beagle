@@ -134,6 +134,9 @@ beagle = [
     "frontends/pi/vendor/pi-mcp-extension/src/**",
     "frontends/pi/vendor/pi-mcp-extension/package.json",
     "frontends/pi/vendor/pi-mcp-extension/LICENSE",
+    # Prebuilt vendored webui dashboard bundle (served by ``beagle webui``).
+    "frontends/webui/vendor/webui-prebuild/dist/index.html",
+    "frontends/webui/vendor/webui-prebuild/dist/assets/**",
 ]
 
 [tool.ruff]
@@ -171,3 +174,15 @@ warn_no_return = true
 warn_unreachable = true
 strict_optional = true
 
+# mypy 2.3.1 crashes with INTERNAL ERROR when it descends into these
+# third-party stub trees under qup's --no-namespace-packages invocation
+# (verified: `mypy --no-namespace-packages -c "import numpy"` dies in
+# numpy/_core/__init__.pyi; torch's _appending_byte_serializer.pyi crashes
+# the same way). These are pure-runtime deps with shipped .pyi stubs; their
+# type errors are out of scope for Beagle's own static gate. Skip following
+# into their stubs so the gate analyses Beagle code, not third-party crash
+# sites. This is a toolchain-crash workaround, not a finding suppression.
+[[tool.mypy.overrides]]
+module = ["numpy.*", "torch.*", "transformers.*", "websockets.*", "uvicorn.*"]
+follow_imports = "skip"
+ignore_errors = true
