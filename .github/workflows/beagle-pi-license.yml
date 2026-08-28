@@ -1,0 +1,64 @@
+name: Beagle Vendored pi License Inventory
+
+# The vendored earendil-works/pi fork (src/beagle/frontends/pi/vendor/pi) pins
+# ~380 third-party npm packages. license-inventory.json is a committed manifest
+# of their SPDX licenses and the permissive option Beagle elects from every
+# "OR" expression. It is generated purely from package-lock.json, so this gate
+# needs no npm install and no network — it just fails if the committed manifest
+# has drifted from the lockfile, or if a dependency turns out to be
+# strong-copyleft-only.
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  license-inventory:
+    name: License inventory is current
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.13'
+
+      - name: Verify committed inventory matches the lockfile
+        run: |
+          python3 src/beagle/frontends/pi/tools/generate_license_inventory.py --check
+
+      - name: Upload license inventory as workflow artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: pi-license-inventory
+          path: src/beagle/frontends/pi/vendor/license-inventory.json
+          retention-days: 90
+
+  release-attach:
+    name: Attach license inventory to release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [license-inventory]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Upload license inventory to release
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
+        with:
+          files: src/beagle/frontends/pi/vendor/license-inventory.json
+          fail_on_unmatched_files: true

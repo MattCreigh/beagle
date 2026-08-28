@@ -3,5 +3,7 @@ fork:     https://github.com/MattCreigh/pi
 tag:      v0.84.3
 commit:   4e58f324fae8ebfa98a3d45181fb248072a2afac
 vendored: 2026-08-28
-licence:  MIT
-node_modules: 159 packages, 147M installed with `npm ci --omit=dev --ignore-scripts`
+license:  MIT (vendor/pi/LICENSE)
+deps:     381 npm packages pinned in vendor/pi/package-lock.json (141 prod / 224 dev / 16 optional)
+licenses: SPDX breakdown + OR-expression elections in vendor/license-inventory.json
+resync:   procedure in src/beagle/frontends/pi/README.md

@@ -1,4 +1,6 @@
-# Vendored third-party trees: mark as vendored so GitHub language stats
-# ignore them and diffs do not show them by default.
-src/beagle/frontends/pi/vendor/** linguist-vendored
-src/beagle/frontends/pi/vendor/** -diff
+# The vendored upstream tree (src/beagle/frontends/pi/vendor/pi) is a verbatim
+# third-party checkout: mark it vendored so GitHub language stats ignore it and
+# a ~1400-file drop does not expand in diffs. Beagle-side files that sit
+# alongside it (UPSTREAM.txt, license-inventory.json) are ours and diff normally.
+src/beagle/frontends/pi/vendor/pi/** linguist-vendored
+src/beagle/frontends/pi/vendor/pi/** -diff
