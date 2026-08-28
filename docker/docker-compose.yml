@@ -1,0 +1,56 @@
+# Beagle — standalone single-container deployment.
+# Build the image first:  make image-build   (needs dist/ wheel from make build)
+name: beagle
+
+services:
+  beagle:
+    image: ${BEAGLE_IMAGE:-beagle}:${BEAGLE_VERSION:-latest}
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8420:8420"   # A2A federation (loopback only)
+    volumes:
+      - beagle-rag:/app/data/rag
+      - beagle-state:/app/state
+      # Operator config/secrets are NEVER baked into the image. To seed the
+      # container from the host config root (~/.config/beagle), uncomment:
+      # - ${HOME}/.config/beagle:/home/beagle_user/.config/beagle:ro
+    # D-24 (release-readiness audit 2026-08-28): least-privilege hardening.
+    # Drop every Linux capability, forbid privilege escalation, mount the
+    # rootfs read-only (writes go to the named volumes + a /tmp tmpfs), and
+    # bound CPU/memory so a runaway agent cannot starve the host.
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,size=256m,noexec,nosuid,nodev
+    mem_limit: ${BEAGLE_MEM_LIMIT:-2g}
+    cpus: ${BEAGLE_CPUS:-2.0}
+    environment:
+      BEAGLE_EXECUTION_ENV: docker
+      # Explicitly unset DOCKER_HOST so the container never inherits the
+      # host's Orpheus-proxied docker socket path.
+      DOCKER_HOST: ""
+      BEAGLE_LOG_LEVEL: ${BEAGLE_LOG_LEVEL:-INFO}
+      BEAGLE_BUDGET_USD: ${BEAGLE_BUDGET_USD:-10.0}
+    healthcheck:
+      # D-16: point at the purpose-built health-check module, not `import
+      # beagle`. The old check passed even when every subsystem was down;
+      # the real module reports an actionable unhealthy state.
+      test: ["CMD", "python", "-m", "beagle.infrastructure.health_check"]
+      # D-16: --start-period absorbs model load so a slow cold start isn't
+      # falsely marked unhealthy and restarted in a crash loop.
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  beagle-rag:
+  beagle-state:

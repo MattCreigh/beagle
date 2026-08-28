@@ -1,0 +1,118 @@
+# ════════════════════════════════════════════════════════════════════
+# Beagle dev-stack FRAGMENT — full MCP mesh.
+#
+# Included by the stack's own compose file (see scripts/integrate_dev_stack.sh):
+#   include:
+#     - path: ./beagle.compose.yml
+#
+# Topology:
+#   ollama            embeddings (+ optional local LLM)      :11434 internal
+#   beagle            orchestrator / primary agentic plane    (A2A :8420 in-net)
+#   beagle-rag        Hybrid RAG MCP        → streamable-http :8421 internal
+#   openclaw          task queue / todos / metaevents MCP     :8791 internal
+#
+# ALL MCP surfaces are internal-network only. beagle-rag enforces
+# BEAGLE_MCP_TOKEN (fail-closed); openclaw is gated by network isolation
+# until the plugin ships native HTTP auth (see docker/MCP_WIRING.md).
+# ════════════════════════════════════════════════════════════════════
+
+services:
+  # ── Embeddings (+ optional local chat LLM) ───────────────────────────
+  ollama:
+    image: ollama/ollama:${OLLAMA_VERSION:-latest}
+    restart: unless-stopped
+    volumes:
+      - ollama-models:/root/.ollama
+    # GPU hosts: uncomment the deploy block below.
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices: [{ driver: nvidia, count: all, capabilities: [gpu] }]
+    healthcheck:
+      test: ["CMD", "ollama", "ls"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    # llama.cpp ALTERNATIVE (embeddings): beagle speaks Ollama's native
+    # /api/* protocol, so a drop-in swap is NOT just an image change —
+    # llama-server exposes OpenAI-style /v1/embeddings instead. See
+    # docker/MCP_WIRING.md § "Embedding backend swap" before attempting.
+
+  # ── Beagle orchestrator (primary agentic inference plane) ───────────
+  beagle:
+    image: ${BEAGLE_IMAGE:-beagle}:${BEAGLE_VERSION:-latest}
+    restart: unless-stopped
+    environment:
+      BEAGLE_EXECUTION_ENV: docker
+      DOCKER_HOST: ""
+      # Inference: beagle/goose resolves models through its provider
+      # registry; point it at the in-stack Ollama.
+      GOOSE_PROVIDER: ${GOOSE_PROVIDER:-ollama}
+      GOOSE_MODEL: ${GOOSE_MODEL:-qwen3}
+      OLLAMA_BASE_URL: http://ollama:11434
+      OLLAMA_EMBED_MODEL: ${OLLAMA_EMBED_MODEL:-nomic-embed-code}
+      BEAGLE_LOG_LEVEL: ${BEAGLE_LOG_LEVEL:-INFO}
+      BEAGLE_BUDGET_USD: ${BEAGLE_BUDGET_USD:-10.0}
+    depends_on:
+      ollama:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import beagle; print('ok')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    logging: { driver: json-file, options: { max-size: "10m", max-file: "3" } }
+
+  # ── Hybrid RAG MCP (vector + graph search) ───────────────────────────
+  beagle-rag:
+    image: ${BEAGLE_IMAGE:-beagle}:${BEAGLE_VERSION:-latest}
+    restart: unless-stopped
+    # Docker execution env ⇒ the server auto-selects streamable-http;
+    # pinned explicitly here so intent is visible.
+    environment:
+      BEAGLE_EXECUTION_ENV: docker
+      MCP_TRANSPORT: streamable-http
+      MCP_HOST: 0.0.0.0
+      MCP_PORT: "8421"
+      BEAGLE_MCP_TOKEN: ${BEAGLE_MCP_TOKEN:?set BEAGLE_MCP_TOKEN in .env}
+      OLLAMA_BASE_URL: http://ollama:11434
+      OLLAMA_EMBED_MODEL: ${OLLAMA_EMBED_MODEL:-nomic-embed-code}
+    volumes:
+      - beagle-rag:/app/data/rag
+    depends_on:
+      ollama:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket;s=socket.create_connection(('127.0.0.1',8421),3);s.close()"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+    logging: { driver: json-file, options: { max-size: "10m", max-file: "3" } }
+
+  # ── OpenClaw task queue (todos / metaevents) over MCP ────────────────
+  # Built from docker/Dockerfile.openclaw: beagle image + plugin wheel +
+  # supergateway stdio→HTTP bridge. Internal-network only (no auth on
+  # this hop yet — do NOT add host port publishes).
+  openclaw:
+    build:
+      context: .
+      dockerfile: Dockerfile.openclaw
+      args:
+        BASE_IMAGE: ${BEAGLE_IMAGE:-beagle}:${BEAGLE_VERSION:-latest}
+    image: ${OPENCLAW_IMAGE:-beagle-openclaw}:${BEAGLE_VERSION:-latest}
+    restart: unless-stopped
+    volumes:
+      - ./openclaw.config.toml:/etc/beagle_openclaw/config.toml:ro
+      # Orpheus ring (controller delegation) — host path varies per stack:
+      # - /run/orpheus_ring:/run/orpheus_ring
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket;s=socket.create_connection(('127.0.0.1',8791),3);s.close()"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+    logging: { driver: json-file, options: { max-size: "10m", max-file: "3" } }
+
+volumes:
+  beagle-rag:
+  beagle-state:
+  ollama-models:

@@ -1,0 +1,13 @@
+{
+  "//": "code-server / VS Code — mount into the workspace as .vscode/mcp.json",
+  "servers": {
+    "beagle-rag": {
+      "url": "http://beagle-rag:8421/mcp",
+      "headers": { "Authorization": "Bearer ${BEAGLE_MCP_TOKEN}" }
+    },
+    "beagle-openclaw": {
+      "url": "http://openclaw:8791/mcp",
+      "headers": { "Authorization": "Bearer ${BEAGLE_MCP_TOKEN}" }
+    }
+  }
+}

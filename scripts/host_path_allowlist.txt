@@ -1,0 +1,84 @@
+# host_path_allowlist.txt — documented exceptions for check_host_paths.py
+#
+# Format (one entry per line):
+#   path/to/file.py:NNN: reason text     — allowlists the hit on line NNN
+#   path/to/file.py: reason text         — allowlists the whole file
+#
+# Doctrine (do not widen the gate to make it pass): every entry must name
+# WHY the host path is legitimate at that exact line. A finding is a defect
+# of the input, not of the rule — an entry with no reason is a gate bypass.
+
+# ── Legitimate absolute-path fixtures and documentation ─────────────────────
+# These tests exercise path handling, override resolution, or validation of
+# absolute paths. The literal is the test input, not a hard-wired dependency
+# on this host's filesystem layout.
+
+# Docstring lines explaining the config-root override resolution test setup
+# and the no-config-root fallback branch. Documentation of resolution
+# behaviour, not a path dependency.
+tests/test_config_root_resolver.py:6: docstring context for the resolver test — documents absence of /home/Beagle_Config, not a path dependency
+tests/test_config_root_resolver.py:73: docstring context for the fallback-resolution test — documentation, not a path dependency
+
+# Fixture text inside a synthetic source tree used by the stress test.
+tests/test_context_stress.py:328: synthetic fixture content inside a temp-dir source tree; the literal is test data
+
+# Exercises validate_file_path() with an absolute allow_absolute path — the
+# /home/user literal is the function under test's required input shape.
+tests/test_security.py:477: test input for validate_file_path(allow_absolute=True); path is a synthetic fixture
+
+# Comments recording the v1.1.1 (S6) history of where the guides directory
+# moved. Historical documentation of a migration, kept so future archaeology
+# of the S6 change stays greppable.
+tests/test_render_prompts.py:107: historical comment documenting v1.1.1 S6 guide-directory move; not a path dependency
+tests/test_tom_doctrine_coherence.py:60: historical comment documenting v1.1.1 S6 guide-directory move; not a path dependency
+
+# ── Venv interpreter references in the hook test-suite ──────────────────────
+# test_goose_hooks.py drives the pre-commit/doctrine hook end to end and must
+# invoke the same interpreter the hook itself resolves on this host. The venv
+# path is the documented host runtime contract (style guide: Host Runtime
+# Contract, consolidated_venv=/opt/beagle/beagle_venv); the Makefile pins the
+# same value (VENV ?= /opt/beagle/beagle_venv) and these tests are the only
+# other consumers. If the venv moves, these are the tests that must move with
+# it — they are the deliberate, documented pin, not drift.
+tests/test_goose_hooks.py:63: hook execution test resolves the same venv interpreter the Makefile pins (VENV ?= /opt/beagle/beagle_venv)
+tests/test_goose_hooks.py:96: hook execution test resolves the same venv interpreter the Makefile pins (VENV ?= /opt/beagle/beagle_venv)
+tests/test_goose_hooks.py:150: hook execution test resolves the same venv interpreter the Makefile pins (VENV ?= /opt/beagle/beagle_venv)
+tests/test_goose_hooks.py:173: hook execution test resolves the same venv interpreter the Makefile pins (VENV ?= /opt/beagle/beagle_venv)
+tests/test_goose_hooks.py:428: hook execution test resolves the same venv interpreter the Makefile pins (VENV ?= /opt/beagle/beagle_venv)
+
+# ── Source-side documented fixture default ──────────────────────────────────
+# The RAG staging ramdisk default is an absolute host path by design: a
+# ramdisk mount point cannot be relative. The schema default is overridden by
+# environment/config in every deployment. Documented here so the default is a
+# named, reviewed decision rather than silent drift.
+src/beagle/config/schema.py:395: ramdisk staging mount point — absolute by design (ramdisk mounts are never relative); env-overridable default, documented decision
+
+# ── CI-scanned roots (tests/ config/ style_guides/): same rationale ─────────
+# cast_ingestion.py and tui/app.py read the same schema default documented
+# above via hw.get("ramdisk_path", ...) — the literal is the fallback the
+# schema itself declares, not a new host pin.
+src/beagle/infrastructure/cast_ingestion.py:126: fallback mirrors the schema's documented ramdisk default (see schema.py:395 entry); env/config-overridable
+src/beagle/tui/app.py:274: fallback mirrors the schema's documented ramdisk default (see schema.py:395 entry); env/config-overridable display default
+
+# mcp_rag_server.py:545 — the startswith("/opt/beagle") guard DETECTS the
+# legacy deployment path in order to warn the operator away from it. The
+# literal is the legacy signature being matched, not a path dependency.
+src/beagle/infrastructure/mcp_rag_server.py:447: comment documenting the legacy-path warning behaviour below; the literal names what is deprecated
+src/beagle/infrastructure/mcp_rag_server.py:545: detector literal — the guard exists to WARN when the legacy /opt/beagle root is in use; it does not resolve to it
+
+# rag_sync.py:29 — docstring example for the BEAGLE_RAG_SYNC_CODEBASES env
+# var. The path is a placeholder in documentation of an operator-provided
+# value; nothing in code resolves to it.
+src/beagle/infrastructure/rag_sync.py:29: docstring example for an operator-provided env var; placeholder path, never resolved by code
+
+# ── Documentation of the deployment layout (untracked skill + README) ───────
+# skills/web-search-integration.xml is a SKILL TEMPLATE shipped in the
+# package: its cmd/env block documents the DEPLOYED host layout for the
+# web-search skill (the deployed venv IS /opt/beagle/beagle_venv per the
+# Host Runtime Contract). README.md:126-127 document the instance/main RAG
+# tier layout on the deployed host. Both are descriptive docs, not resolved
+# paths.
+src/beagle/skills/web-search-integration.xml:64: skill template documents the deployed-venv interpreter per the Host Runtime Contract; deployment doc, not a resolved dependency
+src/beagle/skills/web-search-integration.xml:69: skill template documents the deployed PYTHONPATH layout per the Host Runtime Contract; deployment doc, not a resolved dependency
+src/beagle/infrastructure/README.md:126: documentation of the instance-tier RAG data layout on the deployed host
+src/beagle/infrastructure/README.md:127: documentation of the main-tier RAG data layout on the deployed host

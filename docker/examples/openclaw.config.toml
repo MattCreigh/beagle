@@ -1,0 +1,12 @@
+# beagle-openclaw activation config (informed-decision gate).
+# Mounted into the openclaw service at /etc/beagle_openclaw/config.toml
+enabled = true
+
+[server]
+transport = "stdio"          # consumed by the plugin process; the
+                             # network hop is provided by supergateway
+[orpheus]
+ring_dir = "/run/orpheus_ring"
+
+[skylon]
+instance = "server_1"        # controller delegation target (sanctioned name)

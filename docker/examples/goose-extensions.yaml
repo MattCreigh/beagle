@@ -1,0 +1,19 @@
+# goose — consume the dev-stack MCP surfaces.
+# Merge into the goose config extensions block (~/.config/goose/config.yaml).
+# Trust model per MCP_TRUST.md: trusted servers may use http/sse transports
+# with mandatory bearer auth.
+extensions:
+  beagle_openclaw:
+    name: Beagle OpenClaw
+    type: http
+    url: http://openclaw:8791/mcp
+    headers:
+      Authorization: Bearer ${BEAGLE_MCP_TOKEN}
+    enabled: true
+  beagle_rag:
+    name: Beagle Hybrid RAG
+    type: http
+    url: http://beagle-rag:8421/mcp
+    headers:
+      Authorization: Bearer ${BEAGLE_MCP_TOKEN}
+    enabled: true

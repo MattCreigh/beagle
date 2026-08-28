@@ -1,0 +1,53 @@
+# ════════════════════════════════════════════════════════════
+# OpenClaw task-queue MCP — network-exposed dev-stack service
+#
+# The beagle-openclaw plugin is stdio-only upstream (security floor),
+# so this image pairs its Python runtime with supergateway, bridging
+# stdio → streamable-HTTP for in-network consumers (code-server,
+# open-webui, goose).
+#
+# Build inputs:
+#   dist/beagle-<ver>-py3-none-any.whl     (make build)
+#   wheels/beagle_openclaw-*.whl           (built from the plugin repo)
+#
+# SECURITY: the gateway adds no bearer auth yet — publish NO host
+# ports; consume on the compose network until the plugin ships its
+# documented [server] transport=http mode with token enforcement.
+# ════════════════════════════════════════════════════════════
+
+ARG BASE_IMAGE=beagle:latest
+
+# ── Stage 1: Python runtime with beagle + openclaw installed ──
+FROM ${BASE_IMAGE} AS beagle-python
+USER root
+COPY wheels/beagle_openclaw-*.whl /tmp/wheels/
+RUN uv pip install --system --no-deps /tmp/wheels/beagle_openclaw-*.whl \
+    && rm -rf /tmp/wheels
+# Restore the non-root default so this stage's last USER is not root
+# (the runner stage copies /usr/local only; it never runs as root either).
+USER beagle_user
+
+# ── Stage 2: Node front carrying supergateway, reusing stage 1 ──
+FROM node:22-slim AS runner
+COPY --from=beagle-python /usr/local /usr/local
+# apt versions track the moving node:22-slim base (see docker/Dockerfile).
+# hadolint ignore=DL3008
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates && rm -rf /var/lib/apt/lists/* \
+    # npm pin reviewed on base-image refresh (hadolint DL3016).
+    && npm install -g supergateway@3.4.3
+
+# Plugin informed-decision gate: config must exist and set enabled=true.
+ENV BEAGLE_OPENCLAW_CONFIG=/etc/beagle_openclaw/config.toml \
+    ORPHEUS_RING_DIR=/run/orpheus_ring
+
+EXPOSE 8791
+STOPSIGNAL SIGTERM
+USER beagle_user
+
+# stdio MCP  →  streamable-HTTP on :8791 (/mcp)
+CMD ["npx", "-y", "supergateway", \
+     "--stdio", "python -m beagle_openclaw.server", \
+     "--outputTransport", "streamablehttp", \
+     "--streamableHttpPath", "/mcp", \
+     "--port", "8791", "--host", "0.0.0.0"]
