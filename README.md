@@ -76,14 +76,25 @@ plain English:
 
 ### Prerequisites
 
-- Python 3.12 or later (3.13 recommended)
-- `uv` — mandatory package manager for fast, reproducible builds
+Install all of this software before installation step 1.
+
+- **Python 3.12 or later.** `pyproject.toml` sets `requires-python = ">=3.12"`.
+  The lint gate and the type gate target Python 3.13.
+- **`uv`.** Beagle uses it for the locked install.
 
   ```bash
   curl -LsSf https://astral.sh/uv/install.sh | sh
   ```
 
-- An LLM provider — an OpenAI-compatible API key or a local Ollama endpoint
+- **Node.js 22.19.0 or later.** The bundled `pi` frontend is JavaScript. Its
+  `vendor/pi-prebuild/package.json` declares `"node": ">=22.19.0"`. The `beagle`
+  command with no subcommand starts `pi`.
+- **The Goose CLI.** The wheel does not contain the Goose binary. The default
+  sub-agent runtime is `goose_cli`, which starts a local `goose` process. Put
+  `goose` on your `PATH`, or set `GOOSE_BIN` to the path of the binary. The
+  repository does not declare a minimum Goose version.
+- **An LLM provider.** Use an OpenAI-compatible API key, or a local Ollama
+  endpoint.
 - Docker (optional) — required for Firecracker microVM isolation; Beagle falls
   back to subprocess sandboxing when it is unavailable
 
@@ -115,12 +126,11 @@ uv run beagle
 > beagle config init
 > ```
 
-**Default frontend.** Beagle ships a vendored, prebuilt copy of the
-[`pi`](https://github.com/earendil-works/pi) TUI coding agent in the wheel, plus
-a bridge that connects it to Beagle's MCP server over stdio. Running `beagle`
-with no subcommand launches `pi`; it is pre-wired to call Beagle's agents over
-MCP with no extra setup (requires Node.js >= 20 on `PATH`). See
-`src/beagle/frontends/pi/README.md`.
+**Default frontend.** The wheel contains a vendored, prebuilt copy of the
+[`pi`](https://github.com/earendil-works/pi) TUI coding agent. The wheel also
+contains a bridge that connects `pi` to Beagle's MCP server over stdio. The
+`beagle` command with no subcommand starts `pi`. The bridge calls Beagle's
+agents over MCP without more setup. See `src/beagle/frontends/pi/README.md`.
 
 ---
 
