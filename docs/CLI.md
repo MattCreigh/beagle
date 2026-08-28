@@ -169,7 +169,9 @@ tracker across multiple CLI invocations.
 |----------|---------|---------|
 | `BEAGLE_PROMETHEUS_PORT` | If set to a non-zero int, start a Prometheus exporter on that port. | not set |
 | `BEAGLE_MULTI_TENANT` | Enable per-tenant rate limiting on MCP endpoints. | not set |
-| `BEAGLE_CONFIG_PATH` | Override the path to `config.toml`. | repo root |
+| `BEAGLE_CONFIG_ROOT` | Override the configuration root directory. | `~/.config/beagle` |
+| `BEAGLE_CONFIG_TOML` | Override the path to the canonical `config.toml`. | `<config root>/beagle_core_config/config.toml` |
+| `BEAGLE_CONFIG_PATH` | Override the `config.toml` path for the bridge modules only. It does not change the canonical resolution. | not set |
 | `BEAGLE_LOG_LEVEL` | Set the log level (DEBUG, INFO, WARNING, ERROR). | INFO |
 | `BEAGLE_LICENSE_KEY` | Optional license key (currently no-op; reserved for future use). | not set |
 
