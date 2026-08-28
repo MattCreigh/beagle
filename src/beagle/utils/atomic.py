@@ -12,6 +12,39 @@ import tempfile
 from pathlib import Path
 
 
+def _fsync_parent(path: Path) -> None:
+    """Fsync the parent directory so a rename is durable across power loss.
+
+    ``os.replace`` alone guarantees atomicity of the *visible* state but not
+    durability: the directory entry change can be lost on a crash before the
+    journal flushes. Opening the parent dir read-only and fsyncing it pushes
+    the rename to stable storage.
+
+    D-12 (release-readiness audit 2026-08-28): this is the missing half of
+    the write-temp-fsync-rename protocol. The file's data is fsynced before
+    rename, but the rename itself was not — so a power failure could restore
+    the pre-rename state even though the file's fsync succeeded. This matters
+    for Ed25519 signing seeds written via :func:`atomic_write_bytes`.
+
+    Guarded for platforms that do not permit directory fsync (some filesystems
+    / OSes raise ``EINVAL`` or ``EISDIR`` on ``os.fsync(fd)`` for a dir FD).
+    """
+    try:
+        fd = os.open(path.parent, os.O_RDONLY)
+    except OSError:
+        # Directory not openable for reading — nothing we can do; the write
+        # itself still succeeded.
+        return
+    try:
+        os.fsync(fd)
+    except OSError:
+        # Directory fsync unsupported on this platform/filesystem. The file
+        # data fsync already ran; rename durability is best-effort.
+        pass
+    finally:
+        os.close(fd)
+
+
 def atomic_write_text(path: Path, text: str, *, mode: int = 0o600) -> Path:
     """Write ``text`` to ``path`` atomically.
 
@@ -47,6 +80,8 @@ def atomic_write_text(path: Path, text: str, *, mode: int = 0o600) -> Path:
             os.fsync(fh.fileno())
         os.chmod(tmp, mode)
         os.replace(tmp, path)
+        # D-12: durability of the rename itself.
+        _fsync_parent(path)
     except OSError:
         tmp.unlink(missing_ok=True)
         raise
@@ -87,6 +122,8 @@ def atomic_write_bytes(path: Path, data: bytes, *, mode: int = 0o600) -> Path:
             os.fsync(fh.fileno())
         os.chmod(tmp, mode)
         os.replace(tmp, path)
+        # D-12: durability of the rename itself (critical for Ed25519 seeds).
+        _fsync_parent(path)
     except OSError:
         tmp.unlink(missing_ok=True)
         raise

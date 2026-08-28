@@ -17,11 +17,9 @@ Exclusion rule:
 
 from __future__ import annotations
 
-import contextlib
 import logging
 import os
 import sys
-import tempfile
 from pathlib import Path
 from typing import Any, ClassVar
 
@@ -40,7 +38,16 @@ from .version_resolver import (
 
 logger = logging.getLogger("Beagle.style_guides.renderer")
 
-_CANONICAL_PATH = Path.home() / ".config" / "goose" / "beagle_top_of_mind.xml"
+# D-38 (release-readiness audit 2026-08-28): these canonical paths previously
+# resolved ``Path.home()`` at IMPORT time, so a later HOME change (tests,
+# containers, systemd User=) never applied, and the test suite worked around
+# it by monkeypatching module internals at six sites. They are now resolved at
+# CALL time so an operator's HOME (or a test's tmpdir HOME) is honoured.
+
+
+def _canonical_top_of_mind_path() -> Path:
+    """Resolve ``~/.config/goose/beagle_top_of_mind.xml`` at call time."""
+    return Path.home() / ".config" / "goose" / "beagle_top_of_mind.xml"
 
 
 class GooseTopOfMindRenderer:
@@ -481,18 +488,15 @@ class GooseTopOfMindRenderer:
         return "\n".join(lines) + "\n"
 
     def render_to_file(self, path: Path, domain: str | None = None) -> Path:
-        """Atomic write via tempfile + os.replace. Returns the path."""
+        """Atomic write via the project's atomic-write util (D-37).
+
+        The util performs write-temp-fsync-rename AND fsyncs the parent dir
+        (D-12), so a concurrent reader never sees a partial file and the
+        rename is durable across power loss.
+        """
         content = self.render(domain=domain)
         path.parent.mkdir(parents=True, exist_ok=True)
-        fd, tmp = tempfile.mkstemp(dir=str(path.parent), suffix=".xml.tmp")
-        try:
-            with open(fd, "w", encoding="utf-8") as f:
-                f.write(content)
-            os.replace(tmp, str(path))
-        except (OSError, RuntimeError, ValueError):
-            with contextlib.suppress(OSError):
-                os.unlink(tmp)
-            raise
+        atomic_write_text(path, content, mode=0o644)
         logger.info("Rendered Top-of-Mind artefact → %s (%d bytes)", path, len(content))
         return path
 
@@ -644,9 +648,9 @@ class GooseTopOfMindRenderer:
         # </invariant>
         if force:
             logger.debug("Top-of-Mind forced render requested; bypassing the cache policy")
-            return self.render_to_file_hydrated(_CANONICAL_PATH, domain=domain)
+            return self.render_to_file_hydrated(_canonical_top_of_mind_path(), domain=domain)
 
-        dest = _CANONICAL_PATH
+        dest = _canonical_top_of_mind_path()
         if dest.exists():
             source_mtimes = self._newest_source_mtime()
             dest_mtime = dest.stat().st_mtime
@@ -737,17 +741,10 @@ class GooseTopOfMindRenderer:
                     path,
                 )
 
-        # Step 3: atomic write
+        # Step 3: atomic write (D-37) — the util fsyncs both file data and
+        # parent dir, so a concurrent reader never sees a partial artefact.
         path.parent.mkdir(parents=True, exist_ok=True)
-        fd, tmp = tempfile.mkstemp(dir=str(path.parent), suffix=".xml.tmp")
-        try:
-            with open(fd, "w", encoding="utf-8") as f:
-                f.write(xml)
-            os.replace(tmp, str(path))
-        except (OSError, RuntimeError, ValueError):
-            with contextlib.suppress(OSError):
-                os.unlink(tmp)
-            raise
+        atomic_write_text(path, xml, mode=0o644)
         logger.info("Rendered hydrated Top-of-Mind artefact → %s (%d bytes)", path, len(xml))
         return path
 
@@ -1886,13 +1883,21 @@ class GooseTopOfMindRenderer:
     # sources, with the same single-responsibility surface as
     # render_canonical / render_session_start.
 
-    # Canonical paths — owned by Beagle, never hand-edited.
-    SYSTEM_INSTRUCTION_PATH: ClassVar[Path] = (
-        Path.home() / ".config" / "goose" / "beagle_system_instruction.xml"
-    )
-    COMPACTION_PROMPT_PATH: ClassVar[Path] = (
-        Path.home() / ".config" / "goose" / "prompts" / "compaction.xml"
-    )
+    # D-38 (release-readiness audit 2026-08-28): the canonical prompt-substrate
+    # paths were ClassVars resolving Path.home() at IMPORT time. They are now
+    # resolved at CALL time so HOME changes (tests, containers, systemd User=)
+    # apply. Kept as class attributes (call-time resolvers) so the audit's
+    # "six monkeypatch sites" can be replaced by simply setting HOME.
+
+    @staticmethod
+    def _system_instruction_path() -> Path:
+        """Resolve ``~/.config/goose/beagle_system_instruction.xml`` at call time."""
+        return Path.home() / ".config" / "goose" / "beagle_system_instruction.xml"
+
+    @staticmethod
+    def _compaction_prompt_path() -> Path:
+        """Resolve ``~/.config/goose/prompts/compaction.xml`` at call time."""
+        return Path.home() / ".config" / "goose" / "prompts" / "compaction.xml"
 
     def render_system_instruction(self, output_path: Path | None = None) -> Path:
         """Render ``~/.config/goose/beagle_system_instruction.xml``.
@@ -1909,7 +1914,7 @@ class GooseTopOfMindRenderer:
 
         Returns the written path.
         """
-        target = Path(output_path) if output_path else self.SYSTEM_INSTRUCTION_PATH
+        target = Path(output_path) if output_path else self._system_instruction_path()
         content = self._load_template("system_instruction_template")
         return self._atomic_write(target, content)
 
@@ -1926,7 +1931,7 @@ class GooseTopOfMindRenderer:
 
         Returns the written path.
         """
-        target = Path(output_path) if output_path else self.COMPACTION_PROMPT_PATH
+        target = Path(output_path) if output_path else self._compaction_prompt_path()
         inner = self._load_template("compaction_prompt_template")
         envelope = (
             "<!-- Beagle Compaction Prompt — auto-generated by "
@@ -2036,7 +2041,12 @@ class GooseTopOfMindRenderer:
         session_start_block = self.render_session_start()
         if session_start_block:
             pointer += "\n" + session_start_block
-        hints_path.write_text(pointer, encoding="utf-8")
+        # D-37: the .goosehints file carries the "Don't-Stop Gate" directive
+        # that goose reads at session start. A plain write_text could truncate
+        # under a concurrent render and silently drop the behavioural contract.
+        # Route through the atomic util (write-temp-fsync-rename + parent fsync).
+        hints_path.parent.mkdir(parents=True, exist_ok=True)
+        atomic_write_text(hints_path, pointer, mode=0o644)
         results[".goosehints"] = hints_path
         logger.info("Rendered .goosehints → %s", hints_path)
 
@@ -2119,7 +2129,7 @@ class GooseTopOfMindRenderer:
         return pkg_dir
 
     def _atomic_write(self, target: Path, content: str) -> Path:
-        """Atomic write with mkstemp + os.replace."""
+        """Atomic write via the project util (write-temp-fsync-rename + parent fsync)."""
         atomic_write_text(target, content, mode=0o644)
         logger.info(
             "Generated %s → %s (%d bytes)",
@@ -2148,15 +2158,7 @@ class GooseTopOfMindRenderer:
 
         content = self.render_markdown(domain=domain)
         target.parent.mkdir(parents=True, exist_ok=True)
-        fd, tmp = tempfile.mkstemp(dir=str(target.parent), suffix=".md.tmp")
-        try:
-            with open(fd, "w", encoding="utf-8") as f:
-                f.write(content)
-            os.replace(tmp, str(target))
-        except (OSError, RuntimeError, ValueError):
-            with contextlib.suppress(OSError):
-                os.unlink(tmp)
-            raise
+        atomic_write_text(target, content, mode=0o644)
         logger.info(
             "Rendered doctrine markdown → %s (%d bytes, %d lines)",
             target,

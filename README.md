@@ -14,10 +14,14 @@ Running autonomous AI agents can quickly become expensive and risky. Left
 unmonitored, they can burn through API credits, access the wrong files, or
 produce unverified, hallucinated results.
 
-Beagle solves this by turning your prompt into a **structured workflow**. It
-decomposes tasks into a Directed Acyclic Graph (DAG), meters every model call
-against a hard USD ceiling, executes sub-agents inside secure sandboxes
-(microVMs), and returns a verified report with a full cost summary.
+Beagle acts like an automated project manager for AI agents. You give Beagle a
+prompt, and it:
+
+1. **Plans** the task as a structured, ordered workflow.
+2. **Searches** your real codebase for code relationships and semantics.
+3. **Executes** sub-agents in secure, isolated sandboxes.
+4. **Adversarially reviews** findings before returning a verified report with an
+   exact cost receipt.
 
 > **Security-first:** Beagle enforces a zero-trust model. For details on microVM
 > isolation, fail-closed policies, and the threat model, see
@@ -25,23 +29,36 @@ against a hard USD ceiling, executes sub-agents inside secure sandboxes
 
 ---
 
+## Key Concepts & Acronyms Explained
+
+If you are new to the codebase, here is what the technical terms actually mean in
+plain English:
+
+| Concept / Acronym | Plain-English Meaning | Why Beagle Uses It |
+|---|---|---|
+| **DAG** (Directed Acyclic Graph) | A structured to-do list that never loops. Tasks flow forward in one direction (A → B → C). | Prevents agents from going in circles, getting stuck in loops, or burning budget. |
+| **CVCP** (Cross-Verification Collaboration Protocol) | A three-agent peer-review panel: one primary agent drafts the answer, and two independent critic agents cross-examine it. | Eliminates hallucinations and false claims before you see the final report. |
+| **Hybrid RAG** (Retrieval-Augmented Generation) | Intelligent code search that combines semantic vector search (LanceDB) with code-relation graphs (Kùzu). | Finds relevant code by meaning (e.g. `login`) and by structure (e.g. what calls `validate_token`). |
+| **MCP** (Model Context Protocol) | The universal plug for AI tools — an open standard that connects frontends to backend tools. | Lets tools like Goose CLI, Claude Code, or Cursor connect to Beagle seamlessly. |
+| **Sandboxes & MicroVMs** (Firecracker) | A locked execution room: untrusted code runs in hardware-isolated virtual machines or restricted subprocesses. | Protects your host machine from rogue commands, file deletions, or system changes. |
+| **Goose Runtime** | The worker agent — a local subprocess runtime that executes the tasks Beagle assigns. | Provides an isolated execution environment for sub-agent tasks. |
+
+---
+
 ## Key Features
 
-- **Deterministic Workflows** — Tasks run as structured DAGs with checkpointing,
-  resume support, and deterministic replay.
+- **Deterministic Workflows (DAGs)** — Tasks run as structured, step-by-step
+  graphs with checkpointing, pause/resume, and replay support.
 - **Hard Cost Governance** — Every model call is metered against a strict USD
-  limit. Execution halts immediately when the budget is exhausted.
-- **Sandboxed Isolation** — Untrusted code runs inside Firecracker microVMs (when
-  `/dev/kvm` is available) or deny-by-default sandboxed subprocesses.
-- **Hybrid Code Search** — Combines vector search (LanceDB) with property-graph
-  traversal (Kùzu) to ground agents in your actual AST-parsed codebase.
-- **Human-in-the-Loop** — Pauses for your approval before consequential actions
-  such as file writes or infrastructure changes.
-- **Adversarial Verification (CVCP)** — Primary agent output is independently
-  critiqued by reviewer agents to catch hallucinations, logical gaps, and
-  security issues.
-- **Memory-Only Secrets** — Integrated Ghost Vault support keeps credentials in
-  RAM; never written to disk unencrypted.
+  limit. Execution stops immediately when the budget is reached.
+- **Sandboxed Isolation** — Untrusted code runs inside Firecracker microVMs
+  (when `/dev/kvm` is available) or deny-by-default subprocess sandboxes.
+- **Hybrid RAG Search** — Combines vector search (LanceDB) and AST graph
+  traversal (Kùzu) to ground agents in real code context.
+- **Human-in-the-Loop** — Pauses for your permission before consequential
+  actions such as file writes or infrastructure changes.
+- **Adversarial Review (CVCP)** — Primary outputs are audited by two reviewer
+  agents to catch bugs and hallucinations.
 
 ---
 
@@ -49,22 +66,16 @@ against a hard USD ceiling, executes sub-agents inside secure sandboxes
 
 ### Prerequisites
 
-- **Python** 3.12 or later (3.13 recommended)
-- **`uv`** — mandatory package manager for reproducible builds
+- Python 3.12 or later (3.13 recommended)
+- `uv` — mandatory package manager for fast, reproducible builds
 
   ```bash
   curl -LsSf https://astral.sh/uv/install.sh | sh
   ```
 
-- **Docker** (optional) — required only for Firecracker microVM isolation.
-  Beagle falls back to strict subprocess sandboxing when unavailable.
-- **`sops` + `age`** (optional) — required for Ghost Vault memory-only secret
-  management
-
-  ```bash
-  brew install sops age          # macOS
-  sudo apt install sops age      # Ubuntu/Debian
-  ```
+- An LLM provider — an OpenAI-compatible API key or a local Ollama endpoint
+- Docker (optional) — required for Firecracker microVM isolation; Beagle falls
+  back to subprocess sandboxing when it is unavailable
 
 ### Installation
 
@@ -78,10 +89,13 @@ uv sync --frozen --no-dev
 
 # 3. Initialize configuration (~/.config/beagle)
 uv run beagle config init
+
+# 4. Set your LLM provider API key
+export OPENAI_API_KEY="your-api-key-here"
 ```
 
-> **Tip:** After installation you can either keep using `uv run beagle …` or
-> activate the virtual environment:
+> **Tip:** After installation you can either prefix commands with
+> `uv run beagle …` or activate the virtual environment:
 >
 > ```bash
 > source .venv/bin/activate
@@ -92,8 +106,8 @@ uv run beagle config init
 
 ## Usage Example
 
-Run a research workflow against your codebase with a hard $5.00 budget. The
-default runtime (`goose`) executes sub-agents as local, sandboxed subprocesses.
+Run a research workflow against your codebase with a hard $5.00 budget ceiling.
+The default runtime (`goose`) runs sub-agents as local sandboxed processes.
 
 ```bash
 beagle run research "What does the authentication module do?" --budget 5.0
@@ -124,9 +138,9 @@ Beagle is configured via environment variables (shell or `.env` file).
 
 | Variable | Description | Default |
 |---|---|---|
-| `BEAGLE_BUDGET_USD` | Hard stop budget per workflow run | `10.0` |
+| `BEAGLE_BUDGET_USD` | Hard-stop spending limit per workflow run | `10.0` |
 | `BEAGLE_DATA_ROOT` | Directory for writable state (tracking DB, checkpoints) | XDG state root |
-| `BEAGLE_MCP_TOKEN` | Bearer token required for the HTTP MCP transport (fail-closed) | *(not set)* |
+| `BEAGLE_MCP_TOKEN` | Bearer token required for HTTP MCP connections (fail-closed) | *(not set)* |
 | `BEAGLE_LOG_LEVEL` | Logging verbosity (`DEBUG`, `INFO`, `WARNING`, `ERROR`) | `INFO` |
 
 > **Generate a secure MCP token:**
@@ -140,97 +154,83 @@ Beagle is configured via environment variables (shell or `.env` file).
 ## How It Works
 
 ```text
-   ┌──────────────────────┐
-   │ Operator / Host      │
-   └──────────────────────┘
-              │
-              ▼
-   ┌──────────────────────┐
-   │ CLI / MCP Surface    │
-   └──────────────────────┘
-              │
-              ▼
-   ┌──────────────────────┐
-   │ Autonomous           │
-   │ Orchestrator         │
-   └──────────────────────┘
-              │
-              ▼
-   ┌──────────────────────┐
-   │ Hybrid RAG Hydration │
-   └──────────────────────┘
-              │
-              ▼
-   ┌──────────────────────┐
-   │ Sandboxed Sub-Agent  │
-   │ Runtime              │
-   └──────────────────────┘
-              │
-              ▼
-   ┌──────────────────────┐
-   │ Adversarial Review   │
-   │ (CVCP)               │
-   └──────────────────────┘
-              │
-              ▼
-   ┌──────────────────────┐
-   │ Verified Final Report│
-   └──────────────────────┘
-              │
-              ▼
-    (returned to the operator)
+   ┌──────────────────────────┐
+   │ User                     │
+   └──────────────────────────┘
+                │
+                ▼
+   ┌──────────────────────────┐
+   │ CLI / MCP Interface      │
+   └──────────────────────────┘
+                │
+                ▼
+   ┌──────────────────────────┐
+   │ DAG Orchestrator         │
+   └──────────────────────────┘
+                │
+                ▼
+   ┌──────────────────────────┐
+   │ Hybrid RAG Search        │
+   └──────────────────────────┘
+                │
+                ▼
+   ┌──────────────────────────┐
+   │ Sandboxed Agent          │
+   └──────────────────────────┘
+                │
+                ▼
+   ┌──────────────────────────┐
+   │ CVCP Adversarial Review  │
+   └──────────────────────────┘
+                │
+                ▼
+   ┌──────────────────────────┐
+   │ Verified Report          │
+   └──────────────────────────┘
+                │
+                ▼
+       (returned to the User)
 ```
 
 ```mermaid
 flowchart LR
-    User[Operator / Host] --> CLI[CLI / MCP Surface]
-    CLI --> Orchestrator[Autonomous Orchestrator]
-    Orchestrator --> RAG[Hybrid RAG Hydration]
-    RAG --> Sandbox[Sandboxed Sub-Agent Runtime]
-    Sandbox --> Review[Adversarial Review / CVCP]
-    Review --> Result[Verified Final Report]
+    User[User] --> CLI[CLI / MCP Interface]
+    CLI --> Engine[DAG Orchestrator]
+    Engine --> Search[Hybrid RAG Search]
+    Search --> Sandbox[Sandboxed Agent]
+    Sandbox --> Review[CVCP Adversarial Review]
+    Review --> Result[Verified Report]
     Result --> User
 ```
 
-1. The orchestrator turns your prompt into a structured DAG of tasks.
-2. Agents are hydrated with relevant context from your codebase using hybrid
-   search (vector + property graph).
-3. Sub-agents execute inside isolated sandboxes under continuous budget
-   enforcement.
-4. **CVCP (Cross-Verification Collaboration Protocol)** runs an adversarial
-   review: the primary agent's output is independently critiqued by two reviewer
-   agents. This surfaces hallucinations, logical gaps, and security issues before
-   the final report is returned — complete with a precise cost summary.
+1. **DAG Orchestrator** — Breaks your prompt into an ordered, non-repeating
+   to-do list of task nodes.
+2. **Hybrid RAG Search** — Scans your codebase for both semantic concepts
+   (LanceDB) and structural code links (Kùzu).
+3. **Sandboxed Agent** — Runs tasks in isolated microVMs or subprocesses with
+   continuous USD budget monitoring.
+4. **CVCP Adversarial Review** — Two critic agents audit the primary output for
+   errors before the verified report and cost receipt are returned.
 
 ---
 
 ## Troubleshooting
 
-| Error / Symptom | Solution |
-|---|---|
-| `sops: command not found` | Install sops: `brew install sops` (macOS) or `sudo apt install sops` (Ubuntu) |
-| `Permission denied: /var/run/docker.sock` | Add your user to the Docker group: `sudo usermod -aG docker $USER`, then restart the terminal |
-| `BEAGLE_MCP_TOKEN is not set` (server refuses to start) | `export BEAGLE_MCP_TOKEN=$(openssl rand -hex 32)` |
-| Workflow fails with "Budget exhausted" | Raise the limit: `beagle run … --budget 20.0`, or review model routing in your config |
-| `ModuleNotFoundError` after installation | Ensure you're using the virtual env: `source .venv/bin/activate` or `uv run beagle …` |
+| Error / Symptom | Cause | Solution |
+|---|---|---|
+| `Permission denied: /var/run/docker.sock` | Docker permissions | Add your user to the docker group: `sudo usermod -aG docker $USER`, then restart the shell |
+| `BEAGLE_MCP_TOKEN is not set` | Server refuses to boot unauthenticated | `export BEAGLE_MCP_TOKEN=$(openssl rand -hex 32)` |
+| Workflow fails: "Budget exhausted" | Hit the maximum USD ceiling | Raise the limit: `beagle run … --budget 20.0`, or check the model-routing config |
+| `ModuleNotFoundError` after installation | Virtual environment inactive | Activate it: `source .venv/bin/activate`, or prefix commands with `uv run` |
 
 ---
 
-*Beagle is part of the [Tensegrity](https://github.com/Tensegrity-Systems)
-ecosystem — tools for building self-healing, secure, AI-native infrastructure.
-See also Skylon (Docker orchestrator), Ghost Vault (memory-only secrets), and
-Orpheus (shared-memory IPC).*
+## Extensibility & Proprietary Add-Ons
 
----
+Beagle is an independent, self-contained open-source engine (MIT).
 
-## License
-
-[MIT](LICENSE) — © 2026 Matthew David Calder Creigh. Beagle and the vendored
-`pi` frontend fork are released under the MIT License; you may use, copy,
-modify, merge, publish, distribute, sublicense, and sell copies under the
-terms of [LICENSE](LICENSE).
-
-The optional `beagle-orpheus` transport wheel is **not** part of the MIT
-licensed distribution: it is separately licensed proprietary software (free
-for evaluation; production/business use requires a paid licence). See
-[LICENSE](LICENSE) for the scope note.
+For high-throughput, lock-free inter-process communication in production daemon
+clusters, an optional proprietary shared-memory transport named **Orpheus**
+(`beagle-orpheus`) is available. Beagle runs completely self-contained without
+it, gracefully falling back to standard local Unix domain sockets and Redis
+coordination paths by default.
