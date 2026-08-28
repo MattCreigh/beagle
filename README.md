@@ -263,10 +263,15 @@ environment variable therefore overrides the value in the file.
 |---|---|---|
 | `BEAGLE_BUDGET_USD` | Hard-stop spending limit per workflow run | `10.0` |
 | `BEAGLE_DATA_ROOT` | Directory for writable state (tracking DB, checkpoints) | XDG state root |
-| `BEAGLE_MCP_TOKEN` | Bearer token required for HTTP MCP connections (fail-closed) | *(not set)* |
+| `BEAGLE_MCP_TOKEN` | Bearer token for the `streamable-http` MCP transport. The `stdio` transport does not use it. | *(not set)* |
 | `BEAGLE_LOG_LEVEL` | Logging verbosity (`DEBUG`, `INFO`, `WARNING`, `ERROR`) | `INFO` |
 | `FIREWALL_PROVIDER` | Provider for the semantic firewall. Beagle reads it from the environment only. | `ollama_cloud` |
 | `FIREWALL_MODEL` | Model for the semantic firewall. It must be on `[models.allowed]`. | `gemma4:31b` |
+
+The MCP servers use the `stdio` transport by default. That transport needs no
+token. They change to `streamable-http` when you set
+`BEAGLE_EXECUTION_ENV=docker`, or when you set `MCP_TRANSPORT`. The
+`streamable-http` transport refuses to start without a token.
 
 > **Generate a secure MCP token:**
 >
@@ -346,7 +351,7 @@ flowchart LR
 | Error / Symptom | Cause | Solution |
 |---|---|---|
 | `Permission denied: /var/run/docker.sock` | Docker permissions | Add your user to the docker group: `sudo usermod -aG docker $USER`, then restart the shell |
-| `BEAGLE_MCP_TOKEN is not set` | Server refuses to boot unauthenticated | `export BEAGLE_MCP_TOKEN=$(openssl rand -hex 32)` |
+| `BEAGLE_MCP_TOKEN environment variable is REQUIRED for streamable-http transport` | The MCP server starts on the `streamable-http` transport with no token. The `stdio` transport does not need one. | `export BEAGLE_MCP_TOKEN=$(openssl rand -hex 32)`, or start the server on `stdio` |
 | Workflow fails: "Budget exhausted" | Hit the maximum USD ceiling | Raise the limit: `beagle run … --budget 20.0`, or check the model-routing config |
 | `ModuleNotFoundError` after installation | Virtual environment inactive | Activate it: `source .venv/bin/activate`, or prefix commands with `uv run` |
 | `Query blocked by semantic firewall (failed security check)` | The `goose` binary is missing, or it fails the ownership and permission check | Install Goose. Put `goose` on `PATH`, or set `GOOSE_BIN` to the binary. Make sure the binary and its parent directories are not world-writable |
