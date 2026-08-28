@@ -286,8 +286,20 @@ class WebhookManager:
 
             except TimeoutError:
                 delivery.error = "Timeout"
-            except ConnectionError as e:
-                delivery.error = str(e)
+            except aiohttp.ClientError as e:
+                # D-11 (release-readiness audit 2026-08-28): aiohttp raises
+                # ClientConnectorError (subclass of ClientError, NOT of
+                # ConnectionError) for DNS/connection failures. The old
+                # `except ConnectionError` let connection failures escape the
+                # retry loop entirely — no backoff, no delivery record.
+                # ClientError is the common superclass for every aiohttp
+                # transport failure.
+                delivery.error = f"aiohttp client error: {e}"
+            except OSError as e:
+                # Local socket/file-descriptor failures (e.g. EMFILE) are
+                # not wrapped by aiohttp; catch them so they too hit the
+                # retry schedule instead of escaping.
+                delivery.error = f"OS error: {e}"
 
             # Retry with exponential backoff
             if attempt < config.max_retries:
