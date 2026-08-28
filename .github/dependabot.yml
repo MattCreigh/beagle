@@ -1,0 +1,15 @@
+# Dependabot (release-readiness audit 2026-08-28, D-10 phase 2 step 2):
+# keep GitHub Actions dependencies pinned-and-current. The workflows pin
+# every `uses:` to a full commit SHA; Dependabot raises the SHA bumps so
+# the pins cannot rot into a security liability of their own.
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "ci"
+    labels:
+      - "dependencies"
+      - "ci"

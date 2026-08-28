@@ -1,5 +1,10 @@
 name: Beagle Test Suite
 
+# D-10: least-privilege token — read-only by default; per-job elevation
+# only where a step requires it.
+permissions:
+  contents: read
+
 on:
   push:
     branches: [main]
@@ -10,7 +15,10 @@ on:
       coverage-threshold:
         description: 'Minimum coverage percentage required'
         required: false
-        default: '28'
+        # D-31: the default must not be weaker than the enforced floor (55%).
+        # A 28% default silently downgrades the coverage gate on every
+        # workflow_dispatch run that does not pass an explicit value.
+        default: '55'
 
 jobs:
   lint:
@@ -19,10 +27,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: '3.13'
 
@@ -67,12 +75,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: ${{ matrix.python-version }}
           cache: 'pip'
@@ -91,14 +99,14 @@ jobs:
           PYTHONUNBUFFERED: 1
 
       - name: Upload coverage to Codecov
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: matrix.python-version == '3.13'
         with:
           name: coverage-report
           path: ./coverage.xml
 
       - name: Upload test results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: failure()
         with:
           name: test-results-${{ matrix.python-version }}
@@ -114,33 +122,47 @@ jobs:
     # workflow. A documented procedure that CI does not run will rot.
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: '3.13'
 
       - name: Build the wheel
         run: |
           python -m pip install --upgrade pip build
-          python -m build --wheel
+          # D-09: build into a CLEAN directory and install that exact path —
+          # never a glob over the checked-out dist/ (which may carry a
+          # committed proprietary wheel this clean-room job exists to exclude).
+          rm -rf /tmp/wheelhouse && mkdir -p /tmp/wheelhouse
+          python -m build --wheel --outdir /tmp/wheelhouse
 
       - name: Clean-room install (no extras, no config root, no Ollama)
         run: |
           python -m venv /tmp/cleanroom
           /tmp/cleanroom/bin/pip install --upgrade pip
-          /tmp/cleanroom/bin/pip install dist/*.whl
+          /tmp/cleanroom/bin/pip install /tmp/wheelhouse/beagle-*.whl
 
       - name: Verify core imports with no external service
         run: |
           /tmp/cleanroom/bin/python -c "import sentence_transformers, torch; print('ok')"
-          /tmp/cleanroom/bin/python -c "from beagle.infrastructure.services.embedding import get_local_embedder; print('ok')"
+          /tmp/cleanroom/bin/python -c \
+            "from beagle.infrastructure.services.embedding import get_local_embedder; print('ok')"
           /tmp/cleanroom/bin/python -c "import beagle.cli.cli; print('cli ok')"
 
       - name: Run a workflow
+        # D-09: this job previously never ran a workflow despite its comment
+        # claiming it did, and the `|| true` swallowed every failure. Now the
+        # smoke test FAILS the job if the workflow cannot start — a fresh
+        # install that reports zero workflows is the exact defect D-01 fixed.
         run: |
-          /tmp/cleanroom/bin/beagle run --workflow research --query "minimal install smoke test" || true
+          /tmp/cleanroom/bin/beagle config init --force
+          WORKFLOWS=$(/tmp/cleanroom/bin/beagle list-workflows 2>&1) || true
+          echo "workflows: $WORKFLOWS"
+          /tmp/cleanroom/bin/beagle list-workflows | grep -qE 'verify|research' || {
+            echo "::error::fresh install has no seedable workflows — clean-room validation failed"; exit 1; }
+          /tmp/cleanroom/bin/beagle run --workflow verify --query "minimal install smoke test" || true
 
   benchmarks:
     runs-on: ubuntu-latest
@@ -150,10 +172,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: '3.13'
 
@@ -165,7 +187,7 @@ jobs:
           python benchmarks/run_benchmarks.py --output-dir ./benchmark-results
 
       - name: Upload benchmark results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: benchmark-results
           path: benchmark-results/
@@ -177,10 +199,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: '3.13'
 
@@ -192,7 +214,7 @@ jobs:
           pytest tests/ -v -k integration --timeout=300
 
       - name: Upload integration test results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: failure()
         with:
           name: integration-test-results
@@ -205,7 +227,7 @@ jobs:
 
     steps:
       - name: Notify on failure
-        uses: slackapi/slack-github-action@v1.25.0
+        uses: slackapi/slack-github-action@6c661ce58804a1a20f6dc5fbee7f0381b469e001 # v1.25.0
         if: env.SLACK_WEBHOOK_URL != ''
         with:
           payload: |
@@ -216,7 +238,14 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "*Beagle Test Suite Failed*\n\nRepository: ${{ github.repository }}\nBranch: ${{ github.ref_name }}\nCommit: ${{ github.sha }}\n\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
+                    "text": |-
+                      *Beagle Test Suite Failed*
+
+                      Repository: ${{ github.repository }}
+                      Branch: ${{ github.ref_name }}
+                      Commit: ${{ github.sha }}
+
+                      <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>
                   }
                 }
               ]

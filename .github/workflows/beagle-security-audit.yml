@@ -1,5 +1,13 @@
 name: Beagle Security Audit
 
+# D-10 (release-readiness audit 2026-08-28): every action is pinned to a
+# full commit SHA with its version in a trailing comment — a mutable tag or
+# branch reference is an RCE surface at CI run time. The workflow-level
+# `permissions` block drops to `contents: read`; jobs that need more
+# (Security-tab upload, issue creation) elevate explicitly per job.
+permissions:
+  contents: read
+
 on:
   schedule:
     # Run daily at 9 AM UTC
@@ -17,41 +25,51 @@ jobs:
   security-audit:
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    permissions:
+      contents: read
+      security-events: write # SARIF upload to the Security tab (D-03)
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: '3.13'
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install bandit safety pip-audit semgrep
+          # The sarif extra is REQUIRED: native SARIF output (-f sarif, since
+          # 1.7.8) is what feeds the Security tab (D-03). Without it bandit
+          # 1.9.x rejects the format and the pipeline is blind again.
+          pip install "bandit[toml,sarif]>=1.7.8" pip-audit semgrep
           pip install -e .
 
-      - name: Run Bandit (Python security linter)
+      # D-03: the SARIF that reaches the Security tab is Bandit's NATIVE
+      # output (bandit -f sarif, supported since 1.7.6). The previous
+      # hand-rolled converter was a literal placeholder that uploaded
+      # {'runs': []} — an empty Security tab by construction.
+      - name: Run Bandit with native SARIF output
         run: |
-          bandit -r src/beagle/ -f json -o bandit-results.json
+          bandit -r src/beagle/ -f sarif -o bandit-results.sarif
           bandit -r src/beagle/ -f txt
 
-      - name: Run Safety (dependency vulnerability check)
+      # D-23/D-32 (phase 2 step 5): `safety check` removed — pip-audit and
+      # osv-scanner cover the same ground; safety's legacy check mode also
+      # required a re-resolved graph rather than the tracked uv.lock.
+      - name: Run pip-audit against the tracked lockfile SSOT
         run: |
-          safety check --json > safety-results.json
-          safety check
-
-      - name: Run pip-audit
-        run: |
-          pip-audit --json > pip-audit-results.json
-          pip-audit
+          uv export --frozen --no-dev -o requirements-frozen.txt
+          pip-audit -r requirements-frozen.txt --strict --format json -o pip-audit-results.json || \
+            pip-audit -r requirements-frozen.txt --strict
 
       - name: Run Semgrep (static analysis)
-        uses: returntocorp/semgrep-action@v1
+        uses: semgrep/semgrep-action@713efdd345f3035192eaa63f56867b88e63e4e5d # v1
         with:
           config: >-
             p/security-audit
@@ -59,134 +77,89 @@ jobs:
             p/owasp-top-ten
 
       - name: Check for secrets
-        uses: trufflesecurity/trufflehog@main
+        uses: trufflesecurity/trufflehog@20652fbbdefffcdaa493a5bf57ab2ac6b1db715b # v3.97.1
         with:
           path: ./
           base: ${{ github.event.repository.default_branch }}
 
-      - name: Generate SARIF report
-        run: |
-          python -c "
-          import json
-          from pathlib import Path
-
-          # Combine results into SARIF format
-          sarif = {
-            'version': '2.1.0',
-            'runs': []
-          }
-
-          # Add Bandit results
-          if Path('bandit-results.json').exists():
-              with open('bandit-results.json') as f:
-                  bandit = json.load(f)
-                  # Convert to SARIF format
-                  # ... conversion logic ...
-
-          # Add Safety results
-          if Path('safety-results.json').exists():
-              with open('safety-results.json') as f:
-                  safety = json.load(f)
-                  # Convert to SARIF format
-                  # ... conversion logic ...
-
-          with open('security-audit.sarif', 'w') as f:
-              json.dump(sarif, f, indent=2)
-          "
-
+      # D-03: `continue-on-error` removed from the upload. A failing upload
+      # must fail the job — a silently-skipped upload recreates the blind
+      # Security tab this workflow exists to prevent.
       - name: Upload SARIF to GitHub Security
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@5ba2889ada762081db2c4f32a729827dce632c7b # v3
         if: always()
         with:
-          sarif_file: security-audit.sarif
-        continue-on-error: true
+          sarif_file: bandit-results.sarif
 
       - name: Upload audit results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
           name: security-audit-results
           path: |
-            bandit-results.json
-            safety-results.json
+            bandit-results.sarif
             pip-audit-results.json
-            security-audit.sarif
 
       - name: Create issue if vulnerabilities found
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         if: failure()
         with:
           script: |
             const fs = require('fs');
-
-            // Read results and create issue
-            const bandit = fs.existsSync('bandit-results.json')
-              ? JSON.parse(fs.readFileSync('bandit-results.json'))
-              : {};
-
-            const safety = fs.existsSync('safety-results.json')
-              ? JSON.parse(fs.readFileSync('safety-results.json'))
-              : {};
-
-            // Count high/critical issues
-            const highSeverity = (bandit.results || []).filter(r => r.issue_severity === 'HIGH').length;
-            const mediumSeverity = (bandit.results || []).filter(r => r.issue_severity === 'MEDIUM').length;
-
-            if (highSeverity > 0 || mediumSeverity > 0) {
-              await github.rest.issues.create({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                title: `🔒 Security Audit: ${highSeverity} high, ${mediumSeverity} medium severity issues found`,
-                body: `
-            ## Security Audit Results
-
-            **Date:** ${new Date().toISOString().split('T')[0]}
-
-            ### Summary
-            - **High Severity:** ${highSeverity}
-            - **Medium Severity:** ${mediumSeverity}
-
-            ### Action Required
-            Please review the uploaded artifacts for details.
-
-            Run ID: ${context.runId}
-                `,
-                labels: ['security', 'automated']
-              });
-            }
+            let summary = 'Security audit failed. Inspect the workflow run artifacts.';
+            try {
+              const txt = fs.existsSync('bandit-results.sarif')
+                ? JSON.parse(fs.readFileSync('bandit-results.sarif', 'utf8'))
+                : null;
+              const n = txt?.runs?.[0]?.results?.length ?? 'unknown';
+              summary = `Security audit failed with ${n} Bandit finding(s) reported to the Security tab.`;
+            } catch (e) { /* artifact parse failure must not mask the job failure */ }
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `Security audit failure (${context.runId})`,
+              body: summary,
+              labels: ['security'],
+            });
 
   dependency-review:
-    runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
-
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Dependency Review
-        uses: actions/dependency-review-action@v4
+      - name: Checkout code
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          fail-on-severity: moderate
+          persist-credentials: false
+      - name: Dependency review
+        uses: actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48 # v4.9.0
 
-  # ── Supply-chain CVE scanner (osv-scanner + pip-audit against lock file) ──
-  # DELTA-PROC-1: Automated transitive dependency scanning to catch CVEs
-  # like CVE-2025-68664 (LangGrinch), CVE-2026-34070 (path traversal),
-  # and CVE-2025-67644 (SQLi) before they reach production.
-
+  # D-23 (phase 2 step 4): scan the TRACKED uv.lock — the reproducibility
+  # SSOT. The previous jobs ran `uv lock` first, auditing a freshly
+  # re-resolved graph that the repository never shipped. uv.lock IS tracked
+  # in this repository; the old comment claiming otherwise was false.
   osv-scan:
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      contents: read
+      security-events: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
-      - uses: google/osv-scanner-action/osv-scanner-action@v2.0.1
+      - name: Assert the tracked lockfile is present
+        run: |
+          test -s uv.lock || { echo "::error::uv.lock missing — the CVE SSOT must stay tracked"; exit 1; }
+      - uses: google/osv-scanner-action/osv-scanner-action@6fc714450122bda9d00e4ad5d639ad6a39eedb1f # v2.0.1
         with:
           scan-args: |-
             --lockfile=./uv.lock
             --format=sarif
             --output=osv.sarif
-      - uses: github/codeql-action/upload-sarif@v3
+      - uses: github/codeql-action/upload-sarif@5ba2889ada762081db2c4f32a729827dce632c7b # v3
         if: always()
         with:
           sarif_file: osv.sarif
@@ -194,26 +167,36 @@ jobs:
   pip-audit-lockfile:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@e4db8464a088ece1b920f60402e813ea4de65b8f # v4
+      # Export FROM the tracked uv.lock (--frozen never re-resolves) and
+      # audit that exact graph.
       - run: uv export --frozen --no-dev -o requirements-frozen.txt
       - run: uvx pip-audit -r requirements-frozen.txt --strict
 
   codeql-analysis:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-
+    permissions:
+      contents: read
+      security-events: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@5ba2889ada762081db2c4f32a729827dce632c7b # v3
         with:
           languages: python
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@5ba2889ada762081db2c4f32a729827dce632c7b # v3
         with:
           category: "/language:python"
