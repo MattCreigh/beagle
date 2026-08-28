@@ -288,61 +288,52 @@ variable list, see [`docs/CLI.md`](docs/CLI.md).
 ## How It Works
 
 ```text
-   ┌────────────────────────────┐
-   │            User            │
-   └────────────────────────────┘
-                 │
-                 ▼
-   ┌────────────────────────────┐
-   │    CLI / MCP Interface     │
-   └────────────────────────────┘
-                 │
-                 ▼
-   ┌────────────────────────────┐
-   │      DAG Orchestrator      │
-   └────────────────────────────┘
-                 │
-                 ▼
-   ┌────────────────────────────┐
-   │     Hybrid RAG Search      │
-   └────────────────────────────┘
-                 │
-                 ▼
-   ┌────────────────────────────┐
-   │      Sandboxed Agent       │
-   └────────────────────────────┘
-                 │
-                 ▼
-   ┌────────────────────────────┐
-   │  CVCP Adversarial Review   │
-   └────────────────────────────┘
-                 │
-                 ▼
-   ┌────────────────────────────┐
-   │      Verified Report       │
-   └────────────────────────────┘
-            (returned to the User)
+   ┌────────────────────────────────────────────────────────┐
+   │                          User                          │
+   └────────────────────────────────────────────────────────┘
+                                │
+                                ▼
+   ┌────────────────────────────────────────────────────────┐
+   │                  CLI / MCP Interface                   │
+   └────────────────────────────────────────────────────────┘
+                                │
+                                ▼
+   ┌────────────────────────────────────────────────────────┐
+   │         DAG Orchestrator — ordered task nodes          │
+   └────────────────────────────────────────────────────────┘
+                                │
+                                ▼
+   ┌────────────────────────────────────────────────────────┐
+   │           Hybrid RAG Search — LanceDB + Kùzu           │
+   └────────────────────────────────────────────────────────┘
+                                │
+                                ▼
+   ┌────────────────────────────────────────────────────────┐
+   │  Sandboxed Agent — microVM or subprocess, USD metered  │
+   └────────────────────────────────────────────────────────┘
+                                │
+                                ▼
+   ┌────────────────────────────────────────────────────────┐
+   │        CVCP Review — 2 critics + citation check        │
+   └────────────────────────────────────────────────────────┘
+                                │
+                                ▼
+   ┌────────────────────────────────────────────────────────┐
+   │             Reviewed report + cost receipt             │
+   └────────────────────────────────────────────────────────┘
+                     (returned to the User)
 ```
 
 ```mermaid
 flowchart LR
-    User[User] --> CLI[CLI / MCP Interface]
-    CLI --> Engine[DAG Orchestrator]
-    Engine --> Search[Hybrid RAG Search]
-    Search --> Sandbox[Sandboxed Agent]
-    Sandbox --> Review[CVCP Adversarial Review]
-    Review --> Result[Verified Report]
+    User[User] --> CLI["CLI / MCP Interface"]
+    CLI --> Engine["DAG Orchestrator — ordered task nodes"]
+    Engine --> Search["Hybrid RAG Search — LanceDB + Kùzu"]
+    Search --> Sandbox["Sandboxed Agent — microVM or subprocess, USD metered"]
+    Sandbox --> Review["CVCP Review — 2 critics + citation check"]
+    Review --> Result["Reviewed report + cost receipt"]
     Result --> User
 ```
-
-1. **DAG Orchestrator** — Breaks your prompt into an ordered, non-repeating
-   to-do list of task nodes.
-2. **Hybrid RAG Search** — Scans your codebase for both semantic concepts
-   (LanceDB) and structural code links (Kùzu).
-3. **Sandboxed Agent** — Runs tasks in isolated microVMs or subprocesses with
-   continuous USD budget monitoring.
-4. **CVCP Adversarial Review** — Two critic agents audit the primary output for
-   errors before the verified report and cost receipt are returned.
 
 ---
 
