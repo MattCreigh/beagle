@@ -26,8 +26,8 @@ prompt, and it:
 1. **Plans** the task as a structured, ordered workflow.
 2. **Searches** your real codebase for code relationships and semantics.
 3. **Executes** sub-agents in secure, isolated sandboxes.
-4. **Adversarially reviews** findings before returning a verified report with an
-   exact cost receipt.
+4. **Adversarially reviews** the findings. It then returns the reviewed report
+   with a cost receipt.
 
 > **Security-first:** Beagle enforces a zero-trust model. For details on microVM
 > isolation, fail-closed policies, and the threat model, see
@@ -46,11 +46,11 @@ plain English:
 
 | Concept / Acronym | Plain-English Meaning | Why Beagle Uses It |
 |---|---|---|
-| **DAG** (Directed Acyclic Graph) | A structured to-do list that never loops. Tasks flow forward in one direction (A → B → C). | Prevents agents from going in circles, getting stuck in loops, or burning budget. |
-| **CVCP** (Cross-Verification Collaboration Protocol) | A three-agent peer-review panel: one primary agent drafts the answer, and two independent critic agents cross-examine it. | Eliminates hallucinations and false claims before you see the final report. |
+| **DAG** (Directed Acyclic Graph) | A structured to-do list. Tasks flow forward in one direction (A → B → C). | Keeps execution ordered. A retry loop has a maximum attempt count, so it stops. |
+| **CVCP** (Cross-Verification Collaboration Protocol) | A three-agent peer-review panel: one primary agent drafts the answer, and two independent critic agents cross-examine it. | Finds hallucinations and false claims before you see the final report. |
 | **Hybrid RAG** (Retrieval-Augmented Generation) | Intelligent code search that combines semantic vector search (LanceDB) with code-relation graphs (Kùzu). | Finds relevant code by meaning (e.g. `login`) and by structure (e.g. what calls `validate_token`). |
 | **MCP** (Model Context Protocol) | The universal plug for AI tools — an open standard that connects frontends to backend tools. | Lets tools like Goose CLI, Claude Code, or Cursor connect to Beagle seamlessly. |
-| **Sandboxes & MicroVMs** (Firecracker) | A locked execution room: untrusted code runs in hardware-isolated virtual machines or restricted subprocesses. | Protects your host machine from rogue commands, file deletions, or system changes. |
+| **Sandboxes & MicroVMs** (Firecracker) | A locked execution room: untrusted code runs in hardware-isolated virtual machines or restricted subprocesses. | Limits the effect of agent code on your host machine. |
 | **Goose Runtime** | The worker agent — a local subprocess runtime that executes the tasks Beagle assigns. | Provides an isolated execution environment for sub-agent tasks. |
 
 ---
@@ -66,10 +66,11 @@ plain English:
   [Isolation modes](#isolation-modes).
 - **Hybrid RAG Search** — Combines vector search (LanceDB) and AST graph
   traversal (Kùzu) to ground agents in real code context.
-- **Human-in-the-Loop** — Pauses for your permission before consequential
-  actions such as file writes or infrastructure changes.
-- **Adversarial Review (CVCP)** — Primary outputs are audited by two reviewer
-  agents to catch bugs and hallucinations.
+- **Human-in-the-Loop** — A workflow node that sets `require_approval: true`
+  pauses for your approval. The default value of that flag is false.
+- **Adversarial Review (CVCP)** — Two reviewer agents examine each primary
+  output. A ground-truth check then tests the file citations. The reviewers
+  decrease the number of false claims. They do not remove all errors.
 
 ---
 
