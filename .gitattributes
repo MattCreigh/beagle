@@ -4,3 +4,8 @@
 # alongside it (UPSTREAM.txt, license-inventory.json) are ours and diff normally.
 src/beagle/frontends/pi/vendor/pi/** linguist-vendored
 src/beagle/frontends/pi/vendor/pi/** -diff
+
+# The prebuilt pi bundle (from the published @earendil-works/pi-coding-agent
+# npm tarball) is also vendored third-party code — same treatment.
+src/beagle/frontends/pi/vendor/pi-prebuild/** linguist-vendored
+src/beagle/frontends/pi/vendor/pi-prebuild/** -diff

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "beagle"
-version = "1.4.0"
+version = "1.4.1"
 description = "Domain-agnostic autonomous agentic workflow system: multi-agent orchestration, hybrid RAG, MCP integration"
 readme = "README.md"
 license = "MIT"
@@ -124,6 +124,10 @@ beagle = [
     "style_guides/guides/*.toml",
     "infrastructure/Dockerfile.*",
     "infrastructure/docker-compose.yml",
+    # Prebuilt vendored pi frontend bundle (dist/bundle is self-contained;
+    # the runnable pi CLI ships in the wheel as the default frontend).
+    "frontends/pi/vendor/pi-prebuild/package.json",
+    "frontends/pi/vendor/pi-prebuild/dist/**",
 ]
 
 [tool.ruff]

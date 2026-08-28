@@ -93,8 +93,8 @@ def _main_options(
     del version  # satisfy vulture — Typer injects via parameter name
 
 
-def main() -> None:
-    """Main entry point — initializes Beagle and runs the CLI."""
+def _bootstrap() -> None:
+    """Non-fatal startup init shared by the CLI and the pi frontend path."""
     # Phase 4.3: Startup health check — log warnings, don't block
     try:
         from ..startup.health_check import run_startup_checks
@@ -124,6 +124,24 @@ def main() -> None:
             )
     except (OSError, RuntimeError, ValueError, ImportError) as e:
         logger.debug(f"Beagle init (non-fatal): {e}")
+
+
+def main() -> None:
+    """Main entry point — initializes Beagle and runs the CLI.
+
+    With no subcommand, the vendored pi frontend is launched (the default
+    interactive experience). Explicit subcommands (``beagle run``, …) dispatch
+    to the normal CLI.
+    """
+    _bootstrap()
+
+    # Bare ``beagle`` (no subcommand) launches the pi frontend. typer's
+    # ``no_args_is_help`` would otherwise print help; the frontend is the
+    # intended out-of-the-box entry point.
+    if len(sys.argv) <= 1:
+        from ..frontends.pi.launcher import main as pi_main
+
+        sys.exit(pi_main())
 
     app()
 

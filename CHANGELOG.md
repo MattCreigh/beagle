@@ -58,6 +58,21 @@ Phase 0/1 remediations applied from `docs/audits/release_readiness_code_audit_20
   (same API, same B-6 contracts), preserving all four concurrency tests
   and both e2e tests.
 
+### Bundled `pi` frontend (default interactive frontend)
+
+- **Added**: `src/beagle/frontends/pi/vendor/pi-prebuild/` — the published
+  `@earendil-works/pi-coding-agent@0.84.3` npm package (prebuilt, self-contained
+  `dist/` bundle; the runnable `pi` CLI). It ships **inside the Beagle wheel**
+  so `pi` works out of the box. A `src/beagle/frontends/pi/launcher.py` locates
+  the bundle (source checkout or installed wheel) and `exec`s `node` against it.
+- **Changed**: `beagle` with **no subcommand** now launches the `pi` frontend
+  (the default interactive experience) instead of printing typer help. Explicit
+  subcommands (`beagle run`, `beagle system`, …) are unchanged. Requires Node.js
+  >= 20 at runtime.
+- **Note**: the earlier repo-only `vendor/pi/` (verbatim `earendil-works/pi`
+  source checkout) is retained for provenance/re-sync; the wheel carries the
+  smaller prebuilt bundle instead of a ~400 MB `node_modules` tree.
+
 ### Vendored `pi` frontend
 
 - **Added**: `src/beagle/frontends/pi/vendor/pi/` — a verbatim checkout of the

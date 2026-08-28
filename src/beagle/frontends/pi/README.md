@@ -10,36 +10,37 @@ tooling that keeps it auditable.
 ```text
 src/beagle/frontends/pi/
 ├── __init__.py                     # namespace marker (no runtime Python)
+├── launcher.py                     # locates the bundle + execs `node`
 ├── README.md                       # this file
 ├── tools/
 │   └── generate_license_inventory.py   # license manifest generator (stdlib only)
 └── vendor/
     ├── UPSTREAM.txt                # exact upstream ref that was vendored
     ├── license-inventory.json      # generated third-party license manifest
-    └── pi/                         # pristine upstream checkout
+    ├── pi-prebuild/                # published @earendil-works/pi-coding-agent
+    │   │                           #   prebuilt bundle, SHIPPED in the wheel
+    │   └── dist/bundle/cli.js      #   the runnable `pi` CLI
+    └── pi/                         # pristine upstream source checkout
 ```
 
+`vendor/pi-prebuild/` is the published
+[`@earendil-works/pi-coding-agent`](https://www.npmjs.com/package/@earendil-works/pi-coding-agent)
+npm package at the same `0.84.3` version, with the prebuilt `dist/` included.
 `vendor/pi/` is a **verbatim** checkout of a fork commit (see `vendor/UPSTREAM.txt`
-for the repo, tag, and SHA). Nothing in this repository edits it in place — the
-only writer is the re-sync procedure below. Keeping it pristine is what makes a
-re-sync a clean directory swap rather than a merge.
+for the repo, tag, and SHA) retained for provenance and re-sync.
 
-## Not bundled into the wheel
+## Bundled into the wheel (default frontend)
 
-The Beagle wheel does **not** carry `pi` or its `node_modules`. The vendored tree
-is repo-only, for three reasons:
+`vendor/pi-prebuild/` (the runnable `pi` CLI) **ships inside the Beagle wheel**
+so `pi` works out of the box. `launcher.py` locates the bundle whether Beagle
+runs from a source checkout or an installed wheel, then `exec`s `node` against
+it. Bare `beagle` (no subcommand) launches the `pi` frontend.
 
-- `vendor/pi/node_modules/` and `vendor/pi/dist/` are git-ignored (upstream
-  `.gitignore`), so the tree on its own is not a runnable artifact — it needs
-  `npm ci` + `npm run build`.
-- Bundling ~150 MB of JavaScript, including per-platform native binaries for
-  macOS and Windows, into a CPU-only Python wheel is the wrong distribution
-  shape. Beagle wheels stay lean and are attached to GitHub Releases.
-- The frontend is launched as a separate process, not imported. It does not
-  need to sit on `sys.path`.
+This is the prebuilt npm bundle (~19 MB, self-contained `dist/`), not the
+~400 MB `node_modules` tree. `vendor/pi/` (the source checkout) stays repo-only;
+building it requires `npm ci` + `npm run build`.
 
-An operator who wants the frontend builds it from this tree (or installs the
-fork's own published package) and points Beagle at the resulting binary.
+Requires Node.js >= 20 on `PATH` at runtime.
 
 ## Working with the vendored tree
 
