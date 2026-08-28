@@ -169,7 +169,7 @@ class Embedder(Protocol):
     dimension: int
     provider: str
 
-    def encode(self, texts: list[str], **kwargs) -> list[list[float]]: ...
+    def encode(self, texts: list[str], **kwargs: Any) -> list[list[float]]: ...
 
 
 def _identity(*, model: str = _EMBED_MODEL_ST, prefix: str = "") -> dict[str, Any]:
@@ -231,7 +231,7 @@ class SentenceTransformerEmbedder:
                 "Install with: pip install sentence-transformers torch --index-url https://download.pytorch.org/whl/cpu"
             ) from e
 
-    def encode(self, texts: list[str], **kwargs) -> list[list[float]]:
+    def encode(self, texts: list[str], **kwargs: Any) -> list[list[float]]:
         """Encode texts into embeddings using sentence-transformers.
 
         Args:
@@ -249,7 +249,7 @@ class SentenceTransformerEmbedder:
 
         try:
             # Returns numpy array, convert to list
-            embeddings = self._model.encode(  # type: ignore[attr-defined]
+            embeddings = self._model.encode(
                 texts,
                 convert_to_numpy=True,
                 show_progress_bar=False,
@@ -488,7 +488,7 @@ class OllamaCloudEmbedder:
 
         # Process in batches, pausing between them so a large ingest cannot
         # saturate the shared local embedding runner (chunked + paced).
-        for i in range(0, len(texts), batch_size):  # type: ignore[call-overload]
+        for i in range(0, len(texts), batch_size):
             batch = texts[i : i + batch_size]
             try:
                 batch_emb = self._embed_batch(batch)
@@ -573,7 +573,7 @@ class OllamaCloudEmbedder:
         if "embedding" in data:
             return [data["embedding"]]
         elif "embeddings" in data:
-            return data["embeddings"]  # type: ignore[no-any-return]
+            return data["embeddings"]
         else:
             raise RuntimeError(f"Unexpected /api/embed response format: {list(data.keys())}")
 

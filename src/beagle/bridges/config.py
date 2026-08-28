@@ -15,13 +15,7 @@ from typing import Any
 logger = logging.getLogger("Beagle.bridges.config")
 
 # Use tomllib for Python 3.11+, fall back to tomli
-try:
-    import tomllib
-except ImportError:
-    try:
-        import tomli as tomllib  # type: ignore[import-untyped,no-redef]
-    except ImportError:
-        tomllib = None  # type: ignore[assignment]
+import tomllib
 
 
 def _find_config_path() -> Path:
@@ -61,11 +55,6 @@ def _load_bridges_config() -> dict[str, Any]:
     config_path = _find_config_path()
     if not config_path.exists():
         logger.debug(f"config.toml not found at {config_path}")
-        _config_cache = {}
-        return _config_cache
-
-    if tomllib is None:
-        logger.warning("No TOML parser available — bridges config unavailable")
         _config_cache = {}
         return _config_cache
 
@@ -296,4 +285,4 @@ def get_cloud_config() -> CloudConfig:
 
 def is_bridges_enabled() -> bool:
     """Check the master switch for all LangChain bridges."""
-    return _load_bridges_config().get("enabled", False)  # type: ignore[no-any-return]
+    return _load_bridges_config().get("enabled", False)

@@ -55,16 +55,16 @@ class TraceCorrelationFilter(logging.Filter):
     """Inject OTel trace_id and span_id into log records."""
 
     def filter(self, record: logging.LogRecord) -> bool:
-        record.trace_id = ""  # type: ignore[attr-defined]
-        record.span_id = ""  # type: ignore[attr-defined]
+        record.trace_id = ""
+        record.span_id = ""
         try:
             from opentelemetry import trace
 
             span = trace.get_current_span()
             ctx = span.get_span_context()
             if ctx and ctx.trace_id:
-                record.trace_id = format(ctx.trace_id, "032x")  # type: ignore[attr-defined]
-                record.span_id = format(ctx.span_id, "016x")  # type: ignore[attr-defined]
+                record.trace_id = format(ctx.trace_id, "032x")
+                record.span_id = format(ctx.span_id, "016x")
         except (ImportError, AttributeError, TypeError, ValueError):
             global _trace_correlation_failures
             _trace_correlation_failures += 1
@@ -88,9 +88,9 @@ class JSONFormatter(logging.Formatter):
         }
         # Trace correlation
         if getattr(record, "trace_id", ""):
-            log_entry["trace_id"] = record.trace_id  # type: ignore[attr-defined]
+            log_entry["trace_id"] = getattr(record, "trace_id", "")
         if getattr(record, "span_id", ""):
-            log_entry["span_id"] = record.span_id  # type: ignore[attr-defined]
+            log_entry["span_id"] = getattr(record, "span_id", "")
         # Exception info
         if record.exc_info and record.exc_info[1]:
             log_entry["exception"] = self.formatException(record.exc_info)

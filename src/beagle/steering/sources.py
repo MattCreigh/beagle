@@ -369,7 +369,7 @@ class SteeringSourceManager:
         if source_class:
             for source in self.sources:
                 if isinstance(source, source_class):
-                    try:
+                    try:  # type: ignore[unreachable]  # dynamic dispatch over concrete source types
                         source.acknowledge()
                     except Exception as e:  # ruff: ignore[BLE001]  # broad catch intentional
                         logger.warning(f"Failed to acknowledge on {source_class.__name__}: {e}")

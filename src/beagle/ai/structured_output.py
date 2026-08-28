@@ -10,6 +10,7 @@ ensuring outputs always conform to the expected schema.
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -19,10 +20,10 @@ logger = logging.getLogger("Beagle.StructuredOutput")
 # Instructor Client Factory
 # ---------------------------------------------------------------------------
 
-_instructor_client = None
+_instructor_client: Any = None
 
 
-def get_instructor_client(provider: str = "openai", model: str | None = None):
+def get_instructor_client(provider: str = "openai", model: str | None = None) -> Any:
     """Get or create a cached Instructor client.
 
     Falls back gracefully if instructor is not installed.
@@ -41,7 +42,7 @@ def get_instructor_client(provider: str = "openai", model: str | None = None):
         return _instructor_client
 
     try:
-        import instructor  # type: ignore[import-untyped]
+        import instructor
 
         if provider == "openai":
             from openai import AsyncOpenAI
@@ -51,7 +52,7 @@ def get_instructor_client(provider: str = "openai", model: str | None = None):
             try:
                 from anthropic import AsyncAnthropic
 
-                client = instructor.from_anthropic(AsyncAnthropic())  # type: ignore[attr-defined]
+                client = instructor.from_anthropic(AsyncAnthropic())
             except ImportError:
                 logger.warning("Anthropic SDK not installed — falling back to OpenAI")
                 from openai import AsyncOpenAI
@@ -160,7 +161,7 @@ async def classify_query(
             ],
             max_retries=2,
         )
-        return result  # type: ignore[no-any-return]
+        return result
     except Exception as e:  # ruff: ignore[BLE001]  # broad catch intentional
         logger.error(f"Structured classification failed: {e}")
         return None
@@ -195,7 +196,7 @@ async def decompose_task(
             ],
             max_retries=2,
         )
-        return result  # type: ignore[no-any-return]
+        return result
     except Exception as e:  # ruff: ignore[BLE001]  # broad catch intentional
         logger.error(f"Structured task decomposition failed: {e}")
         return None
@@ -234,7 +235,7 @@ async def validate_output(
             ],
             max_retries=2,
         )
-        return result  # type: ignore[no-any-return]
+        return result
     except Exception as e:  # ruff: ignore[BLE001]  # broad catch intentional
         logger.error(f"Structured validation failed: {e}")
         return None

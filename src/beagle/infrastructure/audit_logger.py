@@ -119,7 +119,7 @@ def scrub_sensitive(data: str | dict | list) -> str | dict | list:
     elif isinstance(data, list):
         return [scrub_sensitive(item) for item in data]
 
-    return data
+    return data  # type: ignore[unreachable]  # type-total fallback for str|dict|list union
 
 
 class AuditLogger:

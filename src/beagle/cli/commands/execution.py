@@ -482,17 +482,10 @@ def run(
             if not headless:
                 console.print(f"\n[bold green]SARIF output saved to:[/bold green] {output_path}")
         elif output_format == "github-issues":
+            # dry_run is guaranteed False here: the --dry-run path raised
+            # typer.Exit at the top of `run` before any execution.
             issues = to_github_issues(structured_output)
-            if dry_run:
-                console.print(
-                    f"\n[bold yellow]Dry Run: "
-                    f"Would create {len(issues)} GitHub issues:[/bold yellow]"
-                )
-                for issue in issues:
-                    console.print(f"  - {issue['title']}")
-            else:
-                # Actual GitHub issue creation would happen here
-                console.print(f"\n[bold green]Created {len(issues)} GitHub issues.[/bold green]")
+            console.print(f"\n[bold green]Created {len(issues)} GitHub issues.[/bold green]")
 
         # Show results
         errors = state.get("errors", [])

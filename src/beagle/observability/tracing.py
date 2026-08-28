@@ -125,7 +125,7 @@ def span(
     name: str,
     attributes: dict | None = None,
     record_exception: bool = True,
-):
+) -> Any:
     """Context manager for creating a traced span.
 
     Yields the span object, or ``None`` if tracing is not available.

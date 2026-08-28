@@ -14,13 +14,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
-try:
-    import tomllib
-except ImportError:
-    try:
-        import tomli as tomllib  # type: ignore[assignment,no-redef]
-    except ImportError:
-        tomllib = None  # type: ignore[assignment]
+import tomllib
 
 from .a2a_types import AgentCard
 from .config import get_a2a_config
@@ -59,10 +53,6 @@ def _load_agents_toml() -> dict[str, Any]:
     path = _find_agents_toml()
     if path is None:
         logger.warning("agents.toml not found — A2A discovery will return empty agent list")
-        return {}
-
-    if tomllib is None:
-        logger.warning("No TOML parser available — cannot read agents.toml")
         return {}
 
     try:

@@ -20,11 +20,14 @@ Usage:
 
 from __future__ import annotations
 
+import asyncio
 import contextlib
 import logging
 import time
 import tomllib
-from dataclasses import dataclass
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass, field
+from typing import Any
 
 from beagle.config._config_path import find_config_toml
 
@@ -172,7 +175,7 @@ def is_dynamic_concurrency_enabled() -> bool:
         if config_path.exists():
             with open(config_path, "rb") as f:
                 data = tomllib.load(f)
-            return data.get("hardware", {}).get("dynamic_concurrency", True)  # type: ignore[no-any-return]
+            return data.get("hardware", {}).get("dynamic_concurrency", True)
     except (OSError, tomllib.TOMLDecodeError, TypeError, AttributeError) as exc:
         logger.warning(
             "Cannot read [hardware].dynamic_concurrency from config.toml (%s); "
@@ -216,9 +219,96 @@ def get_dynamic_concurrency() -> DynamicConcurrency:
     )
 
 
+# ── Phase 2 (fault-recovery hardening): LLM backpressure + circuit breaker ──
+
+
+class LLMBackpressure:
+    """Wrap LLM API calls with a shared semaphore + per-provider circuit breaker.
+
+    Provides backpressure (a global concurrency semaphore) and per-provider
+    fault tolerance (a circuit breaker that trips on consecutive 429/504
+    responses and routes the failure to the SQLite dead-letter queue).
+
+    This is best-effort hardening: if the circuit-breaker layer is unavailable
+    the call still runs under the semaphore, preserving existing behaviour.
+    """
+
+    def __init__(
+        self,
+        max_concurrency: int = 4,
+        circuit_config: Any | None = None,
+    ) -> None:
+        """Initialise the backpressure wrapper.
+
+        Args:
+            max_concurrency: Max simultaneous LLM calls (backpressure ceiling).
+            circuit_config: Optional ``CircuitBreakerConfig`` for the breaker.
+        """
+        self.max_concurrency = max_concurrency
+        self._semaphore = asyncio.Semaphore(max_concurrency)
+        self.circuit_config = circuit_config
+        # Cache of lazily-created per-provider circuit breakers.
+        self._circuits: dict[str, Any] = {}
+        self._circuits_lock = asyncio.Lock()
+
+    async def _get_circuit(self, provider: str) -> Any | None:
+        """Get (or create) the circuit breaker for a provider, best-effort."""
+        if provider in self._circuits:
+            return self._circuits[provider]
+        try:
+            from beagle.utils.circuit_breaker import (
+                CircuitBreakerConfig,
+                get_llm_circuit_breaker,
+            )
+
+            cfg = self.circuit_config or CircuitBreakerConfig()
+            async with self._circuits_lock:
+                if provider not in self._circuits:
+                    # Scoped name carries workflow/dag context for the DLQ.
+                    self._circuits[provider] = await get_llm_circuit_breaker(
+                        f"llm-api:{provider}",
+                        cfg,
+                    )
+            return self._circuits[provider]
+        except Exception as exc:  # broad catch: circuit layer is best-effort
+            logger.debug("[LLMBackpressure] circuit breaker unavailable (%s)", exc)
+            return None
+
+    async def call(
+        self,
+        provider: str,
+        func: Callable[..., Awaitable[Any]],
+        *args: Any,
+        **kwargs: Any,
+    ) -> Any:
+        """Execute an LLM call under backpressure + circuit breaker.
+
+        Args:
+            provider: Provider/model key (e.g. ``"deepseek-v4-flash"``) used
+                to scope the per-provider circuit breaker and DLQ routing.
+            func: The async LLM-calling coroutine.
+            *args, **kwargs: Passed through to ``func``.
+
+        Returns:
+            The result of ``func``.
+
+        Raises:
+            Exception: Whatever ``func`` (or the circuit breaker) raises.
+        """
+        circuit = await self._get_circuit(provider)
+        async with self._semaphore:
+            if circuit is None:
+                # No circuit layer available — run directly under backpressure.
+                return await func(*args, **kwargs)
+            if hasattr(circuit, "call_llm"):
+                return await circuit.call_llm(func, *args, **kwargs)
+            return await circuit.call(func, *args, **kwargs)
+
+
 __all__ = [
     "ConcurrencyStats",
     "DynamicConcurrency",
+    "LLMBackpressure",
     "get_dynamic_concurrency",
     "is_dynamic_concurrency_enabled",
 ]

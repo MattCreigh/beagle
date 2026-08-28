@@ -178,9 +178,7 @@ async def _grpo_node(
 
     valid: list[tuple[int, str, float]] = []
     for r in results:
-        if isinstance(r, Exception):
-            logger.warning(f"[GRPO:{skill}] Trajectory raised exception: {r}")
-        elif r[1].strip():
+        if r[1].strip():
             valid.append(r)
 
     if not valid:

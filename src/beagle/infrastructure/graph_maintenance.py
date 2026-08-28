@@ -7,7 +7,7 @@ supporting the monthly AutoDream maintenance cycle.
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 logger = logging.getLogger("Beagle.graph_maintenance")
 
@@ -19,11 +19,7 @@ class PruneResult:
     nodes_removed: int = 0
     edges_removed: int = 0
     elapsed_seconds: float = 0.0
-    errors: list[str] = None  # type: ignore[assignment]
-
-    def __post_init__(self):
-        if self.errors is None:
-            self.errors = []
+    errors: list[str] = field(default_factory=list)
 
 
 def prune_low_connectivity(

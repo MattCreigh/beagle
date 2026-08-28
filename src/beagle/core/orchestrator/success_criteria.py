@@ -73,9 +73,6 @@ def evaluate(
     for c in criteria:
         if isinstance(c, str):
             continue  # informational
-        if not isinstance(c, dict):
-            failures.append(f"unparseable success_criterion: {c!r}")
-            continue
         field = c.get("field")
         if not field:
             failures.append(f"success_criterion missing 'field': {c!r}")

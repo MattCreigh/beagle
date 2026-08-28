@@ -25,7 +25,7 @@ def _is_object_schema(schema: dict[str, Any]) -> bool:
     return "properties" in schema or "required" in schema or "patternProperties" in schema
 
 
-def _harden_schema_node(schema: dict[str, Any], tool_name: str) -> None:
+def _harden_schema_node(schema: object, tool_name: str) -> None:
     """Recursively add ``additionalProperties: false`` to object nodes."""
     if not isinstance(schema, dict):
         return
@@ -81,7 +81,7 @@ def harden_mcp_tool_schemas(mcp_server: Any) -> int:
 
     """
     try:
-        tools = mcp_server._tool_manager._tools  # type: ignore[union-attr,reportPrivateUsage]
+        tools = mcp_server._tool_manager._tools
     except AttributeError as exc:
         logger.warning("Cannot access tool manager: %s", exc)
         return 0

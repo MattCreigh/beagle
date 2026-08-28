@@ -27,6 +27,7 @@ import subprocess
 import time
 import uuid
 from pathlib import Path
+from collections.abc import Callable
 from typing import Any
 
 # Project root for subprocess cwd and path resolution (not for sys.path).
@@ -53,22 +54,22 @@ except ImportError:
     # pulling in ``from typing import Any``.
 
     class FastMCP:  # type: ignore[no-redef]
-        def __init__(self, *_a, **_kw):
+        def __init__(self, *_a: object, **_kw: object) -> None:
             pass
 
-        def tool(self, *_a, **_kw):
-            def _d(f):
+        def tool(self, *_a: object, **_kw: object) -> Callable[[Callable], Callable]:
+            def _d(f: Callable) -> Callable:
                 return f
 
             return _d
 
-        def resource(self, *_a, **_kw):
-            def _d(f):
+        def resource(self, *_a: object, **_kw: object) -> Callable[[Callable], Callable]:
+            def _d(f: Callable) -> Callable:
                 return f
 
             return _d
 
-        def run(self, **_kw):
+        def run(self, **_kw: object) -> None:
             pass
 
     class Context:  # type: ignore[no-redef]
@@ -76,22 +77,22 @@ except ImportError:
 
         async def report_progress(
             self,
-            _progress,
-            _total=None,
-            _message=None,
-        ):
+            _progress: object,
+            _total: object = None,
+            _message: object = None,
+        ) -> None:
             return None
 
-        async def info(self, _message):
+        async def info(self, _message: object) -> None:
             return None
 
-        async def warning(self, _message):
+        async def warning(self, _message: object) -> None:
             return None
 
-        async def error(self, _message):
+        async def error(self, _message: object) -> None:
             return None
 
-        async def debug(self, _message):
+        async def debug(self, _message: object) -> None:
             return None
 
 
@@ -148,7 +149,7 @@ class CorrelationIdFilter(logging.Filter):
     """Inject correlation_id into log records."""
 
     def filter(self, record: logging.LogRecord) -> bool:
-        record.correlation_id = _correlation_id_var.get("")  # type: ignore[attr-defined]
+        record.correlation_id = _correlation_id_var.get("")
         return True
 
 
@@ -681,7 +682,7 @@ class _EventBridge:
 
     # --- bus callback -----------------------------------------------------
 
-    def _on_event(self, event) -> None:
+    def _on_event(self, event: Any) -> None:
         """Bus callback. Schedules the async dispatch on the running loop.
 
         The bus may invoke us with either a sync or async event loop
@@ -725,7 +726,7 @@ class _EventBridge:
             self._inflight.add(task)
             task.add_done_callback(self._inflight.discard)
 
-    async def _dispatch(self, event) -> None:
+    async def _dispatch(self, event: Any) -> None:
         """Forward a single event to the MCP Context."""
         if self._ctx is None:
             return
@@ -759,7 +760,7 @@ class _EventBridge:
             self._messages_emitted += 1
 
     @staticmethod
-    def _summarize(event) -> str:
+    def _summarize(event: Any) -> str:
         """Render a compact, secret-redacted payload for a log line.
 
         Capped at ~300 chars per event to avoid spamming the client.
@@ -1056,7 +1057,7 @@ async def _run_workflow_impl(
             "last_line": "",
         }
 
-        def _track(ev) -> None:
+        def _track(ev: Any) -> None:
             if getattr(ev, "timestamp", subscribed_at) < subscribed_at:
                 return  # replayed event from a previous workflow
             et = getattr(ev, "event_type", "")
@@ -1119,7 +1120,7 @@ async def _run_workflow_impl(
     # v13.21.13: Explicit start/end markers on the bus so the delegating
     # client sees clean workflow boundaries instead of inferring them from
     # the first heartbeat. Best-effort telemetry, like the heartbeat.
-    def _publish_workflow_marker(event) -> None:
+    def _publish_workflow_marker(event: Any) -> None:
         with contextlib.suppress(Exception):
             from beagle.events.bus import get_event_bus
 
@@ -1416,7 +1417,7 @@ def _list_agents_impl() -> str:
         description = ""
         if content.startswith("---"):
             try:
-                import yaml  # type: ignore[import-untyped]
+                import yaml
 
                 end = content.index("---", 3)
                 frontmatter = yaml.safe_load(content[3:end])
@@ -1920,10 +1921,10 @@ if __name__ == "__main__":
             before it reaches FastMCP's internal router.
             """
 
-            def __init__(self, inner_app):
+            def __init__(self, inner_app: Any) -> None:
                 self.inner_app = inner_app
 
-            async def __call__(self, scope, receive, send):
+            async def __call__(self, scope: Any, receive: Any, send: Any) -> Any:
                 if scope["type"] != "http":
                     return await self.inner_app(scope, receive, send)
                 # Unauthenticated paths: health + root probe.
@@ -1952,7 +1953,7 @@ if __name__ == "__main__":
                 return await self.inner_app(scope, receive, send)
 
             @staticmethod
-            async def _reject(send, status: int, detail: str) -> None:
+            async def _reject(send: Any, status: int, detail: str) -> None:
                 await send(
                     {
                         "type": "http.response.start",

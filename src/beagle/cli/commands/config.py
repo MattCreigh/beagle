@@ -179,7 +179,7 @@ def config_schema(
                             "type": f.type.__name__ if hasattr(f.type, "__name__") else str(f.type),
                             "default": getattr(cfg_section, f.name, None),
                         }
-                        for f in fields(cfg_section)  # type: ignore[arg-type]
+                        for f in fields(cfg_section)
                     },
                     "constraints": section_info.get("constraints", {}),
                 }
@@ -213,7 +213,7 @@ def config_schema(
             if cfg_section is None:
                 continue
             constraints = section_info.get("constraints", {})
-            for idx, f in enumerate(fields(cfg_section)):  # type: ignore[arg-type]
+            for idx, f in enumerate(fields(cfg_section)):
                 constraint = constraints.get(f.name, "")
                 type_str = f.type.__name__ if hasattr(f.type, "__name__") else str(f.type)
                 default_val = getattr(cfg_section, f.name, None)

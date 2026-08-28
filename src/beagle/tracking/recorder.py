@@ -32,7 +32,7 @@ class RunRecorder:
             tuple[str, str], str
         ] = {}  # (workflow_id, node_name) -> node_run_id
 
-    def handle_event(self, event: BeagleEvent):
+    def handle_event(self, event: BeagleEvent) -> None:
         """Process incoming events and update database."""
         try:
             if isinstance(event, WorkflowStarted):
@@ -48,7 +48,7 @@ class RunRecorder:
         except Exception as e:  # ruff: ignore[BLE001]  # broad catch intentional
             logger.error(f"RunRecorder failed to process event {type(event).__name__}: {e}")
 
-    def _record_workflow_start(self, event: WorkflowStarted):
+    def _record_workflow_start(self, event: WorkflowStarted) -> None:
         run = WorkflowRun(
             id=event.workflow_id,
             workflow_name=event.metadata.get("workflow_name", "unknown"),
@@ -59,7 +59,7 @@ class RunRecorder:
         )
         self.db.insert_workflow_run(run)
 
-    def _record_workflow_completion(self, event: WorkflowCompleted):
+    def _record_workflow_completion(self, event: WorkflowCompleted) -> None:
         # Retrieve existing run or create minimal
         run = WorkflowRun(
             id=event.workflow_id,
@@ -75,7 +75,7 @@ class RunRecorder:
         )
         self.db.update_workflow_run(run)
 
-    def _record_node_start(self, event: NodeStarted):
+    def _record_node_start(self, event: NodeStarted) -> None:
         node_run_id = str(uuid.uuid4())
         self._node_run_ids[event.workflow_id, event.node_name] = node_run_id
 
@@ -89,7 +89,7 @@ class RunRecorder:
         )
         self.db.insert_node_run(run)
 
-    def _record_node_completion(self, event: NodeCompleted):
+    def _record_node_completion(self, event: NodeCompleted) -> None:
         node_run_id = self._node_run_ids.get((event.workflow_id, event.node_name))
         if not node_run_id:
             return
@@ -118,7 +118,7 @@ class RunRecorder:
         )
         self.db.update_node_run(run)
 
-    def _record_node_failure(self, event: NodeFailed):
+    def _record_node_failure(self, event: NodeFailed) -> None:
         node_run_id = self._node_run_ids.get((event.workflow_id, event.node_name))
         if not node_run_id:
             return
@@ -137,7 +137,7 @@ class RunRecorder:
         )
         self.db.update_node_run(run)
 
-    def record_findings(self, output: Any):
+    def record_findings(self, output: Any) -> None:
         """Extract and persist findings from a WorkflowOutput object."""
         # Use local import to avoid circular dependency if schema imports anything from here
         from beagle.output.schema import WorkflowOutput
@@ -179,7 +179,7 @@ class RunRecorder:
             except ImportError as e:
                 logger.warning(f"Failed to update memory index: {e}")
 
-    def start(self):
+    def start(self) -> None:
         """Subscribe to the global event bus."""
         get_event_bus().subscribe("*", self.handle_event)
         logger.debug("RunRecorder active and subscribed to all events")
@@ -197,6 +197,6 @@ def get_recorder() -> RunRecorder:
     return _recorder
 
 
-def start_recorder():
+def start_recorder() -> None:
     """Start the global run recorder."""
     get_recorder().start()

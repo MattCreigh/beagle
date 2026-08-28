@@ -57,8 +57,6 @@ def _load_toml(path: Path) -> dict:
     except FileNotFoundError:  # pragma: no cover — callers validate existence
         logger.debug("Registry file not found: %s", path)
         return {}
-    if not isinstance(data, dict):
-        return {}
     return data
 
 

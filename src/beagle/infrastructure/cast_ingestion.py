@@ -1987,7 +1987,7 @@ def ingest(
                     progress.advance(embed_task, advance=len(args[0]) if args else 1)
                     return result_vectors
 
-                embedder.encode = _progress_encode  # type: ignore[assignment]
+                embedder.encode = _progress_encode  # type: ignore[method-assign]  # runtime monkey-patch
             except ImportError as exc:
                 logger.warning(
                     "Cannot import the embedder to attach progress reporting (%s); "
@@ -2000,7 +2000,7 @@ def ingest(
             # Restore original encode if we patched it
             if _original_encode is not None:
                 with contextlib.suppress(Exception):
-                    embedder.encode = _original_encode  # type: ignore[assignment]
+                    embedder.encode = _original_encode  # type: ignore[method-assign]  # runtime monkey-patch restore
 
             progress.update(
                 embed_task,

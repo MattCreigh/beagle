@@ -106,4 +106,4 @@ class BootstrapGraph:
             # Ready for query
             return True
 
-        return False
+        return False  # type: ignore[unreachable]  # exhaustive enum; defensive terminal fallback

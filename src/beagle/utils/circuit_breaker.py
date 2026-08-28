@@ -246,7 +246,7 @@ class CircuitBreaker:
             else:
                 result = func(*args, **kwargs)
             await self._record_success()
-            return result  # type: ignore[no-any-return]
+            return result
         except Exception:  # broad catch intentional
             await self._record_failure()
             raise
@@ -427,15 +427,21 @@ class LLMCircuitBreaker(CircuitBreaker):
         token_rate_threshold: float = 1000.0,
         p95_latency_threshold: float = 60.0,
         consecutive_429_threshold: int = 3,
+        consecutive_504_threshold: int = 3,
     ) -> None:
         super().__init__(name, config)
         self._token_rate_threshold = token_rate_threshold
         self._p95_latency_threshold = p95_latency_threshold
         self._consecutive_429_threshold = consecutive_429_threshold
+        self._consecutive_504_threshold = consecutive_504_threshold
         self._recent_latencies: list[float] = []
         self._max_latencies = 100
         self._recent_tokens: list[tuple[float, int]] = []
         self._consecutive_429_count = 0
+        # Phase 2 (fault-recovery hardening): track consecutive 504 (gateway
+        # timeout / overloaded upstream) responses the same way as 429s so the
+        # circuit trips on provider unavailability, not just rate limiting.
+        self._consecutive_504_count = 0
         self._recent_responses: list[str] = []
         self._max_responses = 10
         self._semantic_failure_count = 0
@@ -481,19 +487,35 @@ class LLMCircuitBreaker(CircuitBreaker):
                 raise ValueError(f"LLM rate/latency signal: rate_bad={rate_bad}")
 
             await self._record_success()
-            return result  # type: ignore[no-any-return]
+            return result
 
         except Exception as e:  # broad catch intentional
+            # Phase 2 (fault-recovery hardening): detect BOTH 429 (rate limit)
+            # and 504 (gateway timeout / overloaded upstream) so the circuit
+            # trips on provider unavailability too, not just rate limiting.
             if self._is_429(e):
                 self._consecutive_429_count += 1
+                self._consecutive_504_count = 0
                 if self._consecutive_429_count >= self._consecutive_429_threshold:
                     await self._record_failure()
+                    await self._route_to_dlq(str(e))
+                    raise CircuitBreakerOpenError(
+                        self.name,
+                        self.get_retry_after(),
+                    ) from e
+            elif self._is_504(e):
+                self._consecutive_504_count += 1
+                self._consecutive_429_count = 0
+                if self._consecutive_504_count >= self._consecutive_504_threshold:
+                    await self._record_failure()
+                    await self._route_to_dlq(str(e))
                     raise CircuitBreakerOpenError(
                         self.name,
                         self.get_retry_after(),
                     ) from e
             else:
                 self._consecutive_429_count = 0
+                self._consecutive_504_count = 0
             await self._record_failure()
             raise
 
@@ -553,18 +575,53 @@ class LLMCircuitBreaker(CircuitBreaker):
         msg = str(error)
         return "429" in msg or "rate limit" in msg.lower() or "ratelimit" in msg.lower()
 
+    def _is_504(self, error: Exception) -> bool:
+        """Detect a 504 Gateway Timeout (overloaded / unavailable upstream)."""
+        msg = str(error)
+        return "504" in msg or "gateway timeout" in msg.lower() or "upstream" in msg.lower()
+
+    async def _route_to_dlq(self, error: str) -> None:
+        """Best-effort route the failed node to the SQLite dead-letter queue.
+
+        Phase 2 (fault-recovery hardening): when the circuit trips on
+        consecutive 429/504 responses, persist the failure so it can be
+        replayed later via the ``beagle dlq retry`` CLI. Never raises — a DLQ
+        outage must not propagate.
+        """
+        try:
+            from beagle.fault_recovery.dlq import DeadLetterQueue, default_db_path
+
+            dlq = DeadLetterQueue(default_db_path())
+            workflow_id = _dlq_extract_id(self.name, "workflow")
+            dag_id = _dlq_extract_id(self.name, "dag")
+            node_name = self.name
+            dlq.enqueue(
+                workflow_id=workflow_id,
+                dag_id=dag_id,
+                node_name=node_name,
+                error=f"circuit-breaker: {error}",
+            )
+        except Exception as _dlq_exc:  # broad catch: DLQ is best-effort
+            logger.debug(
+                "[%s] DLQ route failed (%s); continuing without persistence.",
+                self.name,
+                _dlq_exc,
+            )
+
     def get_health_report(self) -> dict:
         base = super().get_health_report()
         base["llm_signals"] = {
             "p95_latency": self._calculate_p95(),
             "token_rate": self._calculate_token_rate(),
             "consecutive_429": self._consecutive_429_count,
+            "consecutive_504": self._consecutive_504_count,
             "recent_responses": len(self._recent_responses),
             "semantic_failures": self._semantic_failure_count,
             "thresholds": {
                 "latency": self._p95_latency_threshold,
                 "token_rate": self._token_rate_threshold,
                 "consecutive_429": self._consecutive_429_threshold,
+                "consecutive_504": self._consecutive_504_threshold,
             },
         }
         return base
@@ -582,6 +639,23 @@ class LLMCircuitBreaker(CircuitBreaker):
         total = sum(c for _, c in self._recent_tokens)
         span = max(0.1, time.monotonic() - self._recent_tokens[0][0])
         return total / span
+
+
+def _dlq_extract_id(circuit_name: str, kind: str) -> str:
+    """Best-effort extract a workflow/dag id from a circuit-breaker name.
+
+    The circuit name is typically ``llm-api`` or ``goose-<model>`` and carries
+    no explicit workflow/dag context. When callers pass a scoped name such as
+    ``wf-<id>:dag-<id>:node-<name>`` (as dynamic_pool does), this parses the
+    matching component; otherwise it returns an empty string so the DLQ entry
+    is still created (the id is optional).
+    """
+    for token in circuit_name.split(":"):
+        if kind == "workflow" and token.startswith("wf-"):
+            return token[3:]
+        if kind == "dag" and token.startswith("dag-"):
+            return token[4:]
+    return ""
 
 
 async def get_llm_circuit_breaker(

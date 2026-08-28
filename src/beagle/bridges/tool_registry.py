@@ -46,7 +46,7 @@ class ToolRegistry:
             with cls._lock:
                 if cls._instance is None:
                     cls._instance = super().__new__(cls)
-                    cls._instance._initialized = False  # type: ignore[has-type]
+                    cls._instance._initialized = False
         return cls._instance
 
     def __init__(self) -> None:
@@ -103,7 +103,7 @@ class ToolRegistry:
         try:
             module_path, class_name = class_path.rsplit(".", 1)
             module = importlib.import_module(module_path)
-            return getattr(module, class_name)  # type: ignore[no-any-return]
+            return getattr(module, class_name)
         except ImportError as exc:
             logger.error(f"Failed to import tool '{class_path}': {exc}")
             return None
@@ -191,7 +191,7 @@ class ToolRegistry:
         config = get_tools_config()
         if tool_name not in config.registry:
             return False
-        return config.registry[tool_name].get("enabled", False)  # type: ignore[no-any-return]
+        return config.registry[tool_name].get("enabled", False)
 
     def reset(self) -> None:
         """Clear all cached tool instances (useful for testing)."""

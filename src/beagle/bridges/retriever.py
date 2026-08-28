@@ -80,7 +80,7 @@ async def _rag_search_in_process(query: str, max_hops: int, top_k: int) -> dict[
     from ..infrastructure.mcp_rag_server import rag_search
 
     raw = await rag_search(query=query, max_hops=max_hops, top_k=top_k)
-    return json.loads(raw)  # type: ignore[no-any-return]
+    return json.loads(raw)
 
 
 async def _rag_search_mcp_stdio(
@@ -118,10 +118,10 @@ async def _rag_search_mcp_stdio(
             proc.communicate(json.dumps(request).encode()),
             timeout=timeout,
         )
-        return json.loads(stdout.decode())  # type: ignore[no-any-return]
+        return json.loads(stdout.decode())
     except TimeoutError:
         with contextlib.suppress(ProcessLookupError):
-            proc.kill()  # type: ignore[union-attr]
+            proc.kill()
         raise
     except Exception as exc:  # broad catch intentional
         raise RuntimeError(f"MCP stdio RAG search failed: {exc}") from exc

@@ -547,22 +547,22 @@ class WorkflowRateLimiter:
 def _get_rate_limiter_lock() -> asyncio.Lock:
     """Get or create the global rate limiter lock."""
     if not hasattr(_get_rate_limiter_lock, "_lock"):
-        _get_rate_limiter_lock._lock = asyncio.Lock()  # type: ignore[attr-defined]
-    return _get_rate_limiter_lock._lock
+        setattr(_get_rate_limiter_lock, "_lock", asyncio.Lock())
+    return getattr(_get_rate_limiter_lock, "_lock")
 
 
 def get_rate_limiter_async() -> WorkflowRateLimiter:
     """Get the singleton async rate limiter instance."""
     if not hasattr(get_rate_limiter_async, "_instance"):
-        get_rate_limiter_async._instance = WorkflowRateLimiter()  # type: ignore[attr-defined]
-    return get_rate_limiter_async._instance
+        setattr(get_rate_limiter_async, "_instance", WorkflowRateLimiter())
+    return getattr(get_rate_limiter_async, "_instance")
 
 
 def get_rate_limiter() -> WorkflowRateLimiter:
     """Get the singleton rate limiter instance."""
     if not hasattr(get_rate_limiter, "_instance"):
-        get_rate_limiter._instance = WorkflowRateLimiter()  # type: ignore[attr-defined]
-    return get_rate_limiter._instance
+        setattr(get_rate_limiter, "_instance", WorkflowRateLimiter())
+    return getattr(get_rate_limiter, "_instance")
 
 
 def reset_rate_limiter_async(

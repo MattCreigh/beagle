@@ -49,6 +49,14 @@ def _validate_workflow_path(path: Path) -> bool:
     workspace = get_workspace_root()
     config_root = find_config_root()
 
+    # Reject dangerous patterns first (independent of containment). A raw
+    # string check catches sequences relative_to() would not, e.g. a literal
+    # "$(...)" or backtick in the operator-supplied path string.
+    path_str = str(path)
+    dangerous = ["..", "~", "$", "`", ";", "|", "&", "\n", "\r", "\0"]
+    if any(pattern in path_str for pattern in dangerous):
+        return False
+
     # Convert to absolute and resolve symlinks
     try:
         check_path = workspace / path if not path.is_absolute() else path
@@ -73,11 +81,6 @@ def _validate_workflow_path(path: Path) -> bool:
             return True
         except ValueError:
             return False
-
-        # Check for dangerous patterns
-        path_str = str(path)
-        dangerous = ["..", "~", "$", "`", ";", "|", "&", "\n", "\r", "\0"]
-        return all(pattern not in path_str for pattern in dangerous)
     except (TypeError, ValueError, AttributeError):
         return False
 

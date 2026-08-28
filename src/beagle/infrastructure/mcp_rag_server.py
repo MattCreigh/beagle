@@ -1046,8 +1046,8 @@ async def rag_search(query: str, max_hops: int = 1, top_k: int = 5) -> str:
     missing = []
     if lancedb is None:
         missing.append("lancedb")
-    if kuzu is None:
-        missing.append("kuzu")
+    if kuzu is None:  # optional module; defensive fail-closed check
+        missing.append("kuzu")  # type: ignore[unreachable]
     if OllamaCloudEmbedder is None:
         missing.append("services.embedding (OllamaCloudEmbedder)")
     if missing:

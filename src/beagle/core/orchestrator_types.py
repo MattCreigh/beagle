@@ -314,8 +314,8 @@ class DAGNode:
     is_hard_task: bool = False
 
     def __post_init__(self) -> None:
-        if self.max_retries is None:
-            self.max_retries = self.retries
+        if self.max_retries is None:  # defensive: external callers may pass None
+            self.max_retries = self.retries  # type: ignore[unreachable]
 
     def can_execute(self, completed_nodes: list[str]) -> bool:
         """Check if all dependencies have completed."""

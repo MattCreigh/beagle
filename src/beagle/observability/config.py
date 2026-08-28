@@ -79,9 +79,9 @@ class ObservabilityConfig:
             config = load_config()
             obs = {}
             if hasattr(config, "get"):
-                obs = config.get("observability", {})  # type: ignore[attr-defined]
+                obs = config.get("observability", {})
             elif hasattr(config, "observability"):
-                obs = vars(config.observability)  # type: ignore[union-attr]
+                obs = vars(config.observability)
 
             if obs:
                 for k, v in obs.items():

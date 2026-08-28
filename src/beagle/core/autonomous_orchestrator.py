@@ -102,6 +102,7 @@ _ctx_monitor_cls: Any | None = None
 _guardian_mod: Any | None = None
 _post_compaction_mod: Any | None = None
 _rag_staleness_mod: Any | None = None
+_outbox_client: Any | None = None  # lazily-created fault-recovery OutboxClient
 
 
 def _get_steering_injection() -> Any | None:
@@ -164,6 +165,25 @@ def _get_guardian_mod() -> Any | None:
     except ImportError:
         _guardian_mod = False
     return _guardian_mod if _guardian_mod is not False else None
+
+
+def _get_outbox() -> Any | None:
+    """Lazily create and return the fault-recovery OutboxClient.
+
+    Best-effort: returns ``None`` if the fault_recovery package is unavailable.
+    The client is created once and reused for the life of the process.
+    """
+    global _outbox_client
+    if _outbox_client is not None:
+        return _outbox_client
+    try:
+        from beagle.fault_recovery.outbox import OutboxClient
+
+        _outbox_client = OutboxClient()
+        return _outbox_client
+    except ImportError:
+        _outbox_client = False
+    return None
 
 
 def _get_post_compaction_mod() -> Any | None:
@@ -832,7 +852,7 @@ class DAGOrchestrator:
                         if condition(self.state):
                             next_node_name = target_node
                             break
-                    current_node_name = next_node_name  # type: ignore[assignment]
+                    current_node_name = next_node_name
                     continue
 
                 # v0.3.0: Inject steering guidance into state for prompt influence
@@ -923,7 +943,7 @@ class DAGOrchestrator:
                             if condition(self.state):
                                 next_node_name = target_node
                                 break
-                        current_node_name = next_node_name  # type: ignore[assignment]
+                        current_node_name = next_node_name
                         continue
             except (
                 ImportError,
@@ -932,6 +952,30 @@ class DAGOrchestrator:
                 OSError,
             ) as e:  # catch: NARROWED  # RATIONALE=guardian module unavailable or state-schema drift
                 logger.debug(f"Guardian check skipped: {e}")
+
+            # Phase 1 (fault-recovery hardening): write the node's in-flight
+            # state to the Redis Streams WAL BEFORE execution and a completion
+            # event AFTER. Both are best-effort — an outbox failure must never
+            # break the workflow (it is a hardening aid, not a hard dependency).
+            _outbox = await self._get_outbox()
+            if _outbox is not None:
+                try:
+                    await _outbox.write_pending(
+                        workflow_id=self.workflow_id,
+                        node_name=node.name,
+                        dag_id=self._workflow_name or self.workflow_id,
+                        state_snapshot={
+                            "status": "running",
+                            "skill_name": getattr(node, "skill_name", ""),
+                        },
+                    )
+                except Exception as _oe:  # broad catch: outbox is best-effort
+                    logger.debug(
+                        "[%s] Outbox pending write failed (node %s): %s",
+                        self.workflow_id,
+                        node.name,
+                        _oe,
+                    )
 
             success = await node.execute(  # type: ignore[attr-defined]
                 self.state,
@@ -948,6 +992,27 @@ class DAGOrchestrator:
                     f"recording error and continuing workflow (non-stop mode)"
                 )
                 # State already has the error appended by node.execute()
+
+            # Phase 1 (fault-recovery hardening): record completion in the
+            # WAL after the node finishes. Best-effort — never breaks the loop.
+            if _outbox is not None:
+                try:
+                    await _outbox.write_completed(
+                        workflow_id=self.workflow_id,
+                        node_name=node.name,
+                        dag_id=self._workflow_name or self.workflow_id,
+                        state_snapshot={
+                            "status": "completed" if success else "failed",
+                            "skill_name": getattr(node, "skill_name", ""),
+                        },
+                    )
+                except Exception as _oe:  # broad catch: outbox is best-effort
+                    logger.debug(
+                        "[%s] Outbox completed write failed (node %s): %s",
+                        self.workflow_id,
+                        node.name,
+                        _oe,
+                    )
 
             # 3. Handle stop_after_node
             if directive.has_guidance and directive.stop_after_node == current_node_name:
@@ -1071,7 +1136,7 @@ class DAGOrchestrator:
                     next_node_name = target_node
                     break
 
-            current_node_name = next_node_name  # type: ignore[assignment]
+            current_node_name = next_node_name
 
         logger.info("Beagle DAG Execution Complete.")
 

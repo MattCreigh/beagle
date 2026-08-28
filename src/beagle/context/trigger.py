@@ -26,11 +26,11 @@ logger = logging.getLogger("Beagle.context.trigger")
 
 _monitor: ContextMonitor | None = None
 
-_CONSTRAINT_EXTRACTOR = None
+_CONSTRAINT_EXTRACTOR: Any | None = None
 _constraint_extractor_lock = threading.Lock()
 
 
-def _get_constraint_extractor():
+def _get_constraint_extractor() -> Any | None:
     """Lazily initialize constraint extractor to avoid import issues."""
     global _CONSTRAINT_EXTRACTOR
     if _CONSTRAINT_EXTRACTOR is not None:

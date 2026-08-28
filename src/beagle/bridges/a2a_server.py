@@ -116,8 +116,8 @@ class BeagleToA2ABridge:
 
     def __init__(self) -> None:
         self.config = get_a2a_config()
-        self._app = None
-        self._server = None
+        self._app: Any = None
+        self._server: Any = None
         self._signing_key: Any = None  # nacl.signing.SigningKey | None
 
     def _load_signing_key(self) -> Any:
@@ -336,7 +336,7 @@ class BeagleToA2ABridge:
             _RATE_LIMIT_MAX = self.config.max_concurrent_tasks * 10  # Allow burst headroom
             _RATE_LIMIT_WINDOW = 60.0  # 1 minute sliding window
 
-            @app.middleware("http")
+            @app.middleware("http")  # type: ignore[untyped-decorator]
             async def rate_limit_middleware(request: Request, call_next: Callable) -> Any:
                 """Per-IP rate limiting for A2A endpoints."""
                 import time as _time
@@ -365,12 +365,12 @@ class BeagleToA2ABridge:
 
                 return await call_next(request)
 
-            @app.post("/a2a/discover")
+            @app.post("/a2a/discover")  # type: ignore[untyped-decorator]
             async def discover_endpoint() -> JSONResponse:
                 cards = await self.discover()
                 return JSONResponse(content=cards)
 
-            @app.post("/a2a/execute")
+            @app.post("/a2a/execute")  # type: ignore[untyped-decorator]
             async def execute_endpoint(request: Request) -> JSONResponse:
                 # Phase 6: A2A payload DoS guard (audit E8). Refuse
                 # bodies larger than _A2A_MAX_BODY_BYTES (1 MB by
@@ -441,7 +441,7 @@ class BeagleToA2ABridge:
                 result = await self.execute(task)
                 return JSONResponse(content=asdict(result))
 
-            @app.get("/a2a/health")
+            @app.get("/a2a/health")  # type: ignore[untyped-decorator]
             async def health_endpoint() -> JSONResponse:
                 return JSONResponse(content={"status": "ok", "version": "1.0.0"})
 
@@ -452,8 +452,8 @@ class BeagleToA2ABridge:
                 port=self.config.port,
                 log_level="info",
             )
-            self._server = uvicorn.Server(config)  # type: ignore[assignment]
-            await self._server.serve()  # type: ignore[attr-defined]
+            self._server = uvicorn.Server(config)
+            await self._server.serve()
 
         except ImportError:
             logger.warning(

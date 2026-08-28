@@ -117,7 +117,7 @@ def _lint_yaml(tmp_path: str) -> str | None:
     Uses yaml.safe_load. Also tries `yamllint` if installed.
     """
     try:
-        import yaml as _yaml  # type: ignore[import-untyped]
+        import yaml as _yaml
     except ImportError:
         logger.debug("PyYAML not installed — skipping YAML validation")
         return None

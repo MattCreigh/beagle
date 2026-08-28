@@ -125,10 +125,8 @@ def _git(repo: str, *args: str) -> str:
     if out.returncode != 0:
         msg = f"git {' '.join(args)} failed: {out.stderr.strip()}"
         raise RuntimeError(msg)
-    stdout = out.stdout
-    if not isinstance(stdout, str):  # defensive: typeshed allows bytes|str
-        stdout = stdout.decode()
-    return stdout.strip()
+    # subprocess.run(text=True) guarantees stdout is str.
+    return out.stdout.strip()
 
 
 def head_sha(repo: str) -> str:

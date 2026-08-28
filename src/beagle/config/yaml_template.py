@@ -26,14 +26,9 @@ import logging
 from pathlib import Path
 from typing import Any, cast
 
-logger = logging.getLogger("Beagle.config.yaml_template")
+from jinja2 import Environment, StrictUndefined, select_autoescape
 
-try:
-    from jinja2 import Environment, StrictUndefined, select_autoescape
-except ImportError:  # pragma: no cover
-    Environment = None  # type: ignore[assignment,misc]
-    StrictUndefined = None  # type: ignore[assignment,misc]
-    select_autoescape = None
+logger = logging.getLogger("Beagle.config.yaml_template")
 
 
 def _load_template_context(config_path: Path | None = None) -> dict[str, Any]:
@@ -56,11 +51,6 @@ def _build_environment() -> Any:
     context is scalar leaves from the registry (never user HTML), so escaping
     is a defense-in-depth guard against SSTI via a malicious template.
     """
-    if Environment is None:
-        raise RuntimeError(
-            "jinja2 is required for YAML template rendering but is not installed. "
-            "Install with: pip install jinja2"
-        )
     from .toml_template import _toml_filter
 
     env = Environment(
@@ -92,12 +82,6 @@ def render_yaml_template(
         The rendered YAML text (ready for yaml.safe_load()).
 
     """
-    if Environment is None:
-        raise RuntimeError(
-            "jinja2 is required for YAML template rendering but is not installed. "
-            "Install with: pip install jinja2"
-        )
-
     context = _load_template_context(config_path)
     raw = yaml_path.read_text(encoding="utf-8")
     rendered = _render(raw, context)

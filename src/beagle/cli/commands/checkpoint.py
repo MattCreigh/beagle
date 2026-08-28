@@ -10,14 +10,7 @@ import typer
 
 logger = logging.getLogger(__name__)
 
-try:
-    from rich.console import Console
-except ImportError:  # pragma: no cover
-
-    class Console:  # type: ignore[misc,no-redef]
-        def print(self, *args, **kwargs):
-            logger.info(*args)
-
+from rich.console import Console
 
 console = Console(stderr=True)
 

@@ -25,8 +25,6 @@ def validate_workflow_schema(spec: dict[str, Any] | None) -> list[str]:
 
     if spec is None:
         return ["Empty workflow file"]
-    if not isinstance(spec, dict):
-        return [f"Workflow must be a YAML mapping, got {type(spec).__name__}"]
 
     # Check required fields
     if "phases" not in spec:

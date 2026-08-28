@@ -25,9 +25,9 @@ class GhostSecretsService:
     def socket_path() -> str:
         """Vault docker-proxy socket path from vault config, or the default."""
         try:
-            from ghost_vault.config import load_config  # type: ignore[import-not-found]
+            from ghost_vault.config import load_config
 
-            return str(load_config().proxy.socket_path)  # type: ignore[attr-defined]
+            return str(load_config().proxy.socket_path)
         except Exception:  # noqa: BLE001 — status must never raise
             return DEFAULT_SOCKET
 

@@ -44,7 +44,7 @@ class BeagleLangSmithBridge:
     def __init__(self) -> None:
         self.config = get_langsmith_config()
         self._started = False
-        self._langsmith_client = None
+        self._langsmith_client: Any = None
         self._api_key: str = ""  # Held in-process, not exported to child processes
 
     def start(self) -> bool:
@@ -79,7 +79,7 @@ class BeagleLangSmithBridge:
         # to child processes (Goose subprocess pool workers).
         # Instead, it's held in self._api_key and passed directly to
         # langsmith.Client() for manual trace creation.
-        self._api_key = api_key  # type: ignore[attr-defined]
+        self._api_key = api_key
         os.environ["LANGCHAIN_PROJECT"] = self.config.project_name
         os.environ["LANGCHAIN_TRACING_V2"] = "true"
 
@@ -102,7 +102,7 @@ class BeagleLangSmithBridge:
 
         # Initialize LangSmith Client directly (not from env var)
         try:
-            import langsmith  # type: ignore[import-untyped]
+            import langsmith
 
             self._langsmith_client = langsmith.Client(api_key=api_key)  # type: ignore[assignment]
             logger.info(f"LangSmith bridge started: project={self.config.project_name}")

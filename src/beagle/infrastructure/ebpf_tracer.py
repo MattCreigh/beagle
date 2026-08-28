@@ -31,7 +31,7 @@ def is_ebpf_enabled() -> bool:
         if config_path.exists():
             with open(config_path, "rb") as f:
                 data = tomllib.load(f)
-            return data.get("tracing", {}).get("backend") == "ebpf"  # type: ignore[no-any-return]
+            return data.get("tracing", {}).get("backend") == "ebpf"
     except (OSError, tomllib.TOMLDecodeError, TypeError, AttributeError) as exc:
         logger.warning(
             "Cannot read [tracing].backend from config.toml (%s); "
@@ -48,7 +48,7 @@ def is_ebpf_stub_mode() -> bool:
         if config_path.exists():
             with open(config_path, "rb") as f:
                 data = tomllib.load(f)
-            return data.get("tracing", {}).get("ebpf_stub", True)  # type: ignore[no-any-return]
+            return data.get("tracing", {}).get("ebpf_stub", True)
     except (OSError, tomllib.TOMLDecodeError, TypeError, AttributeError) as exc:
         logger.warning(
             "Cannot read [tracing].ebpf_stub from config.toml (%s); "

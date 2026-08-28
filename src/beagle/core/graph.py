@@ -63,9 +63,6 @@ logger = logging.getLogger("Beagle.graph")
 # docstring for the full release-note context. Kept for any external
 # callers that still introspect the flag.
 PYRSISTENT_AVAILABLE = False
-freeze = None  # type: ignore[assignment]
-pmap = None  # type: ignore[assignment]
-thaw = None  # type: ignore[assignment]
 
 # Import event bus
 from ..events import BeagleEvent, get_event_bus  # ruff: ignore[E402]
@@ -172,22 +169,11 @@ def _deep_fork_state(state: dict[str, Any]) -> dict[str, Any]:
         A deep copy that is safe to mutate without affecting the original.
 
     """
-    # Use pyrsistent for structural sharing if available (v13.4 optimization)
-    if PYRSISTENT_AVAILABLE and freeze is not None:
-        try:
-            # Convert to persistent map (immutable, structural sharing)
-            persistent_state = freeze(state)
-            # Create a new fork - this is O(1) with structural sharing
-            # The persistent map shares structure with the original
-            forked_pmap = pmap(persistent_state)
-            # Convert back to regular dict for LangGraph compatibility
-            return thaw(forked_pmap)  # type: ignore[return-value]
-        except (TypeError, ValueError, AttributeError) as e:
-            logger.warning(f"pyrsistent fork failed ({e}), falling back to deepcopy")
+    # pyrsistent (freeze/pmap/thaw) was removed in v13.19.4 — see module
+    # docstring. deepcopy is the only fork path.
 
-    # Fallback to copy.deepcopy for compatibility.  ``copy.deepcopy``
-    # handles all standard Python containers correctly.  TypedDict
-    # instances are just dicts at runtime, so this works transparently.
+    # ``copy.deepcopy`` handles all standard Python containers correctly.
+    # TypedDict instances are just dicts at runtime, so this works transparently.
     #
     # SECURITY: Catch only serialization errors, not ALL exceptions.
     # A broad ``except Exception`` silently produces a partial shallow
@@ -294,9 +280,7 @@ async def _grpo_node(
     # Filter valid results
     valid: list[tuple[int, str, float]] = []
     for r in results:
-        if isinstance(r, Exception):
-            logger.warning(f"[GRPO:{skill}] Trajectory raised exception: {r}")
-        elif r[1].strip():
+        if r[1].strip():
             valid.append(r)
 
     if not valid:

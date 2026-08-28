@@ -357,9 +357,9 @@ class MemoryIndex:
             if recon_tokens > self.token_budget:
                 result = self._prune_oldest_first(result, recon_tokens)
             return result
-        else:
-            # Unknown strategy, fall back to oldest_first
-            return self._prune_oldest_first(data, current_tokens)
+        # PruneStrategy is a closed 3-member enum (OLDEST_FIRST/RELEVANCE_WEIGHTED/HYBRID),
+        # so this branch is only reachable if a new member is added without handling.
+        return self._prune_oldest_first(data, current_tokens)  # type: ignore[unreachable]
 
     def _prune_oldest_first(
         self, data: dict[str, list[str]], current_tokens: int

@@ -267,8 +267,6 @@ def _validate_state_schema(state: dict) -> bool:
 
     Must be: {str → {str → str}} with at least 'mtime' key in each file entry.
     """
-    if not isinstance(state, dict):
-        return False
     # Sample a few entries to validate schema without O(n) full scan
     check_count = min(5, len(state))
     for checked, (key, value) in enumerate(state.items()):

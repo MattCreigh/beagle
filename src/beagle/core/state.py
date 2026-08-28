@@ -177,8 +177,8 @@ class BeagleState(BaseModel):
         setattr(self, key, default)
         return default
 
-    def keys(self):
-        return type(self).model_fields.keys()
+    def keys(self) -> list[str]:
+        return list(type(self).model_fields.keys())
 
     def values(self) -> list[Any]:
         return [getattr(self, k) for k in type(self).model_fields]
@@ -331,17 +331,16 @@ class Singleton[T](ABC):
         lock_name = "_singleton_construction_lock"
         # Fast path: the instance is already constructed.
         if hasattr(cls, "_singleton_instance"):
-            return (
-                cls._singleton_instance.get()
-            )  # Slow path: take the class-level lock and check again.
+            return getattr(cls, "_singleton_instance").get()
+        # Slow path: take the class-level lock and check again.
         with _bootstrap_singleton_lock:
             if not hasattr(cls, lock_name):
                 setattr(cls, lock_name, threading.RLock())
             cls_lock = getattr(cls, lock_name)
         with cls_lock:
             if not hasattr(cls, "_singleton_instance"):
-                cls._singleton_instance = cls()  # type: ignore[attr-defined]
-        return cls._singleton_instance.get()
+                setattr(cls, "_singleton_instance", cls())
+        return getattr(cls, "_singleton_instance").get()
 
     def get(self) -> T:
         """Get the singleton instance, creating if necessary."""
@@ -349,9 +348,10 @@ class Singleton[T](ABC):
             return self._instance
 
         with self._lock:
-            # Double-check after acquiring lock
+            # Double-check after acquiring lock (reachable at runtime: another
+            # thread may set _instance while this thread waits on the lock)
             if self._instance is not None:
-                self._stats.lock_waits += 1
+                self._stats.lock_waits += 1  # type: ignore[unreachable]
                 return self._instance
 
             self._instance = self._create()
@@ -403,9 +403,10 @@ class AsyncSingleton[T](ABC):
             return self._instance
 
         async with self._lock:
-            # Double-check after acquiring lock
+            # Double-check after acquiring lock (reachable at runtime: another
+            # coroutine may set _instance while this one waits on the lock)
             if self._instance is not None:
-                self._stats.lock_waits += 1
+                self._stats.lock_waits += 1  # type: ignore[unreachable]
                 return self._instance
 
             self._instance = await self._create()
@@ -471,9 +472,10 @@ class PersistentSingleton[T](ABC):
             return self._instance
 
         with self._lock:
-            # Double-check after acquiring lock
+            # Double-check after acquiring lock (reachable at runtime: another
+            # thread may set _instance while this thread waits on the lock)
             if self._instance is not None:
-                self._stats.lock_waits += 1
+                self._stats.lock_waits += 1  # type: ignore[unreachable]
                 return self._instance
 
             # Try to load from disk

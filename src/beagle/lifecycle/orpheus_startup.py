@@ -133,7 +133,7 @@ def initialize_rings(ring_dir: str | None = None) -> dict[str, Any]:
     # separately licensed beagle-orpheus wheel; absent, degrade to a no-op.
     try:
         try:
-            from beagle_orpheus.compat import create_rings  # type: ignore[import-not-found]
+            from beagle_orpheus.compat import create_rings
         except ImportError:
             from beagle.infrastructure._orpheus_optional import create_rings
 
@@ -203,7 +203,7 @@ def start_orpheus(transport: str = "unix_socket") -> dict[str, Any]:
     # 3. Verify OrpheusClient connectivity
     try:
         try:
-            from beagle_orpheus.compat import get_orpheus_client  # type: ignore[import-not-found]
+            from beagle_orpheus.compat import get_orpheus_client
         except ImportError:
             from beagle.infrastructure._orpheus_optional import get_orpheus_client
 
@@ -243,10 +243,10 @@ async def stop_orpheus() -> dict[str, Any]:
     # Clean up ring buffers
     try:
         try:
-            from beagle_orpheus.compat import cleanup_rings  # type: ignore[import-not-found]
+            from beagle_orpheus.compat import cleanup_rings
         except ImportError:
             from beagle.infrastructure._orpheus_optional import (
-                cleanup_rings,  # type: ignore[attr-defined]
+                cleanup_rings,
             )
 
         cleanup_result = cleanup_rings()

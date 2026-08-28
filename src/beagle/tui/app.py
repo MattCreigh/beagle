@@ -10,7 +10,7 @@ from __future__ import annotations
 import logging
 import os
 from pathlib import Path
-from typing import ClassVar
+from typing import Any, ClassVar
 
 from textual import on
 from textual.app import App, ComposeResult
@@ -217,11 +217,11 @@ class BeagleApp(App):
     ssd_writes_saved_mb: float = reactive(0.0)  # type: ignore[assignment]
     cpu_governor = reactive("unknown")
 
-    def __init__(self, workflow_id: str, query: str, **kwargs):
+    def __init__(self, workflow_id: str, query: str, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.workflow_id = workflow_id
         self.query = query  # type: ignore[assignment,method-assign]
-        self.sub_id = None
+        self.sub_id: Any = None
         self.title = f"Beagle: {self.workflow_id}"
         self.sub_title = self.query[:60] + "..." if len(self.query) > 60 else self.query  # type: ignore[arg-type,assignment,index]
 

@@ -480,14 +480,14 @@ def _release_rag_connections() -> bool:
         try:
             lance = getattr(mcp_rag_server, "_lance_tbl", None)
             if lance is not None and hasattr(lance, "close"):
-                lance.close()  # type: ignore[union-attr]
+                lance.close()
         except (OSError, RuntimeError) as e:
             logger.warning(f"[HotSwap] LanceDB close raised: {e}")
 
         try:
             kuzu = getattr(mcp_rag_server, "_kuzu_conn", None)
             if kuzu is not None and hasattr(kuzu, "close"):
-                kuzu.close()  # type: ignore[union-attr]
+                kuzu.close()
         except (OSError, RuntimeError) as e:
             logger.warning(f"[HotSwap] Kùzu close raised: {e}")
 

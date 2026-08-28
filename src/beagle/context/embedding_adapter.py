@@ -73,7 +73,7 @@ class EmbeddingAdapter:
         if self._initialized and self._dimension == dimension:  # type: ignore[has-type]
             return
         self._dimension = dimension
-        self._embedder = None
+        self._embedder: Any = None
         self._available = False
         self._init_attempts = 0
         self._max_init_attempts = 3

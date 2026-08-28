@@ -49,7 +49,7 @@ def _infer_phase_from_tool(tool_name: str) -> str:
 
 
 def _resolve_input_mapping(
-    input_mapping: dict[str, str],
+    input_mapping: dict[str, Any],
     state: dict[str, Any],
 ) -> dict[str, Any]:
     """Resolve Jinja-style state references in input mapping.

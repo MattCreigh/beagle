@@ -8,19 +8,25 @@ import json
 import logging
 import sys
 import time
+from collections.abc import Callable
 from functools import wraps
-from typing import Any
+from typing import Any, ParamSpec, TypeVar
 
+# _DDGS resolves at import time to one of two optional search libraries, or
+# None when neither is installed (minimal installs). Distinct import aliases
+# avoid mypy's no-redef; the result is boxed in an explicitly-typed slot.
 try:
-    from ddgs import DDGS as _DDGS
+    from ddgs import DDGS as _DDGS_PRIMARY
+    _DDGS: type[Any] | None = _DDGS_PRIMARY
 except ImportError:  # pragma: no cover — ddgs may be absent in minimal installs
     try:
-        from duckduckgo_search import DDGS as _DDGS  # type: ignore[assignment,no-redef]
+        from duckduckgo_search import DDGS as _DDGS_FALLBACK
+        _DDGS = _DDGS_FALLBACK
     except ImportError:
-        _DDGS = None  # type: ignore[assignment,no-redef]
+        _DDGS = None
 
 
-def _resolve_ddgs():
+def _resolve_ddgs() -> type[Any]:
     """Resolve the DDGS class from either ddgs or duckduckgo_search."""
     if _DDGS is None:
         _warn_ddgs_missing()
@@ -69,11 +75,15 @@ class NetworkError(SearchError):
     pass
 
 
+P = ParamSpec("P")
+R = TypeVar("R")
+
+
 def retry_with_backoff(
     max_retries: int = DEFAULT_MAX_RETRIES,
     delay: float = DEFAULT_RETRY_DELAY,
-    retryable_exceptions: tuple = (ConnectionError, TimeoutError, OSError),
-):
+    retryable_exceptions: tuple[type[BaseException], ...] = (ConnectionError, TimeoutError, OSError),
+) -> Callable[[Callable[P, R]], Callable[P, R]]:
     """Decorator for retrying functions with exponential backoff.
 
     Args:
@@ -83,10 +93,10 @@ def retry_with_backoff(
 
     """
 
-    def decorator(func):
+    def decorator(func: Callable[P, R]) -> Callable[P, R]:
         @wraps(func)
-        def wrapper(*args, **kwargs):
-            last_exception: Exception | None = None
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
+            last_exception: BaseException | None = None
             for attempt in range(max_retries + 1):
                 try:
                     return func(*args, **kwargs)
@@ -308,7 +318,7 @@ Examples:
     return parser.parse_args()
 
 
-def main():
+def main() -> None:
     """Command line interface for web search"""
     args = parse_args()
 
