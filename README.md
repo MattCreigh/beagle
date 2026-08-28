@@ -1,186 +1,236 @@
 # Beagle — Autonomous AI Workflow Engine
 
-**Turn complex AI tasks into reliable, auditable workflows.**
+**Beagle coordinates teams of AI agents to analyze codebases, execute tasks, and
+run workflows — all within a strict, predefined budget and with zero-trust
+isolation.**
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ---
 
 ## Overview
 
-Beagle lets you define AI workflows as simple YAML or TOML files, then executes
-them as reliable, repeatable processes. It solves the problem of managing
-multi-step AI tasks that require coordination between different models, tools,
-and verification steps — without losing track of what happened or overspending
-on API calls.
+Running autonomous AI agents can quickly become expensive and risky. Left
+unmonitored, they can burn through API credits, access the wrong files, or
+produce unverified, hallucinated results.
+
+Beagle solves this by turning your prompt into a **structured workflow**. It
+decomposes tasks into a Directed Acyclic Graph (DAG), meters every model call
+against a hard USD ceiling, executes sub-agents inside secure sandboxes
+(microVMs), and returns a verified report with a full cost summary.
+
+> **Security-first:** Beagle enforces a zero-trust model. For details on microVM
+> isolation, fail-closed policies, and the threat model, see
+> [`docs/SECURITY.md`](docs/SECURITY.md).
 
 ---
 
 ## Key Features
 
-- **Run workflows, not one-off prompts** — Define your process once, then reuse
-  it with full checkpointing and resume capabilities
-- **Never overspend** — Hard USD budget limits stop execution automatically
-- **Safe by default** — All untrusted code runs in sandboxed environments, with
-  hardware isolation when available
-- **Connect different AI systems** — Federate with other agent frameworks using
-  signed, authorized messaging
-- **Understand your codebase** — Built-in search that combines semantic vector
-  search with code-structure analysis
-- **Works on any CPU machine** — Heavy LLM inference happens remotely; only
-  lightweight embedding models run locally
-- **Built-in quality gates** — Automatic linting, type checking, and style
-  validation keep your workflows clean and reliable
+- **Deterministic Workflows** — Tasks run as structured DAGs with checkpointing,
+  resume support, and deterministic replay.
+- **Hard Cost Governance** — Every model call is metered against a strict USD
+  limit. Execution halts immediately when the budget is exhausted.
+- **Sandboxed Isolation** — Untrusted code runs inside Firecracker microVMs (when
+  `/dev/kvm` is available) or deny-by-default sandboxed subprocesses.
+- **Hybrid Code Search** — Combines vector search (LanceDB) with property-graph
+  traversal (Kùzu) to ground agents in your actual AST-parsed codebase.
+- **Human-in-the-Loop** — Pauses for your approval before consequential actions
+  such as file writes or infrastructure changes.
+- **Adversarial Verification (CVCP)** — Primary agent output is independently
+  critiqued by reviewer agents to catch hallucinations, logical gaps, and
+  security issues.
+- **Memory-Only Secrets** — Integrated Ghost Vault support keeps credentials in
+  RAM; never written to disk unencrypted.
 
 ---
 
 ## Quick Start
 
-**Requirements:**
+### Prerequisites
 
-- Python 3.12 or 3.13
-- [uv package manager](https://astral.sh/uv/install.sh)
+- **Python** 3.12 or later (3.13 recommended)
+- **`uv`** — mandatory package manager for reproducible builds
 
-**Installation:**
+  ```bash
+  curl -LsSf https://astral.sh/uv/install.sh | sh
+  ```
+
+- **Docker** (optional) — required only for Firecracker microVM isolation.
+  Beagle falls back to strict subprocess sandboxing when unavailable.
+- **`sops` + `age`** (optional) — required for Ghost Vault memory-only secret
+  management
+
+  ```bash
+  brew install sops age          # macOS
+  sudo apt install sops age      # Ubuntu/Debian
+  ```
+
+### Installation
 
 ```bash
+# 1. Clone the repository
 git clone https://github.com/MattCreigh/beagle.git
 cd beagle
+
+# 2. Install locked dependencies (single source of truth from uv.lock)
 uv sync --frozen --no-dev
-uv pip install ".[dev]" --extra-index-url https://download.pytorch.org/whl/cpu --no-deps
+
+# 3. Initialize configuration (~/.config/beagle)
+uv run beagle config init
 ```
 
-**Verify your setup:**
-
-```bash
-make check          # Runs lint, type checks, and dead code detection
-beagle config init  # Creates default configuration
-beagle config show  # View your current settings
-```
-
-**Start a workflow:**
-
-```bash
-beagle run research "What does the auth module do?"
-```
+> **Tip:** After installation you can either keep using `uv run beagle …` or
+> activate the virtual environment:
+>
+> ```bash
+> source .venv/bin/activate
+> beagle config init
+> ```
 
 ---
 
 ## Usage Example
 
-**Analyze your codebase:**
+Run a research workflow against your codebase with a hard $5.00 budget. The
+default runtime (`goose`) executes sub-agents as local, sandboxed subprocesses.
 
 ```bash
-beagle run research "How does the authentication system work?" --budget 5.0
+beagle run research "What does the authentication module do?" --budget 5.0
 ```
 
 **Expected output:**
 
 ```text
-Workflow: research
-Query: How does the authentication system work?
-Status: Running...
----
-[Research complete]
+⠦ Routing query and building workflow DAG...
+⠦ Hydrating context via hybrid RAG (LanceDB + Kùzu)...
+⠦ Executing sandboxed agent node (goose runtime)...
+⠦ Running CVCP adversarial review...
+✔ Final report generated.
 
-## Authentication System Overview
+Final Report:
+The authentication module provides JWT session validation (HS256) and
+Casbin-backed role-based access control (RBAC). It enforces multi-tenant
+isolation and requires `exp` and `iat` claims on all tokens.
 
-The auth module uses JWT tokens with HS256 signing. It requires...
-
-Total cost: $2.47
-Total tokens: 18,432
-```
-
-**Generate style-compliant prompts:**
-
-```bash
-beagle render-prompts    # Render style-guide prompt templates
-beagle render-hints      # Get formatting hints for your workflows
+Total Cost: $0.15 / $5.00
 ```
 
 ---
 
 ## Configuration
 
-| Variable | Purpose | Default |
-|----------|---------|---------|
-| `BEAGLE_BUDGET_USD` | Maximum spend per workflow | $10.00 |
-| `BEAGLE_DATA_ROOT` | Where to store workflow state | XDG config directory |
-| `BEAGLE_MCP_TOKEN` | Authentication for HTTP transport | *Required for HTTP MCP* |
-| `BEAGLE_LOG_LEVEL` | Logging verbosity | INFO |
-| `OLLAMA_BASE_URL` | Local embedding model endpoint | `http://ollama:11434` |
+Beagle is configured via environment variables (shell or `.env` file).
 
-**Configuration file:** TOML-based with schema validation. Initialize with
-`beagle config init` and edit `~/.config/beagle/config.toml`.
+| Variable | Description | Default |
+|---|---|---|
+| `BEAGLE_BUDGET_USD` | Hard stop budget per workflow run | `10.0` |
+| `BEAGLE_DATA_ROOT` | Directory for writable state (tracking DB, checkpoints) | XDG state root |
+| `BEAGLE_MCP_TOKEN` | Bearer token required for the HTTP MCP transport (fail-closed) | *(not set)* |
+| `BEAGLE_LOG_LEVEL` | Logging verbosity (`DEBUG`, `INFO`, `WARNING`, `ERROR`) | `INFO` |
 
-Set environment variables in your shell or `.env` file before running Beagle.
-
----
-
-## Maintaining Quality
-
-Beagle enforces consistent style and quality through automated checks:
-
-```bash
-make check            # Lint + type checking + dead code detection (zero-error gate)
-make typecheck        # Run mypy type checking
-make test             # Full test suite
-```
-
-Your workflows and code must pass these gates before merging. Use
-`beagle config validate` to verify your configuration follows the schema.
+> **Generate a secure MCP token:**
+>
+> ```bash
+> export BEAGLE_MCP_TOKEN=$(openssl rand -hex 32)
+> ```
 
 ---
 
 ## How It Works
 
 ```text
-                  ┌───────┐
-                  │  You  │
-                  └───┬───┘
-                      │  run command
-                      ▼
-                  ┌───────┐
-                  │  CLI  │
-                  └───┬───┘
-                      │
-                      ▼
-            ┌─────────────────────┐
-            │    Orchestrator     │
-            │ builds workflow DAG │
-            └────┬───────────┬────┘
-                 │           │
-                 ▼           ▼
-        ┌───────────────┐  ┌──────────────┐
-        │ Hybrid Search │  │    Agent     │
-        │  vector +     │  │   Runtimes   │
-        │  code graph   │  │ (sandboxed)  │
-        └───────────────┘  └──────┬───────┘
-                                  │
-                                  ▼
-                          ┌───────────────┐
-                          │  Verification │
-                          │ check results │
-                          └───────┬───────┘
-                                  │
-                                  ▼
-                          ┌───────────────┐
-                          │ Final report  │
-                          │    to you     │
-                          └───────────────┘
+   ┌──────────────────────┐
+   │ Operator / Host      │
+   └──────────────────────┘
+              │
+              ▼
+   ┌──────────────────────┐
+   │ CLI / MCP Surface    │
+   └──────────────────────┘
+              │
+              ▼
+   ┌──────────────────────┐
+   │ Autonomous           │
+   │ Orchestrator         │
+   └──────────────────────┘
+              │
+              ▼
+   ┌──────────────────────┐
+   │ Hybrid RAG Hydration │
+   └──────────────────────┘
+              │
+              ▼
+   ┌──────────────────────┐
+   │ Sandboxed Sub-Agent  │
+   │ Runtime              │
+   └──────────────────────┘
+              │
+              ▼
+   ┌──────────────────────┐
+   │ Adversarial Review   │
+   │ (CVCP)               │
+   └──────────────────────┘
+              │
+              ▼
+   ┌──────────────────────┐
+   │ Verified Final Report│
+   └──────────────────────┘
+              │
+              ▼
+    (returned to the operator)
 ```
 
 ```mermaid
-flowchart TB
-    You[You] -->|Run command| CLI[CLI]
-    CLI --> Orchestrator["Orchestrator<br>builds workflow DAG"]
-    Orchestrator --> RAG["Hybrid Search<br>vector + code graph"]
-    Orchestrator --> Agents["Agent Runtimes<br>sandboxed"]
-    Agents --> Verification["Verification<br>check results"]
-    Verification --> Output["Final report<br>to you"]
-    style You fill:#f9f,stroke:#333
-    style Output fill:#bbf,stroke:#333
+flowchart LR
+    User[Operator / Host] --> CLI[CLI / MCP Surface]
+    CLI --> Orchestrator[Autonomous Orchestrator]
+    Orchestrator --> RAG[Hybrid RAG Hydration]
+    RAG --> Sandbox[Sandboxed Sub-Agent Runtime]
+    Sandbox --> Review[Adversarial Review / CVCP]
+    Review --> Result[Verified Final Report]
+    Result --> User
 ```
 
-You give Beagle a command. It builds a workflow graph, searches your codebase
-for relevant context, runs each step in isolated sandboxes, verifies the
-results, and delivers a final report. Every step is tracked, metered, and
-auditable.
+1. The orchestrator turns your prompt into a structured DAG of tasks.
+2. Agents are hydrated with relevant context from your codebase using hybrid
+   search (vector + property graph).
+3. Sub-agents execute inside isolated sandboxes under continuous budget
+   enforcement.
+4. **CVCP (Cross-Verification Collaboration Protocol)** runs an adversarial
+   review: the primary agent's output is independently critiqued by two reviewer
+   agents. This surfaces hallucinations, logical gaps, and security issues before
+   the final report is returned — complete with a precise cost summary.
+
+---
+
+## Troubleshooting
+
+| Error / Symptom | Solution |
+|---|---|
+| `sops: command not found` | Install sops: `brew install sops` (macOS) or `sudo apt install sops` (Ubuntu) |
+| `Permission denied: /var/run/docker.sock` | Add your user to the Docker group: `sudo usermod -aG docker $USER`, then restart the terminal |
+| `BEAGLE_MCP_TOKEN is not set` (server refuses to start) | `export BEAGLE_MCP_TOKEN=$(openssl rand -hex 32)` |
+| Workflow fails with "Budget exhausted" | Raise the limit: `beagle run … --budget 20.0`, or review model routing in your config |
+| `ModuleNotFoundError` after installation | Ensure you're using the virtual env: `source .venv/bin/activate` or `uv run beagle …` |
+
+---
+
+*Beagle is part of the [Tensegrity](https://github.com/Tensegrity-Systems)
+ecosystem — tools for building self-healing, secure, AI-native infrastructure.
+See also Skylon (Docker orchestrator), Ghost Vault (memory-only secrets), and
+Orpheus (shared-memory IPC).*
+
+---
+
+## License
+
+[MIT](LICENSE) — © 2026 Matthew David Calder Creigh. Beagle and the vendored
+`pi` frontend fork are released under the MIT License; you may use, copy,
+modify, merge, publish, distribute, sublicense, and sell copies under the
+terms of [LICENSE](LICENSE).
+
+The optional `beagle-orpheus` transport wheel is **not** part of the MIT
+licensed distribution: it is separately licensed proprietary software (free
+for evaluation; production/business use requires a paid licence). See
+[LICENSE](LICENSE) for the scope note.
