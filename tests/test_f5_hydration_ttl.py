@@ -180,11 +180,11 @@ def test_render_canonical_force_renders_when_destination_has_hydrated_block(tmp_
     updated, refresh the hydrated block" call path, and covers the case
     where the hydrator has already run.
     """
-    from beagle.style_guides import render as render_mod
     from beagle.style_guides.render import GooseTopOfMindRenderer
 
-    canonical = tmp_path / "beagle_top_of_mind.xml"
-    monkeypatch.setattr(render_mod, "_CANONICAL_PATH", canonical)
+    monkeypatch.setenv("HOME", str(tmp_path))
+    canonical = tmp_path / ".config" / "goose" / "beagle_top_of_mind.xml"
+    canonical.parent.mkdir(parents=True, exist_ok=True)
 
     # Pre-populate with a *fresh* hydrated block.
     fresh = _dt.datetime.now(_dt.UTC).isoformat()
@@ -238,11 +238,11 @@ def test_force_renders_when_destination_has_no_hydrated_block(tmp_path, monkeypa
     force through _hydration_is_stale, which returned False on such an
     artefact, so the render was silently skipped.
     """
-    from beagle.style_guides import render as render_mod
     from beagle.style_guides.render import GooseTopOfMindRenderer
 
-    canonical = tmp_path / "beagle_top_of_mind.xml"
-    monkeypatch.setattr(render_mod, "_CANONICAL_PATH", canonical)
+    monkeypatch.setenv("HOME", str(tmp_path))
+    canonical = tmp_path / ".config" / "goose" / "beagle_top_of_mind.xml"
+    canonical.parent.mkdir(parents=True, exist_ok=True)
 
     canonical.write_text("<beagle_top_of_mind>\n<hydrator/>\n</beagle_top_of_mind>")
     called = {"count": 0}
@@ -266,11 +266,11 @@ def test_no_force_short_circuits_when_destination_has_no_hydrated_block(tmp_path
     fresh artefact with no hydrated block and unchanged source TOMLs must
     short-circuit without rendering.
     """
-    from beagle.style_guides import render as render_mod
     from beagle.style_guides.render import GooseTopOfMindRenderer
 
-    canonical = tmp_path / "beagle_top_of_mind.xml"
-    monkeypatch.setattr(render_mod, "_CANONICAL_PATH", canonical)
+    monkeypatch.setenv("HOME", str(tmp_path))
+    canonical = tmp_path / ".config" / "goose" / "beagle_top_of_mind.xml"
+    canonical.parent.mkdir(parents=True, exist_ok=True)
 
     canonical.write_text("<beagle_top_of_mind>\n<hydrator/>\n</beagle_top_of_mind>")
     called = {"count": 0}
@@ -293,11 +293,11 @@ def test_render_canonical_triggers_on_stale_hydration(tmp_path, monkeypatch):
     The TOML mtime is NOT changed; only the hydrated block's age
     triggers the re-render. This is the F5 acceptance test.
     """
-    from beagle.style_guides import render as render_mod
     from beagle.style_guides.render import GooseTopOfMindRenderer
 
-    canonical = tmp_path / "beagle_top_of_mind.xml"
-    monkeypatch.setattr(render_mod, "_CANONICAL_PATH", canonical)
+    monkeypatch.setenv("HOME", str(tmp_path))
+    canonical = tmp_path / ".config" / "goose" / "beagle_top_of_mind.xml"
+    canonical.parent.mkdir(parents=True, exist_ok=True)
 
     # Pre-populate with a 5-minute-old hydrated block. Set the
     # artefact's mtime to be *newer* than every TOML (so the TOML

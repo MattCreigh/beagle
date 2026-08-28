@@ -323,7 +323,7 @@ class TaskNotifier:
                 continue
             if event.event_type in sub.event_types:
                 try:
-                    result = sub.callback(event)  # type: ignore[func-returns-value]
+                    result = sub.callback(event)
                     if asyncio.iscoroutine(result):
                         _spawn_background(result)
                     delivered += 1
@@ -336,7 +336,7 @@ class TaskNotifier:
                 continue
             if event.event_type in sub.event_types:
                 try:
-                    result = sub.callback(event)  # type: ignore[func-returns-value]
+                    result = sub.callback(event)
                     if asyncio.iscoroutine(result):
                         _spawn_background(result)
                     delivered += 1

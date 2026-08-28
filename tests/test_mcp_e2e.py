@@ -256,8 +256,10 @@ class TestMCPServerErrorHandling:
     )
     async def test_openclaw_nonexistent_task(self):
         """OpenClaw should handle nonexistent task gracefully."""
-        mcp_openclaw = infra.mcp_openclaw_server
-        result = await mcp_openclaw.openclaw_get_result(task_id="nonexistent-task-id-12345")
+        # D-06: the server module lives in the beagle_openclaw plugin since
+        # the plugin extraction; beagle.infrastructure no longer proxies it.
+        openclaw_server = importlib.import_module("beagle_openclaw.server")
+        result = await openclaw_server.openclaw_get_result(task_id="nonexistent-task-id-12345")
         parsed = json.loads(result)
 
         assert "error" in parsed or "status" in parsed
@@ -307,10 +309,13 @@ class TestMCPConcurrency:
     )
     async def test_concurrent_list_tasks(self):
         """Multiple concurrent openclaw_list_tasks should complete safely."""
-        mcp_openclaw = infra.mcp_openclaw_server
+        # D-06: server module lives in the beagle_openclaw plugin.
+        openclaw_server = importlib.import_module("beagle_openclaw.server")
 
         tasks = [
-            asyncio.create_task(mcp_openclaw.openclaw_list_tasks(status="all", limit=5))
+            asyncio.create_task(
+                openclaw_server.openclaw_list_tasks(status="all", limit=5)
+            )
             for _ in range(5)
         ]
         results = await asyncio.wait_for(

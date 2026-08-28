@@ -143,39 +143,39 @@ class _LazyModelDict(dict):
 
     # ── dict method overrides ──────────────────────────────────────────────
 
-    def __getitem__(self, key):  # type: ignore[override]
+    def __getitem__(self, key: str) -> Any:
         self._ensure_built()
         return super().__getitem__(key)
 
-    def __contains__(self, key) -> bool:  # type: ignore[override]
+    def __contains__(self, key: object) -> bool:
         self._ensure_built()
         return super().__contains__(key)
 
-    def get(self, key, default=None):  # type: ignore[override]
+    def get(self, key: str, default: Any = None) -> Any:
         self._ensure_built()
         return super().get(key, default)
 
-    def __len__(self) -> int:  # type: ignore[override]
+    def __len__(self) -> int:
         self._ensure_built()
         return super().__len__()
 
-    def keys(self):  # type: ignore[override]
+    def keys(self) -> Any:
         self._ensure_built()
         return super().keys()
 
-    def values(self):  # type: ignore[override]
+    def values(self) -> Any:
         self._ensure_built()
         return super().values()
 
-    def items(self):  # type: ignore[override]
+    def items(self) -> Any:
         self._ensure_built()
         return super().items()
 
-    def __iter__(self):  # type: ignore[override]
+    def __iter__(self) -> Any:
         self._ensure_built()
         return super().__iter__()
 
-    def __repr__(self) -> str:  # type: ignore[override]
+    def __repr__(self) -> str:
         self._ensure_built()
         return super().__repr__()
 
@@ -193,8 +193,8 @@ class _LazyPricingDict(_LazyModelDict):
 # moment any key is accessed, so ``MODEL_CONTEXT_WINDOWS["default"]`` works
 # even at module-import time in downstream code.
 
-MODEL_CONTEXT_WINDOWS: dict[str, int] = _LazyContextWindowsDict()  # type: ignore[assignment]
-MODEL_PRICING: dict[str, dict[str, float]] = _LazyPricingDict()  # type: ignore[assignment]
+MODEL_CONTEXT_WINDOWS: dict[str, int] = _LazyContextWindowsDict()
+MODEL_PRICING: dict[str, dict[str, float]] = _LazyPricingDict()
 
 
 def _sync_public_dicts() -> None:
@@ -455,7 +455,7 @@ class ContextAwareCostTracker:
                     from .events import ContextWarning, get_event_bus
 
                     get_event_bus().publish(
-                        ContextWarning(  # type: ignore[call-arg]
+                        ContextWarning(
                             workflow_id=self.workflow_id,
                             node_name="",
                             utilization=self.context_status.utilization_percent,
@@ -476,7 +476,7 @@ class ContextAwareCostTracker:
                     from .events import ContextWarning, get_event_bus
 
                     get_event_bus().publish(
-                        ContextWarning(  # type: ignore[call-arg]
+                        ContextWarning(
                             workflow_id=self.workflow_id,
                             node_name="",
                             utilization=self.context_status.utilization_percent,
@@ -506,7 +506,7 @@ class ContextAwareCostTracker:
             from .events import ContextWarning, get_event_bus
 
             get_event_bus().publish(
-                ContextWarning(  # type: ignore[call-arg]
+                ContextWarning(
                     workflow_id=self.workflow_id,
                     node_name="",
                     utilization=util_pct,

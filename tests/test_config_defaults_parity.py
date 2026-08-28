@@ -1,4 +1,5 @@
-# Copyright (c) 2026 Matt Creigh. All rights reserved.
+# Copyright (c) 2026 Matt Creigh. Released under the MIT License.
+# SPDX-License-Identifier: MIT
 """Configuration contract for the open-source distribution.
 
 The wheel ships NO bundled configuration: every default lives in code

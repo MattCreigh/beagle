@@ -49,15 +49,20 @@ except ImportError:
         "Install with: pip install beagle[turboquant]"
     )
 
-    def turboquant_available():  # type: ignore[misc]
+    def turboquant_available() -> bool:
         return False
 
     COMPRESSION_RATIO = 1.0
 
-    def simple_turboquant_compress(*_args, **_kwargs):  # type: ignore[misc]
+    def simple_turboquant_compress(vectors: Any, bits: int = 3) -> tuple[bytes, int]:
         return (b"", 0)
 
-    def simple_turboquant_decompress(*_args, **_kwargs):  # type: ignore[misc]
+    def simple_turboquant_decompress(
+        compressed: bytes,
+        seed: int,
+        original_shape: tuple[int, ...],
+        bits: int = 3,
+    ) -> Any:
         if NUMPY_AVAILABLE and np is not None:
             return np.array([0])
         return [0]

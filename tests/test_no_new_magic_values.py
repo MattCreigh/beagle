@@ -1,4 +1,5 @@
-# Copyright (c) 2026 Matt Creigh. All rights reserved.
+# Copyright (c) 2026 Matt Creigh. Released under the MIT License.
+# SPDX-License-Identifier: MIT
 """Wire the hardcoded-defaults detector into the pytest suite.
 
 Running the suite must prove the scanner works, so a regression in

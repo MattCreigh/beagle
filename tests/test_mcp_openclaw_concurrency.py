@@ -1,9 +1,15 @@
 """B-6 regression test: TaskStore calls in async MCP handlers must not block.
 
-The MCP openclaw server exposes ``async def`` tool handlers that
-interact with the synchronous ``TaskStore`` (sqlite3 + threading.local).
-Calling sync I/O from an async context blocks the event loop and
-serialises every concurrent tool call.
+The OpenClaw MCP server (now the ``beagle_openclaw`` plugin — the server
+moved out of ``beagle.infrastructure`` during the plugin extraction) exposes
+``async def`` tool handlers that interact with the synchronous ``TaskStore``
+(sqlite3 + threading.local). Calling sync I/O from an async context blocks
+the event loop and serialises every concurrent tool call.
+
+D-06 (release-readiness audit 2026-08-28): these tests used to import
+``beagle.infrastructure.mcp_openclaw_server``, which no longer exists — the
+server now lives in the ``beagle_openclaw`` plugin package. The tests are
+retargeted at the plugin module; the B-6 contract under test is unchanged.
 
 Reference: audit/golden_master_v13.22.0.md B-6
 """
@@ -22,22 +28,24 @@ import sys
 import time
 from pathlib import Path
 
+_OPENCLAW_MODULE = "beagle_openclaw.server"
+
 
 def _import_openclaw_with_db(monkeypatch, tmp_path):
     """Import the openclaw MCP server with a fresh task DB."""
     db = tmp_path / "tasks.db"
     monkeypatch.setenv("OPENCLAW_DB_PATH", str(db))
     for mod in list(sys.modules):
-        if mod.startswith("beagle.infrastructure.mcp_openclaw_server") or mod.startswith(
+        if mod.startswith(_OPENCLAW_MODULE) or mod.startswith(
             "beagle.infrastructure.task_store"
         ):
             del sys.modules[mod]
-    return importlib.import_module("beagle.infrastructure.mcp_openclaw_server")
+    return importlib.import_module(_OPENCLAW_MODULE)
 
 
 def test_call_store_runs_in_thread_pool():
     """B-6: _call_store must push sync work to a thread, not block the loop."""
-    import beagle.infrastructure.mcp_openclaw_server as oc
+    import beagle_openclaw.server as oc
 
     block_duration = 0.05
     loop_continues = {"ticks": 0}

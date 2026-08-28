@@ -18,9 +18,11 @@ regression fails at test time rather than live:
     edit, silently ignoring the doctrine change the edit made.
 
 The single re-render path is ``render_to_file_hydrated`` (render.py:620);
-stubbing it captures every re-render without touching the network/MCP, and
-monkeypatching the module-level ``_CANONICAL_PATH`` keeps the test off the
-real ``~/.config/goose`` artefact.
+stubbing it captures every re-render without touching the network/MCP.
+D-38 (release-readiness audit 2026-08-28): the canonical paths are now
+resolved at CALL time, so these tests set ``HOME`` to a temp dir rather than
+monkeypatching a module-private constant — the resolution under a test HOME
+is exactly what the fix guarantees.
 """
 
 from __future__ import annotations
@@ -28,7 +30,6 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-import beagle.style_guides.render as render_mod
 from beagle.style_guides.render import GooseTopOfMindRenderer
 
 _FRESH_DEST_CONTENT = "<beagle_top_of_mind></beagle_top_of_mind>\n"
@@ -47,15 +48,20 @@ def _make_renderer(
     path are all controlled, so ``render_canonical`` can be exercised
     hermetically (no real TOML touches, no network hydration).
 
+    The canonical dest is ``$HOME/.config/goose/beagle_top_of_mind.xml``
+    with HOME pointed at ``tmp_path`` (D-38 call-time resolution) — the test
+    never touches the real ``~/.config/goose`` artefact.
+
     Returns ``(renderer, dest_path, calls)`` where ``calls["n"]`` counts
     how many times the (stubbed) re-render path fired.
     """
-    dest = tmp_path / "beagle_top_of_mind.xml"
+    monkeypatch.setenv("HOME", str(tmp_path))
+    dest = tmp_path / ".config" / "goose" / "beagle_top_of_mind.xml"
+    dest.parent.mkdir(parents=True, exist_ok=True)
     if dest_exists:
         dest.write_text(dest_content, encoding="utf-8")
         if dest_mtime is not None:
             os.utime(dest, (dest_mtime, dest_mtime))
-    monkeypatch.setattr(render_mod, "_CANONICAL_PATH", dest)
 
     renderer = GooseTopOfMindRenderer()
     # Control the "newest source TOML mtime" the guard compares against.
