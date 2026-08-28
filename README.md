@@ -6,6 +6,12 @@ isolation.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
+> **AI-assisted development disclosure:** This codebase was developed with
+> substantial assistance from AI agents and tooling. AI was used for code
+> generation, analysis, refactoring, documentation, and testing throughout the
+> project's lifecycle. All AI-generated contributions were reviewed, validated,
+> and integrated by the maintainers, who are responsible for the final code.
+
 ---
 
 ## Overview
