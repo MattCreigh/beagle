@@ -9,3 +9,7 @@ src/beagle/frontends/pi/vendor/pi/** -diff
 # npm tarball) is also vendored third-party code — same treatment.
 src/beagle/frontends/pi/vendor/pi-prebuild/** linguist-vendored
 src/beagle/frontends/pi/vendor/pi-prebuild/** -diff
+
+# The pi-mcp-extension (MIT, from npm) is vendored third-party code.
+src/beagle/frontends/pi/vendor/pi-mcp-extension/** linguist-vendored
+src/beagle/frontends/pi/vendor/pi-mcp-extension/** -diff

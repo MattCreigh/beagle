@@ -128,6 +128,12 @@ beagle = [
     # the runnable pi CLI ships in the wheel as the default frontend).
     "frontends/pi/vendor/pi-prebuild/package.json",
     "frontends/pi/vendor/pi-prebuild/dist/**",
+    # MCP bridge deps (resolved by the pi-mcp-extension at runtime).
+    "frontends/pi/vendor/pi-prebuild/node_modules/**",
+    # pi-mcp-extension: MIT client that bridges pi <-> beagle MCP over stdio.
+    "frontends/pi/vendor/pi-mcp-extension/src/**",
+    "frontends/pi/vendor/pi-mcp-extension/package.json",
+    "frontends/pi/vendor/pi-mcp-extension/LICENSE",
 ]
 
 [tool.ruff]

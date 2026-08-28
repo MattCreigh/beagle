@@ -72,6 +72,11 @@ Phase 0/1 remediations applied from `docs/audits/release_readiness_code_audit_20
 - **Note**: the earlier repo-only `vendor/pi/` (verbatim `earendil-works/pi`
   source checkout) is retained for provenance/re-sync; the wheel carries the
   smaller prebuilt bundle instead of a ~400 MB `node_modules` tree.
+- **Added**: plug-and-play MCP bridge — `vendor/pi-mcp-extension/` (MIT,
+  v1.5.0) plus its runtime deps (`@modelcontextprotocol/sdk`, `zod`, `jiti`) in
+  the wheel. `beagle` writes a default `.pi/mcp.json` pointing a `beagle` server
+  at our bundled MCP server over stdio and preloads the extension, so `pi` can
+  call Beagle's autonomous agents out of the box with no manual setup.
 
 ### Vendored `pi` frontend
 
