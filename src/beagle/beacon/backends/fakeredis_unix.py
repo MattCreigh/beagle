@@ -1,4 +1,5 @@
-# Copyright (c) 2026 Matt Creigh. All rights reserved.
+# Copyright (c) 2026 Matt Creigh. Released under the MIT License.
+# SPDX-License-Identifier: MIT
 """The fakeredis-over-unix-socket store, behind the BackendDriver protocol.
 
 See plans/beagle-coord-backend-slot.xml WP-B3, decisions D-B1, D-B5, and

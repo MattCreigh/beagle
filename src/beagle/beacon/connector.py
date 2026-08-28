@@ -1,4 +1,5 @@
-# Copyright (c) 2026 Matt Creigh. All rights reserved.
+# Copyright (c) 2026 Matt Creigh. Released under the MIT License.
+# SPDX-License-Identifier: MIT
 """Agent-side connector: the ring fast path and the socket RPC fallback.
 
 See plans/beagle-beacon-coordination.xml WP-5, decisions D-04 and D-06.

@@ -1,4 +1,5 @@
-# Copyright (c) 2026 Matt Creigh. All rights reserved.
+# Copyright (c) 2026 Matt Creigh. Released under the MIT License.
+# SPDX-License-Identifier: MIT
 """JIT spawn and stale-socket detection for a Beacon instance.
 
 See plans/beagle-beacon-coordination.xml WP-4, decision D-01, and the

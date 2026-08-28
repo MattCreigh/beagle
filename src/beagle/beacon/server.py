@@ -1,4 +1,5 @@
-# Copyright (c) 2026 Matt Creigh. All rights reserved.
+# Copyright (c) 2026 Matt Creigh. Released under the MIT License.
+# SPDX-License-Identifier: MIT
 """The Beacon server: owns the store, drains agent rings, serves socket RPC.
 
 See plans/beagle-beacon-coordination.xml WP-4, decisions D-01, D-04, and
@@ -55,8 +56,8 @@ try:
     import orpheus
     from beacon_lib.codec import decode_signal
 except ImportError:  # pragma: no cover - exercised only when the wheel is absent
-    orpheus = None  # type: ignore[assignment]
-    decode_signal = None  # type: ignore[assignment]
+    orpheus = None
+    decode_signal: "Callable[[bytes], tuple[str, str, dict[str, Any]]] | None" = None
 
 from beagle.beacon import contact
 from beagle.beacon.archive import elect_flush_owner, flush_archive
@@ -203,7 +204,7 @@ class RingPoller:
     def __init__(
         self,
         paths: BeaconPaths,
-        store_client_factory,
+        store_client_factory: Callable[[], StoreClient],
         *,
         on_teardown: Callable[[], None] | None = None,
         grace_ttl_s: float = _GRACE_TTL_S,

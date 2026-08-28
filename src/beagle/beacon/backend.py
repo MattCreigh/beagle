@@ -1,4 +1,5 @@
-# Copyright (c) 2026 Matt Creigh. All rights reserved.
+# Copyright (c) 2026 Matt Creigh. Released under the MIT License.
+# SPDX-License-Identifier: MIT
 """The coordination store contract: what a backend must be, not how it works.
 
 See plans/beagle-coord-backend-slot.xml WP-B1, decisions D-B1, D-B2, D-B5,

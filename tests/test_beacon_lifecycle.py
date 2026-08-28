@@ -1,4 +1,5 @@
-# Copyright (c) 2026 Matt Creigh. All rights reserved.
+# Copyright (c) 2026 Matt Creigh. Released under the MIT License.
+# SPDX-License-Identifier: MIT
 """Tests for beagle.beacon.server and beagle.beacon.spawn.
 
 See plans/beagle-beacon-coordination.xml WP-4: decisions D-01/D-04, invariant

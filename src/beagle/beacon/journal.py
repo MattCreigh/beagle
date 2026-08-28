@@ -1,4 +1,5 @@
-# Copyright (c) 2026 Matt Creigh. All rights reserved.
+# Copyright (c) 2026 Matt Creigh. Released under the MIT License.
+# SPDX-License-Identifier: MIT
 """The write-behind journal: what makes an in-memory board durable.
 
 See plans/beagle-beacon-coordination.xml WP-6, decision D-12, invariants

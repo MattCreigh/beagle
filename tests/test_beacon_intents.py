@@ -1,4 +1,5 @@
-# Copyright (c) 2026 Matt Creigh. All rights reserved.
+# Copyright (c) 2026 Matt Creigh. Released under the MIT License.
+# SPDX-License-Identifier: MIT
 """Tests for the app's signal framing contract via beacon_lib.codec.
 
 LANTERN P4 cutover: beagle.beacon.intents is gone; the envelope lives in

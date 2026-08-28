@@ -1,4 +1,5 @@
-# Copyright (c) 2026 Matt Creigh. All rights reserved.
+# Copyright (c) 2026 Matt Creigh. Released under the MIT License.
+# SPDX-License-Identifier: MIT
 """Data records held in the Beacon store.
 
 See plans/beagle-beacon-coordination.xml WP-2. The field list on

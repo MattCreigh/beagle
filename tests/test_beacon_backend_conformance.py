@@ -1,4 +1,5 @@
-# Copyright (c) 2026 Matt Creigh. All rights reserved.
+# Copyright (c) 2026 Matt Creigh. Released under the MIT License.
+# SPDX-License-Identifier: MIT
 """The store contract, frozen and proven substitutable.
 
 See plans/beagle-coord-backend-slot.xml WP-B5, decisions D-B6, hard

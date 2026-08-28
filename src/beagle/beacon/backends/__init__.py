@@ -1,4 +1,5 @@
-# Copyright (c) 2026 Matt Creigh. All rights reserved.
+# Copyright (c) 2026 Matt Creigh. Released under the MIT License.
+# SPDX-License-Identifier: MIT
 """The backend registry — how a TOML value becomes a store client.
 
 See plans/beagle-coord-backend-slot.xml WP-B4, decision D-B3, and hard

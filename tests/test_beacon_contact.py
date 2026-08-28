@@ -1,4 +1,5 @@
-# Copyright (c) 2026 Matt Creigh. All rights reserved.
+# Copyright (c) 2026 Matt Creigh. Released under the MIT License.
+# SPDX-License-Identifier: MIT
 """Tests for beagle.beacon.contact — pairwise peer rendezvous channels.
 
 See plans/beagle-beacon-coordination.xml WP-5B: decisions D-09/D-10/D-11,

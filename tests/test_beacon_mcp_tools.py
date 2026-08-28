@@ -1,4 +1,5 @@
-# Copyright (c) 2026 Matt Creigh. All rights reserved.
+# Copyright (c) 2026 Matt Creigh. Released under the MIT License.
+# SPDX-License-Identifier: MIT
 """Tests for beagle.infrastructure.mcp_coord_server — the beagle-coord MCP surface.
 
 See plans/beagle-beacon-coordination.xml WP-7: decision D-08, hard

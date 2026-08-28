@@ -1,4 +1,5 @@
-# Copyright (c) 2026 Matt Creigh. All rights reserved.
+# Copyright (c) 2026 Matt Creigh. Released under the MIT License.
+# SPDX-License-Identifier: MIT
 """Directory-scoped path derivation for a Beacon instance.
 
 See plans/beagle-beacon-coordination.xml WP-2 and the concept spec section 3

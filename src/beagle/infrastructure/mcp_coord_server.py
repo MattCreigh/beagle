@@ -1,4 +1,5 @@
-# Copyright (c) 2026 Matt Creigh. All rights reserved.
+# Copyright (c) 2026 Matt Creigh. Released under the MIT License.
+# SPDX-License-Identifier: MIT
 """Beagle Coordination MCP Server (beagle-coord).
 
 Exposes Beacon — the ephemeral, JIT-spawned coordination store (see

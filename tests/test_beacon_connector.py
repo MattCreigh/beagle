@@ -1,4 +1,5 @@
-# Copyright (c) 2026 Matt Creigh. All rights reserved.
+# Copyright (c) 2026 Matt Creigh. Released under the MIT License.
+# SPDX-License-Identifier: MIT
 """Tests for beagle.beacon.connector — the agent-side ring/socket router.
 
 See plans/beagle-beacon-coordination.xml WP-5, decisions D-04 and D-06.
