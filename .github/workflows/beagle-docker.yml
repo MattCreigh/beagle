@@ -11,7 +11,9 @@ permissions:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  # GHCR requires lowercase repository names; github.repository preserves the
+  # owner's case, so lowercase it explicitly.
+  IMAGE_NAME: ${{ lower(github.event.repository.full_name) }}
 
 jobs:
   docker-build-push:
