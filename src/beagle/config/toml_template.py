@@ -24,16 +24,11 @@ import logging
 from pathlib import Path
 from typing import Any, cast
 
+from jinja2 import Environment, StrictUndefined, select_autoescape
+
 from . import registry as _registry
 
 logger = logging.getLogger("Beagle.config.toml_template")
-
-try:
-    from jinja2 import Environment, StrictUndefined, select_autoescape
-except ImportError:  # pragma: no cover — jinja2 is in requirements.lock
-    Environment = None  # type: ignore[assignment,misc]
-    StrictUndefined = None  # type: ignore[assignment,misc]
-    select_autoescape = None
 
 # ---------------------------------------------------------------------------
 # |toml filter (B2) — emit a TOML-typed literal so unquoted ints/floats/bools
@@ -74,11 +69,6 @@ def _build_environment() -> Any:
     is scalar leaves from the registry (never user HTML), so escaping is a
     defense-in-depth guard against SSTI via a malicious template.
     """
-    if Environment is None:
-        raise RuntimeError(
-            "jinja2 is required for TOML template rendering but is not installed. "
-            "Install with: pip install jinja2"
-        )
     env = Environment(
         undefined=StrictUndefined,
         keep_trailing_newline=True,
@@ -119,12 +109,6 @@ def render_toml_template(
         The rendered TOML text (ready for tomllib.loads()).
 
     """
-    if Environment is None:
-        raise RuntimeError(
-            "jinja2 is required for TOML template rendering but is not installed. "
-            "Install with: pip install jinja2"
-        )
-
     context = _load_template_context(config_path)
 
     raw = toml_path.read_text(encoding="utf-8")

@@ -129,7 +129,7 @@ class Subscription:
     subscription_id: str
     task_id: str | None  # None = all tasks
     event_types: list[TaskEventType]
-    callback: Callable[[TaskEvent], None]
+    callback: Callable[[TaskEvent], object]  # may be sync or async; dispatch checks for coroutine
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     active: bool = True
 
@@ -197,7 +197,7 @@ class TaskNotifier:
         self,
         task_id: str,
         event_types: list[TaskEventType],
-        callback: Callable[[TaskEvent], None],
+        callback: Callable[[TaskEvent], object],
     ) -> str:
         """Subscribe to events for a specific task.
 
@@ -236,7 +236,7 @@ class TaskNotifier:
     def subscribe_all(
         self,
         event_types: list[TaskEventType],
-        callback: Callable[[TaskEvent], None],
+        callback: Callable[[TaskEvent], object],
     ) -> str:
         """Subscribe to events for ALL tasks.
 
