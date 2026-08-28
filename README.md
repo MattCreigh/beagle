@@ -151,6 +151,22 @@ export OPENAI_API_KEY="your-api-key-here"
 uv run beagle
 ```
 
+**CPU and GPU builds.** `uv.lock` resolves `torch` from the PyTorch CPU index.
+A default install therefore contains no CUDA packages. This keeps the install
+small on a host that has no NVIDIA GPU.
+
+To install a CUDA build, change the index URL in `pyproject.toml` to the CUDA
+channel of your driver. Then lock again:
+
+```bash
+# Set url = "https://download.pytorch.org/whl/cu130" in [[tool.uv.index]].
+# Use the channel that agrees with your driver: cu126, cu128, cu129, or cu130.
+uv lock
+uv sync --frozen --no-dev
+```
+
+The CUDA packages add several gigabytes to the install.
+
 > **Tip:** After installation you can either prefix commands with
 > `uv run beagle …` or activate the virtual environment:
 >

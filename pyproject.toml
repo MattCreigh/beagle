@@ -34,7 +34,9 @@ dependencies = [
     "lancedb==0.30.2",
     "kuzu==0.11.3",
     "sentence-transformers>=5.4",
-    # CPU-only torch pin; see README for GPU/CPU index guidance.
+    # CPU-only torch pin. The index that supplies it, and the procedure for a
+    # CUDA build, are in the "CPU and GPU builds" note of the README
+    # Installation section. See [[tool.uv.index]] below.
     "torch==2.11.0",
     "python-dotenv==1.2.2",
     "platformdirs>=4.0",
@@ -103,6 +105,21 @@ code_parsing = [
 tui = [
     "textual>=8.0.0",
 ]
+
+# Torch resolves from PyPI by default, and the PyPI wheel declares the whole
+# CUDA runtime stack (36 nvidia-* packages, several GB) as hard dependencies —
+# even on a CPU-only host, which is what `torch==2.11.0` above is pinned for.
+# This index carries the CPU-only builds of the same version. `explicit = true`
+# means ONLY the packages named in [tool.uv.sources] resolve here; every other
+# dependency still comes from PyPI.
+# GPU users: see the "GPU builds" note in the README Installation section.
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
 
 [tool.setuptools.packages.find]
 where = ["src"]
