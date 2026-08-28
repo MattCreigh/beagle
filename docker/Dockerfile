@@ -27,11 +27,11 @@ RUN uv pip install --system --prefix=/install --no-deps \
 # local-version variant (+cpu) satisfies an ==X.Y.Z pin, and installing it
 # BEFORE the full resolve means the resolver can never drag in the
 # multi-GB CUDA build that a plain PyPI resolution would pick.
-# Single-tool extraction (no pipeline → no pipefail concern).
+# Single-tool extraction (no pipeline → no pipefail concern). The base python
+# (not /install/bin/python) reads the installed dist-info under /install.
 RUN set -eux; \
-    SITE_PKGS="$(/install/bin/python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')"; \
-    TORCH_PIN="$(awk '/^Requires-Dist: torch==/ { print $2; exit }' \
-        "$SITE_PKGS"/beagle-*.dist-info/METADATA)"; \
+    META="$(find /install -path '*/beagle-*.dist-info/METADATA' | head -n1)"; \
+    TORCH_PIN="$(awk '/^Requires-Dist: torch==/ { print $2; exit }' "$META")"; \
     echo "torch pin from wheel metadata: $TORCH_PIN"; \
     uv pip install --system --prefix=/install "$TORCH_PIN" \
         --index-url https://download.pytorch.org/whl/cpu
@@ -40,6 +40,11 @@ RUN set -eux; \
 RUN uv pip install --system --prefix=/install \
     /tmp/dist/beagle-*-py3-none-any.whl && \
     rm -rf /tmp/dist
+
+# ── Stage 1b: Node runtime (pi frontend) ──────────────────────
+# The bundled pi frontend (in the wheel) requires node >= 22.19. Debian slim
+# does not ship a recent enough node, so pull it from the official node image.
+FROM node:22-bookworm-slim AS node-runtime
 
 # ── Stage 2: Runner ───────────────────────────────────────────
 FROM python:3.13-slim AS runner
@@ -50,6 +55,12 @@ FROM python:3.13-slim AS runner
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates curl git && \
     rm -rf /var/lib/apt/lists/*
+
+# pi frontend runtime: node from the dedicated stage (>=22.19 required).
+COPY --from=node-runtime /usr/local/bin/node /usr/local/bin/node
+COPY --from=node-runtime /usr/local/lib/node_modules /usr/local/lib/node_modules
+COPY --from=node-runtime /usr/local/bin/npm /usr/local/bin/npm
+RUN ln -s /usr/local/bin/node /usr/bin/node || true
 
 # Non-root runtime user
 RUN groupadd --gid 1000 beagle_user && \
