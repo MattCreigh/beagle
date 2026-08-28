@@ -61,8 +61,9 @@ plain English:
   graphs with checkpointing, pause/resume, and replay support.
 - **Hard Cost Governance** — Every model call is metered against a strict USD
   limit. Execution stops immediately when the budget is reached.
-- **Sandboxed Isolation** — Untrusted code runs inside Firecracker microVMs
-  (when `/dev/kvm` is available) or deny-by-default subprocess sandboxes.
+- **Sandboxed Isolation** — Untrusted code runs inside Firecracker microVMs, or
+  inside deny-by-default subprocess sandboxes. See
+  [Isolation modes](#isolation-modes).
 - **Hybrid RAG Search** — Combines vector search (LanceDB) and AST graph
   traversal (Kùzu) to ground agents in real code context.
 - **Human-in-the-Loop** — Pauses for your permission before consequential
@@ -95,8 +96,10 @@ Install all of this software before installation step 1.
   repository does not declare a minimum Goose version.
 - **An LLM provider.** Use an OpenAI-compatible API key, or a local Ollama
   endpoint.
-- Docker (optional) — required for Firecracker microVM isolation; Beagle falls
-  back to subprocess sandboxing when it is unavailable
+- **Firecracker (optional).** Install it only for microVM isolation. See
+  [Isolation modes](#isolation-modes) for the four conditions.
+- **Docker (optional).** Docker builds and runs the packaged Beagle image. It is
+  not an isolation mode. See [Isolation modes](#isolation-modes).
 
 ### Installation
 
@@ -159,6 +162,49 @@ isolation and requires `exp` and `iat` claims on all tokens.
 
 Total Cost: $0.15 / $5.00
 ```
+
+---
+
+## Isolation modes
+
+Beagle runs sub-agent code in one of two modes.
+
+### MicroVM mode (Firecracker)
+
+This mode gives hardware isolation with KVM. The microVM sandbox starts only
+when all four conditions are true:
+
+```text
+microvm_available = firecracker_on_path
+                    ∧ kvm_device_present
+                    ∧ kernel_image_present
+                    ∧ rootfs_image_present
+
+where:
+  firecracker_on_path   a `firecracker` binary is on PATH
+  kvm_device_present    /dev/kvm exists
+  kernel_image_present  the kernel image at $BEAGLE_MICROVM_KERNEL exists
+                        (default /usr/share/beagle/vmlinux)
+  rootfs_image_present  the root filesystem at $BEAGLE_MICROVM_ROOTFS exists
+                        (default /usr/share/beagle/rootfs.ext4)
+```
+
+Beagle logs the first failed condition and does not start the microVM. It then
+uses subprocess mode only when you set `allow_fallback` to true. The default is
+false. A silent loss of hardware isolation is therefore not possible.
+
+### Subprocess mode
+
+This mode needs no additional software. Beagle starts each sub-agent with
+`asyncio.create_subprocess_exec` in a new session. Beagle applies POSIX
+resource limits with `resource.setrlimit`. Network access is off by default.
+
+### What Docker gives you
+
+Docker is not an isolation mode. Docker builds and runs the packaged Beagle
+image from `docker/Dockerfile`. Docker does not supply Firecracker or KVM. The
+compose file sets `BEAGLE_EXECUTION_ENV=docker`. That value changes the MCP
+transport from stdio to streamable-http, which requires `BEAGLE_MCP_TOKEN`.
 
 ---
 
