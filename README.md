@@ -208,6 +208,39 @@ transport from stdio to streamable-http, which requires `BEAGLE_MCP_TOKEN`.
 
 ---
 
+## The semantic firewall
+
+Beagle checks every query with a semantic firewall before the workflow starts.
+The firewall is on by default. Only a caller that passes `mock_firewall=True`
+skips it.
+
+The firewall uses two passes:
+
+1. A pattern pass searches the query for dangerous patterns. This pass does no
+   I/O.
+2. A model pass starts a `goose` subprocess. The model must answer with one
+   word: `SAFE` or `MALICIOUS`.
+
+Beagle uses the second pass only when the sub-agent runtime is `goose_cli`. For
+a remote runtime, the verdict of the pattern pass stands.
+
+The firewall stops the query when a check fails. It also stops the query after
+an error. A timeout, an answer it cannot parse, and an invalid binary all give a
+block. The firewall is fail-closed: an error never becomes an allow.
+
+- **Timeout.** The model pass has a timeout of 15 seconds
+  (`SEMANTIC_FIREWALL_TIMEOUT`).
+- **Model.** The default provider is `ollama_cloud`. The default model is
+  `gemma4:31b`. Change them with `FIREWALL_PROVIDER` and `FIREWALL_MODEL`. The
+  model must be on `[models.allowed]`. If it is not, Beagle raises an error at
+  startup.
+- **Binary.** The model pass needs the `goose` binary. Beagle validates the
+  binary first. The binary must exist, be executable, and belong to you or to
+  root. Beagle also rejects a world-writable binary. Beagle rejects a
+  world-writable parent directory that has no sticky bit.
+
+---
+
 ## Configuration
 
 Run `beagle config init` to create the configuration file. The command writes
@@ -315,6 +348,7 @@ flowchart LR
 | `BEAGLE_MCP_TOKEN is not set` | Server refuses to boot unauthenticated | `export BEAGLE_MCP_TOKEN=$(openssl rand -hex 32)` |
 | Workflow fails: "Budget exhausted" | Hit the maximum USD ceiling | Raise the limit: `beagle run … --budget 20.0`, or check the model-routing config |
 | `ModuleNotFoundError` after installation | Virtual environment inactive | Activate it: `source .venv/bin/activate`, or prefix commands with `uv run` |
+| `Query blocked by semantic firewall (failed security check)` | The `goose` binary is missing, or it fails the ownership and permission check | Install Goose. Put `goose` on `PATH`, or set `GOOSE_BIN` to the binary. Make sure the binary and its parent directories are not world-writable |
 
 ---
 
