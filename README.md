@@ -74,6 +74,35 @@ plain English:
 
 ---
 
+## The Doctrine Layer
+
+Most agent frameworks put standing rules in the prompt of each agent. Beagle
+keeps them in one versioned layer and injects that layer into every turn.
+
+- **TOML files hold the standing rules.** Each guide is a `.toml` file with a
+  `meta.applies_to` list. The wheel ships defaults in
+  `src/beagle/style_guides/guides/`. An operator config root at
+  `~/.config/beagle/style_guides/guides/` replaces those defaults completely.
+  `BEAGLE_STYLE_GUIDES_DIR` overrides both.
+- **The renderer produces one XML file.** Run `beagle render-hints`. The
+  renderer selects the universal guides, which are the guides with
+  `applies_to = ["*"]`. It writes them to `~/.config/goose/beagle_top_of_mind.xml`
+  with an atomic write. Language guides stay out of that file. They fire on
+  file-edit events instead.
+- **The Top-of-Mind extension injects the file into each turn.** The goose `tom`
+  extension reads the path in `GOOSE_MOIM_MESSAGE_FILE`. Each turn therefore
+  starts with the current doctrine.
+- **A repository file can override the global rules.** A directory named `foo`
+  can hold a `FOO_STYLE_GUIDE.toml` file. Beagle collects these files from the
+  edited file up to the filesystem root. The nearest file wins over a farther
+  file, and a local file wins over a central guide. Rules that do not conflict
+  stay in force.
+
+Run `beagle render-prompts` to refresh the Top-of-Mind file, the system
+instruction, and the post-compaction template together.
+
+---
+
 ## Quick Start
 
 ### Prerequisites
