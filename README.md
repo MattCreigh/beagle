@@ -102,6 +102,9 @@ uv run beagle config init
 
 # 4. Set your LLM provider API key
 export OPENAI_API_KEY="your-api-key-here"
+
+# 5. Launch the interactive frontend (bundled in the wheel)
+uv run beagle
 ```
 
 > **Tip:** After installation you can either prefix commands with
@@ -111,6 +114,13 @@ export OPENAI_API_KEY="your-api-key-here"
 > source .venv/bin/activate
 > beagle config init
 > ```
+
+**Default frontend.** Beagle ships a vendored, prebuilt copy of the
+[`pi`](https://github.com/earendil-works/pi) TUI coding agent in the wheel, plus
+a bridge that connects it to Beagle's MCP server over stdio. Running `beagle`
+with no subcommand launches `pi`; it is pre-wired to call Beagle's agents over
+MCP with no extra setup (requires Node.js >= 20 on `PATH`). See
+`src/beagle/frontends/pi/README.md`.
 
 ---
 

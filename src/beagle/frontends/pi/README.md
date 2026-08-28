@@ -10,37 +10,50 @@ tooling that keeps it auditable.
 ```text
 src/beagle/frontends/pi/
 ├── __init__.py                     # namespace marker (no runtime Python)
-├── launcher.py                     # locates the bundle + execs `node`
+├── launcher.py                     # locates the bundle + wires MCP + execs `node`
 ├── README.md                       # this file
 ├── tools/
 │   └── generate_license_inventory.py   # license manifest generator (stdlib only)
 └── vendor/
     ├── UPSTREAM.txt                # exact upstream ref that was vendored
     ├── license-inventory.json      # generated third-party license manifest
+    ├── pi-mcp-extension/           # MIT pi<->MCP bridge (v1.5.0)
+    │   └── src/                    #   entrypoint: src/index.ts
     ├── pi-prebuild/                # published @earendil-works/pi-coding-agent
-    │   │                           #   prebuilt bundle, SHIPPED in the wheel
-    │   └── dist/bundle/cli.js      #   the runnable `pi` CLI
+    │   ├── dist/bundle/cli.js      #   the runnable `pi` CLI (shipped in wheel)
+    │   └── node_modules/           #   SDK/zod/jiti deps for the MCP bridge
     └── pi/                         # pristine upstream source checkout
 ```
 
 `vendor/pi-prebuild/` is the published
 [`@earendil-works/pi-coding-agent`](https://www.npmjs.com/package/@earendil-works/pi-coding-agent)
 npm package at the same `0.84.3` version, with the prebuilt `dist/` included.
+`vendor/pi-mcp-extension/` is the published
+[`pi-mcp-extension`](https://www.npmjs.com/package/pi-mcp-extension) (MIT) that
+bridges pi to MCP servers; its runtime deps
+(`@modelcontextprotocol/sdk`, `zod`, `jiti`) live under
+`pi-prebuild/node_modules/`.
 `vendor/pi/` is a **verbatim** checkout of a fork commit (see `vendor/UPSTREAM.txt`
 for the repo, tag, and SHA) retained for provenance and re-sync.
 
-## Bundled into the wheel (default frontend)
+## Bundled into the wheel (default frontend + MCP bridge)
 
-`vendor/pi-prebuild/` (the runnable `pi` CLI) **ships inside the Beagle wheel**
-so `pi` works out of the box. `launcher.py` locates the bundle whether Beagle
-runs from a source checkout or an installed wheel, then `exec`s `node` against
-it. Bare `beagle` (no subcommand) launches the `pi` frontend.
+`vendor/pi-prebuild/` (the runnable `pi` CLI) and `vendor/pi-mcp-extension/`
+(its MCP bridge + deps) **ship inside the Beagle wheel** so `pi` works out of
+the box. `launcher.py`:
 
-This is the prebuilt npm bundle (~19 MB, self-contained `dist/`), not the
-~400 MB `node_modules` tree. `vendor/pi/` (the source checkout) stays repo-only;
-building it requires `npm ci` + `npm run build`.
+1. locates the bundle whether Beagle runs from a source checkout or an installed
+   wheel,
+2. writes a default `.pi/mcp.json` wiring a `beagle` server at our bundled MCP
+   server over stdio (`lifecycle: eager`),
+3. preloads the pi-mcp-extension, so `pi` can call Beagle's autonomous agents
+   over MCP with no manual setup,
+4. `exec`s `node` against the bundle.
 
-Requires Node.js >= 20 on `PATH` at runtime.
+Bare `beagle` (no subcommand) launches the `pi` frontend.
+
+Requires Node.js >= 20 on `PATH` at runtime. `vendor/pi/` (the source checkout)
+stays repo-only; building it requires `npm ci` + `npm run build`.
 
 ## Working with the vendored tree
 
