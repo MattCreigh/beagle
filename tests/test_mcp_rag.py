@@ -31,14 +31,14 @@ sys.path.insert(0, str(PROJECT_ROOT))
 class TestCASTIngestion:
     """Test the CAST (Context-Aware Splitting via AST) pipeline."""
 
-    def test_estimate_tokens(self):
+    def test_estimate_tokens(self) -> None:
         from beagle.infrastructure.cast_ingestion import estimate_tokens
 
         assert estimate_tokens("") == 1  # minimum 1
         assert estimate_tokens("hello world") > 0
         assert estimate_tokens("x" * 350) == 100  # 350 / 3.5 = 100
 
-    def test_generate_chunk_id_deterministic(self):
+    def test_generate_chunk_id_deterministic(self) -> None:
         from beagle.infrastructure.cast_ingestion import (
             generate_chunk_id,
         )
@@ -49,19 +49,19 @@ class TestCASTIngestion:
         assert id1 == id2  # Deterministic
         assert id1 != id3  # Different inputs → different IDs
 
-    def test_fallback_chunk_python(self):
+    def test_fallback_chunk_python(self) -> None:
         from beagle.infrastructure.cast_ingestion import _fallback_chunk
 
         source = """import os
 
-def hello():
+def hello() -> None:
     print("hello")
 
 class Foo:
-    def bar(self):
+    def bar(self) -> None:
         pass
 
-def baz():
+def baz() -> int:
     return 42
 """
         chunks = _fallback_chunk(Path("test.py"), source)
@@ -71,14 +71,14 @@ def baz():
         assert "Foo" in names
         assert "baz" in names
 
-    def test_fallback_chunk_empty_file(self):
+    def test_fallback_chunk_empty_file(self) -> None:
         from beagle.infrastructure.cast_ingestion import _fallback_chunk
 
         chunks = _fallback_chunk(Path("empty.py"), "")
         # Empty file should produce 0 or 1 chunk
         assert len(chunks) <= 1
 
-    def test_extract_relations_calls(self):
+    def test_extract_relations_calls(self) -> None:
         from beagle.infrastructure.cast_ingestion import (
             ASTChunk,
             extract_relations,
@@ -114,7 +114,7 @@ def baz():
         assert call_rels[0].source_name == "caller"
         assert call_rels[0].target_name == "callee"
 
-    def test_extract_relations_inheritance(self):
+    def test_extract_relations_inheritance(self) -> None:
         from beagle.infrastructure.cast_ingestion import (
             ASTChunk,
             extract_relations,
@@ -150,7 +150,7 @@ def baz():
         assert inherit_rels[0].source_name == "Child"
         assert inherit_rels[0].target_name == "Parent"
 
-    def test_scan_codebase_respects_exclusions(self):
+    def test_scan_codebase_respects_exclusions(self) -> None:
         from beagle.infrastructure.cast_ingestion import scan_codebase
 
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -171,7 +171,7 @@ def baz():
             assert "readme.xyz" not in names
             assert "config.py" not in names  # .git excluded
 
-    def test_scan_codebase_excludes_runtime_state_dirs(self, tmp_path):
+    def test_scan_codebase_excludes_runtime_state_dirs(self, tmp_path: Path) -> None:
         """v13.22.3: runtime state, audit reports, and adjacent projects
         must NOT be ingested. The RAG corpus should be the codebase +
         config — not session state, audit markdown, or sibling projects
@@ -244,7 +244,7 @@ def baz():
             assert ".github" not in rels
             assert "beagle_containerisation" not in rels
 
-    def test_scan_codebase_excludes_agent_tooling_at_root(self, tmp_path):
+    def test_scan_codebase_excludes_agent_tooling_at_root(self, tmp_path: Path) -> None:
         """v13.22.3: At the project root, drop agent-tooling files
         (CLAUDE.md, AGENTS.xml, one-shot audit reports) that look like
         code but are for the AI agent runtime, not the codebase.
@@ -270,7 +270,7 @@ def baz():
             assert "AGENTS.xml" not in names
             assert "ARCH_REPORT.md" not in names
 
-    def test_oversized_chunk_splitting(self):
+    def test_oversized_chunk_splitting(self) -> None:
         from beagle.infrastructure.cast_ingestion import (
             _split_oversized_node,
         )
@@ -289,7 +289,7 @@ def baz():
 class TestMCPSecurity:
     """CVCP Attacker: Security boundary stress tests."""
 
-    def test_response_sanitization_scrubs_secrets(self):
+    def test_response_sanitization_scrubs_secrets(self) -> None:
         from beagle.infrastructure.mcp_rag_server import (
             _sanitize_response,
         )
@@ -308,7 +308,7 @@ class TestMCPSecurity:
         assert isinstance(sanitized["nested"]["data"], str)
         assert sanitized["safe"] == 42
 
-    def test_transport_enforcement_blocks_http(self):
+    def test_transport_enforcement_blocks_http(self) -> None:
         """Verify that HTTP/SSE transport arguments are rejected."""
         # The server checks sys.argv in __main__ — we test the logic
         banned_args = ["--http", "--sse", "--port=8080", "--host=0.0.0.0"]
@@ -317,7 +317,7 @@ class TestMCPSecurity:
                 f"Transport filter should catch: {arg}"
             )
 
-    def test_config_blocks_non_stdio_transport(self):
+    def test_config_blocks_non_stdio_transport(self) -> None:
         """Verify config.py blocks non-stdio MCP transport overrides."""
         from beagle.config.config import MCPConfig
 
@@ -334,7 +334,7 @@ class TestBoundaryConditions:
     """CVCP Attacker: Edge case and boundary stress tests."""
 
     @pytest.mark.asyncio
-    async def test_empty_query(self):
+    async def test_empty_query(self) -> None:
         """rag_search with empty query should not crash."""
         from beagle.infrastructure.mcp_rag_server import rag_search
 
@@ -344,7 +344,7 @@ class TestBoundaryConditions:
         assert parsed.get("status") in ("error", "no_results", "ok")
 
     @pytest.mark.asyncio
-    async def test_max_hops_clamping(self):
+    async def test_max_hops_clamping(self) -> None:
         """max_hops should be clamped to [1, 3]."""
         from beagle.infrastructure.mcp_rag_server import rag_search
 
@@ -358,7 +358,7 @@ class TestBoundaryConditions:
         assert parsed.get("status") in ("error", "no_results", "ok")
 
     @pytest.mark.asyncio
-    async def test_oversized_query_no_crash(self):
+    async def test_oversized_query_no_crash(self) -> None:
         """Very large query should not crash the server."""
         from beagle.infrastructure.mcp_rag_server import rag_search
 
@@ -375,12 +375,12 @@ class TestConcurrency:
     """CVCP Attacker: Verify no deadlocks under concurrent traversal."""
 
     @pytest.mark.asyncio
-    async def test_concurrent_rag_searches_no_deadlock(self):
+    async def test_concurrent_rag_searches_no_deadlock(self) -> None:
         """Fire 10 concurrent rag_search calls and verify they all complete."""
         from beagle.infrastructure.mcp_rag_server import rag_search
 
         queries = [f"test query {i}" for i in range(10)]
-        start = time.time()
+        start = time.monotonic()
 
         # All should complete within timeout (no deadlock)
         tasks = [asyncio.create_task(rag_search(q)) for q in queries]
@@ -389,17 +389,18 @@ class TestConcurrency:
             timeout=30.0,
         )
 
-        elapsed = time.time() - start
+        elapsed = time.monotonic() - start
         assert elapsed < 30.0, "Deadlock detected: concurrent searches took too long"
 
         for result in results:
             if isinstance(result, Exception):
                 pytest.fail(f"Concurrent search raised exception: {result}")
+            assert isinstance(result, str)
             parsed = json.loads(result)
             assert parsed.get("status") in ("error", "no_results", "ok")
 
     @pytest.mark.asyncio
-    async def test_rag_status_concurrent(self):
+    async def test_rag_status_concurrent(self) -> None:
         """rag_status should be safe under concurrent calls."""
         from beagle.infrastructure.mcp_rag_server import rag_status
 
@@ -412,6 +413,7 @@ class TestConcurrency:
         for result in results:
             if isinstance(result, Exception):
                 pytest.fail(f"Concurrent status raised exception: {result}")
+            assert isinstance(result, str)
             parsed = json.loads(result)
             assert "lancedb_available" in parsed
 
@@ -422,7 +424,7 @@ class TestConcurrency:
 class TestIntegrationPipeline:
     """End-to-end integration tests (may require optional deps)."""
 
-    def test_ingest_small_codebase(self, tmp_path, monkeypatch):
+    def test_ingest_small_codebase(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         """Ingest a tiny temp codebase and verify chunk output.
 
         Uses an isolated db_root_path under tmp_path so the test does not
