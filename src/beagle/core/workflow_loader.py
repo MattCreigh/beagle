@@ -44,16 +44,33 @@ def _validate_workflow_path(path: Path) -> bool:
         True if path is safe, False otherwise
 
     """
+    from ..config._config_path import find_config_root
+
     workspace = get_workspace_root()
+    config_root = find_config_root()
 
     # Convert to absolute and resolve symlinks
     try:
         check_path = workspace / path if not path.is_absolute() else path
         resolved = check_path.resolve()
 
-        # Ensure resolved path is within workspace (relative_to raises ValueError if not)
+        # Ensure resolved path is within workspace OR the canonical config
+        # root. S5/S6: workflow YAMLs are detached to the canonical config
+        # root (~/.config/beagle/coding_agent_config/metaprompts) — a wheel
+        # install has no workflow YAMLs in-package. The workspace root is
+        # the package dir, so a strict workspace-only check would reject
+        # every operator-supplied workflow and silently fall back to the
+        # research graph. (relative_to raises ValueError if not contained.)
         try:
             resolved.relative_to(workspace.resolve())
+            return True
+        except ValueError:
+            pass
+
+        # Allow the canonical config root as a second containment anchor.
+        try:
+            resolved.relative_to(config_root.resolve())
+            return True
         except ValueError:
             return False
 
