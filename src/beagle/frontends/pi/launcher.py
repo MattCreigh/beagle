@@ -99,13 +99,50 @@ def bundle_path() -> Path:
     )
 
 
+def _required_node_version() -> str:
+    """Return the Node.js floor that the vendored bundle declares for itself.
+
+    <invariant>
+    The floor has exactly ONE source: the ``engines.node`` field of the
+    vendored ``pi-prebuild/package.json``. Never restate it as a literal in
+    Python. Three hardcoded copies had already drifted apart (``>=18``,
+    ``>= 20`` and ``>=22.19.0``) before this helper replaced them, and the
+    drift was silent because nothing compares them.
+    </invariant>
+
+    Returns:
+        The declared range, for example ``">=22.19.0"``. Returns ``""`` when
+        the manifest is absent or unreadable, so the caller degrades to a
+        message with no version rather than a wrong one.
+
+    """
+    try:
+        manifest = _pi_vendor_dir() / "pi-prebuild" / "package.json"
+        engines = json.loads(manifest.read_text()).get("engines", {})
+    except (OSError, ValueError, FileNotFoundError):
+        return ""
+    declared = engines.get("node", "") if isinstance(engines, dict) else ""
+    return declared if isinstance(declared, str) else ""
+
+
 def _resolve_node() -> str:
-    """Resolve a usable ``node`` binary."""
+    """Resolve a usable ``node`` binary.
+
+    Returns:
+        Absolute path to the ``node`` executable.
+
+    Raises:
+        RuntimeError: when ``node`` is not on ``PATH``. The message quotes the
+            floor from the vendored manifest, not a literal.
+
+    """
     node = shutil.which("node")
     if node:
         return node
+    declared = _required_node_version()
+    requirement = f" ({declared})" if declared else ""
     raise RuntimeError(
-        "The pi frontend requires Node.js (>= 20). Install Node or add it to PATH."
+        f"The pi frontend requires Node.js{requirement}. Install Node or add it to PATH."
     )
 
 
