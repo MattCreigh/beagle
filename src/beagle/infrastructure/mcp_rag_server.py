@@ -197,8 +197,7 @@ except ImportError:
 try:
     import lancedb
 except ImportError:
-    lancedb = None  # type: ignore[assignment]
-
+    lancedb = None
 try:
     import kuzu
 except ImportError:
@@ -222,7 +221,7 @@ except ImportError:
     def scrub_output(text: str, _additional_patterns: list[str] | None = None) -> str:  # type: ignore[misc]
         return text
 
-    def scrub_secrets(text: str) -> str:  # type: ignore[misc]
+    def scrub_secrets(text: str) -> str:
         return text
 
 
@@ -342,7 +341,7 @@ def _safe_cypher_int(val: object, name: str, low: int, high: int) -> int:
         raise ValueError(f"{name} must be an integer, got {type(val).__name__}: {val!r}") from exc
     if result < low or result > high:
         raise ValueError(f"{name} must be between {low} and {high}, got {result}")
-    return result  # type: ignore[no-any-return]
+    return result
 
 
 # ──────────────────────────────────────────────────────────────────────────────

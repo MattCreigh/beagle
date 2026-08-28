@@ -95,8 +95,7 @@ def _prefetch_find_similar(
                 f"[prefetch] Cache hit: similarity={sim:.4f}, "
                 f"returning {len(entry['results'])} cached chunks"
             )
-            return entry["results"][:max_results]  # type: ignore[no-any-return]
-
+            return entry["results"][:max_results]
     return None
 
 

@@ -173,7 +173,7 @@ class CompressedStore:
             f"[CompressedStore] Stored fold {fold_id}: "
             f"{len(embeddings)} bytes, manifest at {manifest_path}"
         )
-        return fold_id  # type: ignore[no-any-return]
+        return fold_id
 
     def retrieve_fold(self, fold_id: str) -> tuple[dict[str, Any], bytes]:
         """Load a fold from disk.

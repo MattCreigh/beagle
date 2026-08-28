@@ -123,4 +123,4 @@ def run_graph_workflow_gracefully(run_workflow_func: Callable, *args, **kwargs) 
         return await run_workflow_func(*args, **kwargs)
 
     shutdown = GracefulShutdown()
-    return shutdown.run_async(_run())  # type: ignore[no-any-return]
+    return shutdown.run_async(_run())

@@ -190,8 +190,7 @@ def resolve_model(
         models = config.get("models", {})
         recipe_model = models.get(recipe_name)
         if recipe_model:
-            return validate_model(recipe_model)  # type: ignore[no-any-return]
-
+            return validate_model(recipe_model)
     # 4. Complexity-based routing
     complexity = complexity.lower()
     cm = _get_complexity_models()
@@ -202,11 +201,10 @@ def resolve_model(
     if config:
         default = config.get("goose", {}).get("default_model")
         if default:
-            return validate_model(default)  # type: ignore[no-any-return]
-
+            return validate_model(default)
     # v13.22.4: read from config.toml [model_presets].default or [goose].default_model
     # instead of hardcoding a model name that drifts on refresh.
-    return validate_model(get_preset("default"))  # type: ignore[no-any-return]
+    return validate_model(get_preset("default"))
 
 
 def resolve_provider(
@@ -236,8 +234,7 @@ def resolve_provider(
     if config:
         default = config.get("goose", {}).get("provider")
         if default:
-            return default  # type: ignore[no-any-return]
-
+            return default
     # 4. Fleet-card SSOT (v1.0.8): the provider is owned by the active
     # preset card, never hardcoded here. OpenRouter is the default fleet.
     from .registry import resolve_provider as _registry_provider

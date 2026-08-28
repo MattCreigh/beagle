@@ -213,7 +213,7 @@ async def _cvcp_validate(state: dict[str, Any]) -> dict[str, Any]:
                 f"[CVCP] attacker {attacker_id} timed out after {_per_attacker_timeout}s: {exc}"
             )
             return ""
-        return result.get("metadata", {}).get(f"attacker_{attacker_id}_critique", "")  # type: ignore[no-any-return]
+        return result.get("metadata", {}).get(f"attacker_{attacker_id}_critique", "")
 
     # Run 2 attackers in parallel, each capped at half the vertex budget
     critiques = await asyncio.gather(run_attacker(1), run_attacker(2))

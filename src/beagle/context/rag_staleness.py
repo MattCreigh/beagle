@@ -210,8 +210,9 @@ class RAGStalenessTracker:
     def __new__(cls, *_args: Any, **_kwargs: Any) -> RAGStalenessTracker:
         if cls._instance is None:
             cls._instance = super().__new__(cls)
-            cls._instance._initialized = False  # type: ignore[has-type]
-            # In-flight guard (B-1). Created here rather than in __init__
+            cls._instance._initialized = (
+                False  # In-flight guard (B-1). Created here rather than in __init__
+            )
             # because __init__ early-returns on the singleton re-entry path.
             cls._instance._flight_lock = threading.Lock()
             cls._instance._in_flight = False
@@ -248,8 +249,7 @@ class RAGStalenessTracker:
             return self._in_flight
 
     def __init__(self, staleness_file: str | None = None) -> None:
-        if self._initialized:  # type: ignore[has-type]
-            # Re-init only if a new staleness_file is provided and differs
+        if self._initialized:  # Re-init only if a new staleness_file is provided and differs
             if staleness_file and staleness_file != str(self._file):  # type: ignore[has-type]
                 self._file = Path(staleness_file)
                 self._record = StalenessRecord()

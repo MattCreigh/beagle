@@ -115,7 +115,7 @@ def _load_secrets_yaml(path: Path) -> dict[str, Any]:
 
     """
     try:
-        import yaml  # type: ignore[import-untyped]
+        import yaml
 
         with open(path, encoding="utf-8") as f:
             data = yaml.safe_load(f)

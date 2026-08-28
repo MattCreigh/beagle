@@ -8,8 +8,7 @@ from pathlib import Path
 try:
     import tomllib
 except ImportError:  # pragma: no cover - Python 3.11+ ships tomllib
-    import tomli as tomllib  # type: ignore[import-untyped,no-redef]
-
+    import tomli as tomllib
 # v1.1.1 (S6): style guides moved to the canonical config root; resolve them
 # through find_guides_dir().
 from ..config._config_path import find_guides_dir

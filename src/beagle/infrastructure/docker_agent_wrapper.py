@@ -268,7 +268,7 @@ class DockerAgentWrapper:
             }
         )
 
-        return state  # type: ignore[no-any-return]
+        return state
 
     def log_to_rag(self, event_type: str, data: dict) -> None:
         """Log events to RAG."""

@@ -164,7 +164,7 @@ def list_cmd(
             # Use the path directly from workflows dict
             workflow_path = Path(wf["path"])
             try:
-                import yaml  # type: ignore[import-untyped]
+                import yaml
 
                 # Load YAML to get agent info directly (faster than loading DAG)
                 with open(workflow_path, encoding="utf-8") as f:

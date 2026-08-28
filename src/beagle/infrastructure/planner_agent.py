@@ -19,7 +19,7 @@ import os
 import time
 
 try:  # proprietary transport — provided by the separately licensed beagle-orpheus wheel
-    from beagle_orpheus.compat import (  # type: ignore[import-not-found]
+    from beagle_orpheus.compat import (
         A2AMessage,
         MessageType,
         get_ipc,

@@ -596,8 +596,7 @@ class ResultCache:
             with self._lock:
                 self._hits += 1
             logger.debug(f"[CACHE] Memory hit: {key[:16]}...")
-            return result  # type: ignore[no-any-return]
-
+            return result
         # Try file cache
         result = self.file_cache.get(key)
         if result is not None:
@@ -606,8 +605,7 @@ class ResultCache:
             # Promote to memory cache
             self.memory_cache.set(key, result)
             logger.debug(f"[CACHE] File hit: {key[:16]}...")
-            return result  # type: ignore[no-any-return]
-
+            return result
         with self._lock:
             self._misses += 1
         return None
@@ -795,7 +793,7 @@ class QuantizedMemoryCache(MemoryCache):
                 "See core/turboquant.py for limitations."
             )
 
-    def set(  # type: ignore[override]
+    def set(
         self,
         key: str,
         value: Any,

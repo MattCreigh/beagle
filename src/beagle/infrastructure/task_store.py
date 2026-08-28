@@ -93,7 +93,7 @@ class TaskStore:
             # Enable WAL mode for better concurrent read/write performance
             self._local.conn.execute("PRAGMA journal_mode=WAL")
             self._local.conn.execute("PRAGMA synchronous=NORMAL")
-        return self._local.conn  # type: ignore[no-any-return]
+        return self._local.conn
 
     def close(self) -> None:
         """Close the thread-local database connection."""
@@ -461,7 +461,7 @@ class TaskStore:
         conn = self._get_conn()
         cur = conn.cursor()
         cur.execute("SELECT COUNT(*) FROM tasks WHERE status IN ('pending', 'running', 'queued')")
-        return cur.fetchone()[0]  # type: ignore[no-any-return]
+        return cur.fetchone()[0]
 
     def cleanup_old_tasks(self, days: int = 30) -> int:
         """Remove tasks older than N days (completed/failed/cancelled only)."""

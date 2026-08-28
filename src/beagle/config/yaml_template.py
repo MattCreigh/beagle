@@ -33,7 +33,7 @@ try:
 except ImportError:  # pragma: no cover
     Environment = None  # type: ignore[assignment,misc]
     StrictUndefined = None  # type: ignore[assignment,misc]
-    select_autoescape = None  # type: ignore[assignment,misc]
+    select_autoescape = None
 
 
 def _load_template_context(config_path: Path | None = None) -> dict[str, Any]:

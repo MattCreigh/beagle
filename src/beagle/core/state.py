@@ -331,8 +331,9 @@ class Singleton[T](ABC):
         lock_name = "_singleton_construction_lock"
         # Fast path: the instance is already constructed.
         if hasattr(cls, "_singleton_instance"):
-            return cls._singleton_instance.get()  # type: ignore[attr-defined,no-any-return]
-        # Slow path: take the class-level lock and check again.
+            return (
+                cls._singleton_instance.get()
+            )  # Slow path: take the class-level lock and check again.
         with _bootstrap_singleton_lock:
             if not hasattr(cls, lock_name):
                 setattr(cls, lock_name, threading.RLock())
@@ -340,7 +341,7 @@ class Singleton[T](ABC):
         with cls_lock:
             if not hasattr(cls, "_singleton_instance"):
                 cls._singleton_instance = cls()  # type: ignore[attr-defined]
-        return cls._singleton_instance.get()  # type: ignore[attr-defined,no-any-return]
+        return cls._singleton_instance.get()
 
     def get(self) -> T:
         """Get the singleton instance, creating if necessary."""

@@ -64,7 +64,7 @@ class TrackingDatabase:
             conn.execute("PRAGMA journal_mode=WAL")
             conn.execute("PRAGMA busy_timeout=5000")
             self._local.conn = conn
-        return self._local.conn  # type: ignore[no-any-return]
+        return self._local.conn
 
     def _init_db(self):
         """Initialize schema and run migrations."""

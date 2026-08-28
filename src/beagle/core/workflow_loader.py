@@ -15,7 +15,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-import yaml  # type: ignore[import-untyped]
+import yaml
 
 # v1.1.1 (S5): workflow/metaprompts data moved to the canonical config root;
 # resolve it through find_metaprompts_dir() / find_recipes_dir().

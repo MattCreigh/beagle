@@ -518,7 +518,7 @@ def get_workflow_keywords(workflow: str) -> list[str]:
 
     """
     config = WORKFLOW_PATTERNS.get(workflow, {})
-    return config.get("keywords", [])  # type: ignore[no-any-return]
+    return config.get("keywords", [])
 
 
 def list_routable_workflows() -> list[dict[str, Any]]:

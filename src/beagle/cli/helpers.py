@@ -68,7 +68,7 @@ def resolve_workflow(workflow: str) -> Path:
 
     # 6. Match by `name:` field in YAML
     try:
-        import yaml  # type: ignore[import-untyped]
+        import yaml
 
         for yaml_path in metaprompts_dir.glob("*.yaml"):
             try:

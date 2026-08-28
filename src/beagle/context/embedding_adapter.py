@@ -135,8 +135,9 @@ class EmbeddingAdapter:
 
         """
         if NUMPY_AVAILABLE:
-            return self.embed_batch([text])[0]  # type: ignore[no-any-return]
-        # Shouldn't happen (NumPy is required for TurboQuant)
+            return self.embed_batch([text])[
+                0
+            ]  # Shouldn't happen (NumPy is required for TurboQuant)
         raise RuntimeError(
             "NumPy not available — cannot produce embeddings. Install with: pip install numpy"
         )

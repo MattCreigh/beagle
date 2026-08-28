@@ -313,7 +313,7 @@ class TurboQuantCompressor:
         header_size = 16 + n_vectors * 4
         packed_size = (total_values * self.bits + 7) // 8
         compressed_size = header_size + packed_size
-        return original_size / max(compressed_size, 1)  # type: ignore[no-any-return]
+        return original_size / max(compressed_size, 1)
 
 
 def simple_turboquant_compress(vectors: np.ndarray, bits: int = DEFAULT_BITS) -> tuple[bytes, int]:

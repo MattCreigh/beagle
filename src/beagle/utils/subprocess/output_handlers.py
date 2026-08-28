@@ -250,8 +250,7 @@ async def _streaming_read(
             "synthesising closure from <final_answer> position to EOF."
         )
         stdout_text = stdout_text + "\n</final_answer>"
-        stdout_lines = [stdout_text]  # type: ignore[list-item]
-
+        stdout_lines = [stdout_text]
     stdout_bytes = "".join(stdout_lines).encode("utf-8", errors="replace")
     stderr_bytes = "".join(stderr_lines).encode("utf-8", errors="replace")
     return stdout_bytes, stderr_bytes

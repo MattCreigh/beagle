@@ -33,8 +33,7 @@ try:
 except ImportError:  # pragma: no cover — jinja2 is in requirements.lock
     Environment = None  # type: ignore[assignment,misc]
     StrictUndefined = None  # type: ignore[assignment,misc]
-    select_autoescape = None  # type: ignore[assignment,misc]
-
+    select_autoescape = None
 
 # ---------------------------------------------------------------------------
 # |toml filter (B2) — emit a TOML-typed literal so unquoted ints/floats/bools

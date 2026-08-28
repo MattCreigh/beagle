@@ -28,8 +28,7 @@ import logging
 try:
     import tomllib
 except ImportError:  # pragma: no cover — Python 3.11+ has tomllib
-    import tomli as tomllib  # type: ignore[import-untyped,no-redef]
-
+    import tomli as tomllib
 from ._config_path import find_config_toml as _find_config_toml
 
 logger = logging.getLogger("Beagle.config.allowlist")

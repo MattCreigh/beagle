@@ -548,7 +548,7 @@ class GoosePool:
 
     @property
     def max_workers(self) -> int:
-        return self._semaphore._value  # type: ignore[attr-defined]
+        return self._semaphore._value
 
     @property
     def active(self) -> int:

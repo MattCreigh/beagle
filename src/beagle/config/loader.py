@@ -17,8 +17,7 @@ from typing import Any
 try:
     import tomllib
 except ImportError:
-    import tomli as tomllib  # type: ignore[import-untyped,no-redef]
-
+    import tomli as tomllib
 from ..runtime.goose_cli import default_goose_binary
 from .model_resolver import get_preset
 from .schema import (

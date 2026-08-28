@@ -83,7 +83,7 @@ class RunRecorder:
             id=node_run_id,
             workflow_run_id=event.workflow_id,
             node_name=event.node_name,
-            skill_name=event.skill_name,  # type: ignore[attr-defined]
+            skill_name=event.skill_name,
             model=event.model,
             started_at=event.timestamp,
         )

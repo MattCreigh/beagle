@@ -314,4 +314,4 @@ def build_graph_from_spec(
         for dep in depends_on:
             transitions.append((dep, phase["name"], condition_field))
 
-    return build_workflow_graph(nodes, transitions, workflow_query, complexity)  # type: ignore[no-any-return]
+    return build_workflow_graph(nodes, transitions, workflow_query, complexity)

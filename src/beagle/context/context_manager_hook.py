@@ -275,8 +275,7 @@ class ContextManagementHook:
         """
         content = compression_result.details.get("compressed_content", "")
         if content:
-            return content  # type: ignore[no-any-return]
-        # Final fallback: if no compressed_content was stored but we have
+            return content  # Final fallback: if no compressed_content was stored but we have
         # non-zero compression, the content was computed but not captured.
         # This can happen with NONE level — return original content unchanged.
         logger.warning(
