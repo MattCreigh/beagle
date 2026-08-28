@@ -3,8 +3,9 @@ __pycache__/
 *.py[cod]
 *.egg-info/
 build/
-# Built wheels under dist/ ARE tracked (release artefacts); sdists are not.
-dist/*.tar.gz
+# Build artifacts are NOT tracked — wheels/sdists are attached to GitHub
+# Releases instead. Build locally with `make build`.
+/dist/
 .venv/
 venv/
 

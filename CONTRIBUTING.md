@@ -185,8 +185,8 @@ maintainers reserve the right to close unproductive threads.
 
 ## License
 
-Beagle is proprietary software, copyright Matthew David Calder Creigh —
-free for personal, non-commercial use; commercial use requires a paid
-licence. See [LICENSE](LICENSE) for the full terms. By contributing, you
-grant the Licensor the perpetual, irrevocable, royalty-free rights
-described in LICENSE §5 (Contributions).
+Beagle and the vendored `pi` frontend fork are released under the [MIT
+License](LICENSE), copyright Matthew David Calder Creigh. Contributions to
+this repository are accepted under the same MIT terms. The optional
+`beagle-orpheus` transport wheel is separately licensed proprietary software
+and is not covered by this repository's MIT licence.

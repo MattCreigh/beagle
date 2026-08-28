@@ -8,10 +8,72 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) conventions.
 
 ## [Unreleased]
 
+### Relicensing to MIT
+
+- **Changed**: Beagle and the vendored `pi` frontend fork are now released
+  under the **MIT License**, replacing the previous proprietary "Beagle
+  License Agreement v1.0" (personal/non-commercial free, commercial paid).
+  `LICENSE` is now the MIT text with a scope note. `pyproject.toml` declares
+  `license = "MIT"` (PEP 639 SPDX expression, which supersedes the legacy
+  license classifier); build floor raised to `setuptools>=77` for PEP 639
+  support.
+- **Unchanged**: the optional `beagle-orpheus` transport wheel remains
+  separately licensed **proprietary** software (evaluation free; production
+  paid). It is explicitly excluded from the MIT scope note and never ships
+  by default. README, CONTRIBUTING, and the system-spec doc updated; the
+  legacy `[1.4.0]` proprietary entry is retained in history.
+
 ### Packaging
 
 - **Removed**: committed `requirements.txt` — it merely mirrored pyproject constraints.
 - Pip-format exports are now ephemeral: `make freeze-requirements`, CI `uv export --frozen`.
+
+### Remediation of the release-readiness audit (2026-08-28)
+
+Phase 0/1 remediations applied from `docs/audits/release_readiness_code_audit_2026-08-28.md`:
+
+- **D-34**: the 7 runtime workflow definitions (db-migration, deep-planning,
+  develop, devops, security, self-improvement, verify) committed and pushed
+  to the `beagle_config` config repo — they had no reversion path.
+- **D-02 (Critical)**: `code_mode.CodeModeExecutor` no longer hangs on
+  unsatisfiable dependency graphs, missing `dep_id`s, or truncation
+  orphans — cyclic/missing dependencies are failed up front, the
+  dependency wait is bounded by `timeout_seconds`, and dependents of
+  truncated calls receive failure receipts. New `tests/test_code_mode.py`
+  (9 tests) exercises all three hang triggers under `pytest-timeout`.
+- **D-01**: `beagle config init` now also seeds
+  `coding_agent_config/metaprompts/` with starter workflow definitions
+  (idempotent, never overwrites), and `list_workflows()` distinguishes an
+  unseeded install (actionable error entry naming the remediation) from an
+  empty seeded directory (valid `[]`). Stale `workflows_builtin/*.yaml`
+  package-data glob removed from pyproject.
+- **D-04**: `scripts/host_path_allowlist.txt` created with a documented
+  reason per entry; `check_host_paths.py` exits 0 on the full default scan
+  and on the CI roots.
+- **D-06 (test deletion record)**: no test coverage was deleted.
+  `tests/test_mcp_openclaw_concurrency.py` and the two openclaw tests in
+  `test_mcp_e2e.py` imported `beagle.infrastructure.mcp_openclaw_server`,
+  which no longer exists — the server moved into the `beagle_openclaw`
+  plugin. Both test files were **retargeted** at `beagle_openclaw.server`
+  (same API, same B-6 contracts), preserving all four concurrency tests
+  and both e2e tests.
+
+### Vendored `pi` frontend
+
+- **Added**: `src/beagle/frontends/pi/vendor/pi/` — a verbatim checkout of the
+  MIT-licensed [`earendil-works/pi`](https://github.com/earendil-works/pi) TUI
+  agent at fork commit `4e58f324` (tag `v0.84.3`). Repo-only; **not** bundled
+  into the wheel (`vendor/pi/node_modules` and `dist/` are git-ignored, and a
+  ~150 MB JS tree with per-platform native binaries is the wrong shape for a
+  CPU-only Python wheel). Provenance in `vendor/UPSTREAM.txt`; rationale and
+  re-sync procedure in `src/beagle/frontends/pi/README.md`.
+- **Added**: `vendor/license-inventory.json` — a committed manifest of all 381
+  third-party npm packages the fork pins, generated purely from
+  `package-lock.json` by `tools/generate_license_inventory.py` (stdlib only,
+  deterministic). All effective licenses are permissive; `node-forge`'s
+  `(BSD-3-Clause OR GPL-2.0)` is resolved to **BSD-3-Clause**. The new
+  `beagle-pi-license.yml` workflow fails if the committed manifest drifts from
+  the lockfile or a dependency turns out to be strong-copyleft-only.
 
 ## [1.4.0] - 2026-08-25
 
@@ -87,9 +149,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) conventions.
 ### Ephemeral artifacts moved out of the source tree
 
 - `[tool.ruff] cache-dir` and `[tool.pytest.ini_options] cache_dir` →
-  `~/.cache/beagle/<tool>` (both expand `~`); `[tool.mypy] cache_dir` →
-  `/home/server/.cache/beagle/mypy` (mypy does not expand `~`, so the path is
-  absolute — host-specific by design, same as the orpheus wheel in
+  `~/.cache/beagle/<tool>` (both expand `~`); `[tool.mypy] cache_dir` → an
+  absolute host cache path such as `~/.cache/beagle/mypy` (mypy does not
+  expand `~`, so the configured path is absolute — host-specific by design, same as the orpheus wheel in
   `[tool.uv.sources]`).
 - `Makefile` exports `PYTHONPYCACHEPREFIX ?= $(HOME)/.cache/beagle/pycache`
   so bytecode never lands next to `.py` files.
@@ -1062,8 +1124,7 @@ the restored subsystem needs to stay under the cgroup cap.
 
 ### Storage
 
-- **RAG data lives on the 4 TB SSD** at
-  `/mnt/4TB_SATA_SSD/beagle/instance_rag{,_kuzu,}/`, with
+- **RAG data lives under a dedicated SSD-backed data root**, with
   `~/.beagle/instance_rag{,_kuzu,}` as symlinks. 82 MB on disk
   for the full 10,975-vector corpus + 14,350-relation graph.
   The RAG data is no longer on the OS disk.
@@ -1615,7 +1676,7 @@ what the restored subsystem needs to stay under the cgroup cap.
 | Streaming ingest | `_embed_chunk_records` is now a generator yielding 256-chunk batches with `gc.collect()` between batches. Sidecar write happens after the streaming completes, so peak RSS is bounded. | Medium |
 | TurboQuant sidecar | New `infrastructure/turboquant_lance_cache.py` — 3-bit compression of the lance index vectors (~30 MB on disk for 10k vectors, ~6x smaller than raw float32), with on-demand numpy decompression for brute-force cosine search. Gated on `[rag].turboquant_sidecar = true` (default true). | Medium |
 | Circuit breaker recovery | `subprocess_pool._execute_goose_with_fallback` now uses `circuit._can_attempt()` (which performs the OPEN→HALF_OPEN state transition) rather than the raw `circuit.is_open` read (which would short-circuit the recovery path and leave the breaker stuck OPEN forever). | Medium |
-| Storage | RAG data lives on the 4 TB WD RED SSD at `/mnt/4TB_SATA_SSD/beagle/instance_rag{,_kuzu,}/`, with `~/.beagle/instance_rag{,_kuzu,}` as symlinks. 82 MB on disk for the full corpus. Embedder lives in `/system.slice/ollama.service` (825 MB peak, separate cgroup). | Info |
+| Storage | RAG data lives on a dedicated SSD-backed data root, with `~/.beagle/instance_rag{,_kuzu,}` as symlinks. ~82 MB on disk for the full corpus. Embedder runs under its own systemd slice (separate cgroup). | Info |
 | Linting | `pyproject.toml` adds `extend-exclude` for build artifacts and `[tool.ruff.lint.per-file-ignores]` for `RUF067` (intentional re-exports in `__init__.py`) and `RUF069` (deterministic float equality in test assertions is a false positive). 0 errors. | Info |
 
 **Verification** (live MCP server):

@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
+requires = ["setuptools>=77.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -7,14 +7,15 @@ name = "beagle"
 version = "1.4.0"
 description = "Domain-agnostic autonomous agentic workflow system: multi-agent orchestration, hybrid RAG, MCP integration"
 readme = "README.md"
-license = { file = "LICENSE" }
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.12"
 keywords = ["agents", "orchestration", "rag", "mcp", "workflows", "llm"]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
-    "License :: Other/Proprietary License",  # custom licence: personal/non-commercial free, commercial paid — see LICENSE
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Software Development :: Libraries :: Application Frameworks",
 ]
 dependencies = [
@@ -119,7 +120,6 @@ beagle = [
     "blocks/xml_blocks/stdlib/*.xml",
     "prompts/*.md",
     "recipes/*.xml",
-    "workflows_builtin/*.yaml",
     "templates/definitions/*.toml",
     "style_guides/guides/*.toml",
     "infrastructure/Dockerfile.*",
@@ -128,7 +128,10 @@ beagle = [
 
 [tool.ruff]
 line-length = 100
-target-version = "py312"
+# D-19 (release-readiness audit 2026-08-28): aligned to the runtime floor.
+# .python-version, CI (3.13) and the deployed venv all run 3.13; target-version
+# must match so ruff applies the same syntax/lint rules the runtime enforces.
+target-version = "py313"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "W", "UP", "B"]
@@ -139,7 +142,22 @@ testpaths = ["tests"]
 asyncio_mode = "auto"
 
 [tool.mypy]
-python_version = "3.12"
+# D-19: aligned to the runtime floor (3.13 everywhere: .python-version, CI,
+# deployed venv). A mypy python_version below the runtime lets type
+# inference diverge from what actually executes.
+python_version = "3.13"
 mypy_path = "src"
 ignore_missing_imports = true
+
+# D-13: mypy strict ratchet — progressively enabled strict flags
+check_untyped_defs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_optional = true
 

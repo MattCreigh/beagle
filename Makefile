@@ -1,4 +1,4 @@
-.PHONY: help lint test clean build install dev-deps check vulture typecheck banned qa
+.PHONY: help lint test clean build install dev-deps check vulture typecheck banned qa image-build image-push container-up container-down dev-stack-integrate
 
 # The project venv, not the system interpreter. `python3` here resolved to
 # /usr/bin/python3, which carries none of the dev tooling, so `make vulture`
@@ -103,3 +103,27 @@ render-prompts: ## Render all Beagle prompt-substrate files (XML/YAML only — n
 
 render-hints: ## Render only the Top-of-Mind artefact (fast)
 	$(PY) -m beagle.cli.cli render-hints
+# ── Container workflow (docker/) ─────────────────────────────────────────
+# Single shippable image built from the dist/ wheel. See docker/README.md.
+VERSION := $(shell python3 -c 'import tomllib; print(tomllib.load(open("pyproject.toml","rb"))["project"]["version"])' 2>/dev/null || echo latest)
+IMAGE ?= beagle
+REGISTRY ?=
+DEV_STACK_DIR ?=
+
+image-build: build ## Build the shippable container image from a fresh wheel
+	docker build -t $(IMAGE):$(VERSION) -f docker/Dockerfile .
+
+image-push: ## Push the image (publish: REGISTRY=ghcr.io/<owner>)
+	test -n "$(REGISTRY)" || { echo "usage: make image-push REGISTRY=ghcr.io/<owner>"; exit 1; }
+	docker tag $(IMAGE):$(VERSION) $(REGISTRY)/$(IMAGE):$(VERSION)
+	docker push $(REGISTRY)/$(IMAGE):$(VERSION)
+
+container-up: ## Run standalone via docker/docker-compose.yml
+	BEAGLE_VERSION=$(VERSION) docker compose -f docker/docker-compose.yml up -d
+
+container-down: ## Stop and remove the standalone container
+	docker compose -f docker/docker-compose.yml down
+
+dev-stack-integrate: ## Wire beagle into a Compose stack: DEV_STACK_DIR=/path/to/stack make dev-stack-integrate
+	test -n "$(DEV_STACK_DIR)" || { echo "usage: make dev-stack-integrate DEV_STACK_DIR=/path/to/dev_stack"; exit 1; }
+	bash scripts/integrate_dev_stack.sh -d "$(DEV_STACK_DIR)"
