@@ -182,25 +182,26 @@ def test_load_template_raises_for_missing_key(tmp_output: Path) -> None:
         renderer._load_template("not_a_real_key")
 
 
-def test_render_all_includes_new_artefacts(tmp_output: Path, monkeypatch) -> None:
+def test_render_all_includes_new_artefacts(tmp_output: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """render_all() must include the new system_instruction and
-    compaction_prompt entries. We monkeypatch the canonical paths to
-    tmp_output so we don't clobber the real config."""
+    compaction_prompt entries. D-38: set HOME so the canonical paths resolve
+    under the test (call-time resolution), avoiding the real config."""
     from beagle.style_guides import render as render_mod
-    from beagle.style_guides.render import (
-        GooseTopOfMindRenderer as _Renderer,
-    )
+    from beagle.style_guides import tom_hydrator as _hydrator
 
-    monkeypatch.setattr(
-        _Renderer,
-        "SYSTEM_INSTRUCTION_PATH",
-        tmp_output / "si.xml",
-    )
-    monkeypatch.setattr(
-        _Renderer,
-        "COMPACTION_PROMPT_PATH",
-        tmp_output / "cp.xml",
-    )
+    monkeypatch.setenv("HOME", str(tmp_output))
+
+    # D-XX: hermeticity — render_all() → render_canonical() → hydrate()
+    # resolves real <hydrator> RAG/chat queries, which fires a fire-and-forget
+    # full hotswap_ingest (rag_search → RAGStalenessTracker) against the real
+    # repo. Mock the resolvers so the test performs no real RAG search /
+    # reingest (a render unit test must never touch the live index).
+    async def _fake_rag(_q: str) -> str:
+        return "mocked rag result"
+    async def _fake_chat(_q: str) -> str:
+        return "mocked chat result"
+    monkeypatch.setattr(_hydrator, "_rag_query", _fake_rag)
+    monkeypatch.setattr(_hydrator, "_chat_query", _fake_chat)
 
     renderer = render_mod.GooseTopOfMindRenderer()
     results = renderer.render_all()
@@ -244,7 +245,7 @@ def test_module_level_convenience_functions_exist() -> None:
     assert callable(getattr(render_mod, "render_all", None))
 
 
-def test_render_all_target_root_writes_per_repo_pointers(tmp_output: Path, monkeypatch) -> None:
+def test_render_all_target_root_writes_per_repo_pointers(tmp_output: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """v13.22.2: ``render_all(repo_root=...)`` (or the ``target_root`` ctor
     arg) must redirect the per-repo artefacts (.goosehints,
     .goose/standards.md, root CLAUDE.md) to the target directory. The
@@ -256,22 +257,20 @@ def test_render_all_target_root_writes_per_repo_pointers(tmp_output: Path, monke
     XML-pointer style on their own pointer files.
     """
     from beagle.style_guides import render as render_mod
-    from beagle.style_guides.render import (
-        GooseTopOfMindRenderer as _Renderer,
-    )
+    from beagle.style_guides import tom_hydrator as _hydrator
 
-    # Redirect the canonical home artefacts into tmp_output so the test
-    # doesn't clobber the real ~/.config/goose files.
-    monkeypatch.setattr(
-        _Renderer,
-        "SYSTEM_INSTRUCTION_PATH",
-        tmp_output / "si.xml",
-    )
-    monkeypatch.setattr(
-        _Renderer,
-        "COMPACTION_PROMPT_PATH",
-        tmp_output / "cp.xml",
-    )
+    # D-38: set HOME so the canonical home artefacts resolve under the test
+    # (call-time resolution) — the test never touches the real ~/.config/goose.
+    monkeypatch.setenv("HOME", str(tmp_output))
+
+    # D-XX: hermeticity — mock the RAG/chat resolvers so render_all() fires no
+    # real RAG search / hotswap_ingest (see test_render_all_includes_new_artefacts).
+    async def _fake_rag(_q: str) -> str:
+        return "mocked rag result"
+    async def _fake_chat(_q: str) -> str:
+        return "mocked chat result"
+    monkeypatch.setattr(_hydrator, "_rag_query", _fake_rag)
+    monkeypatch.setattr(_hydrator, "_chat_query", _fake_chat)
 
     target = tmp_output / "external_repo"
     target.mkdir()
@@ -292,10 +291,10 @@ def test_render_all_target_root_writes_per_repo_pointers(tmp_output: Path, monke
     assert results["pkg_claude_md"] == Path()
 
     # Home-canonical artefacts still go to the home paths (redirected to
-    # tmp_output above), NOT to the target.
+    # tmp_output via HOME, D-38), NOT to the target.
     assert results["hints"] != target / "beagle_top_of_mind.xml"
-    assert results["system_instruction"] == tmp_output / "si.xml"
-    assert results["compaction_prompt"] == tmp_output / "cp.xml"
+    assert results["system_instruction"] == tmp_output / ".config" / "goose" / "beagle_system_instruction.xml"
+    assert results["compaction_prompt"] == tmp_output / ".config" / "goose" / "prompts" / "compaction.xml"
 
     # The .goosehints content is the same template used by the
     # beagle package — no doctrine drift between

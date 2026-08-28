@@ -124,7 +124,14 @@ def _parse_firewall_verdict(raw_stdout: str) -> bool:
 
     # Fail closed: no verdict tokens → False.
     if verdict is None:
+        logger.debug("[SECURITY] firewall verdict parse: raw=%r → blocked (no verdict token)", raw_stdout)
         return False
+    # Headless audit line (D-30): surface the raw token and final boolean in
+    # the logs so an operator can confirm the parser's decision without
+    # breaking the flow.
+    logger.debug(
+        "[SECURITY] firewall verdict parse: raw=%r → %s", raw_stdout, "SAFE" if verdict else "BLOCKED"
+    )
     return verdict
 
 
@@ -262,6 +269,16 @@ Reply with EXACTLY one word: 'SAFE' or 'MALICIOUS'. No other output.
 
 <user_input>{escaped}</user_input>"""
 
+    async def _unlink_prompt(path: str | None) -> None:
+        """Remove the temp prompt file off the event loop (D-29).
+
+        os.unlink is a blocking syscall; calling it directly inside an
+        async def stalls the loop for the duration of the disk operation.
+        """
+        if path and os.path.exists(path):
+            with contextlib.suppress(OSError):
+                await asyncio.to_thread(os.unlink, path)
+
     prompt_path: str | None = None
     try:
         # SECURITY: Use delete=False + explicit os.unlink in finally.
@@ -300,19 +317,15 @@ Reply with EXACTLY one word: 'SAFE' or 'MALICIOUS'. No other output.
                 proc.communicate(), timeout=SEMANTIC_FIREWALL_TIMEOUT
             )
         finally:
-            if prompt_path and os.path.exists(prompt_path):
-                with contextlib.suppress(OSError):
-                    os.unlink(prompt_path)
+            # D-29: unlink off the event loop so the disk syscall does
+            # not stall the asyncio loop mid-subprocess-call.
+            await _unlink_prompt(prompt_path)
 
         raw = stdout_bytes.decode("utf-8", errors="replace").strip().upper()
         verdict = _parse_firewall_verdict(raw)
-        if verdict is True:
-            return True
-        if verdict is False:
-            return False
-        # Ambiguous response — fail closed
-        logger.warning(f"[SECURITY] Ambiguous firewall response, blocking: {raw[:50]}")
-        return False
+        # _parse_firewall_verdict is total (never None) and already fail-closed:
+        # any ambiguous/unparseable input returns False (blocked).
+        return verdict
 
     except TimeoutError:
         logger.warning("[SECURITY] Firewall Goose call timed out, blocking")
@@ -325,8 +338,6 @@ Reply with EXACTLY one word: 'SAFE' or 'MALICIOUS'. No other output.
         logger.error(f"[SECURITY] Firewall error: {e}, blocking for safety")
         return False
     finally:
-        # Belt-and-suspenders cleanup in case NamedTemporaryFile(delete=True)
-        # fails to clean up (e.g., process killed mid-execution)
-        if prompt_path and os.path.exists(prompt_path):
-            with contextlib.suppress(OSError):
-                os.unlink(prompt_path)
+        # D-29: belt-and-suspenders cleanup off the event loop.
+        # Runs even if the subprocess was killed mid-execution.
+        await _unlink_prompt(prompt_path)

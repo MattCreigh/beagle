@@ -422,7 +422,7 @@ class TestConcurrency:
 class TestIntegrationPipeline:
     """End-to-end integration tests (may require optional deps)."""
 
-    def test_ingest_small_codebase(self, tmp_path):
+    def test_ingest_small_codebase(self, tmp_path, monkeypatch):
         """Ingest a tiny temp codebase and verify chunk output.
 
         Uses an isolated db_root_path under tmp_path so the test does not
@@ -434,6 +434,20 @@ class TestIntegrationPipeline:
         # Isolated DB root under tmp_path — avoids kuzu lock conflict with
         # the live MCP server, and avoids touching the production corpus.
         isolated_db_root = str(tmp_path / "test_rag_db")
+
+        # D-XX: isolate the delta-engine state too. `db_root_path` only
+        # redirects the LanceDB/Kùzu stores; `update_state_after_ingestion`
+        # writes `~/.beagle/rag_state.json` via get_data_root(), which honours
+        # $BEAGLE_DATA_ROOT. Without this, ingesting a /tmp sample.py in this
+        # test pollutes the real state file with a single /tmp entry, making
+        # compute_delta() treat the entire real codebase as "added" on the
+        # next auto-reingest → a full re-index instead of a git-delta.
+        import importlib
+
+        import beagle.infrastructure.delta_engine as de
+
+        monkeypatch.setenv("BEAGLE_DATA_ROOT", str(tmp_path / "data_root"))
+        importlib.reload(de)
 
         with tempfile.TemporaryDirectory() as tmpdir:
             # Create a small Python file
