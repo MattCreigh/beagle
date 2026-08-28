@@ -21,9 +21,16 @@ docs/spec/*.pdf
 
 # Tooling caches
 .mypy_cache/
+.mypy_worker.*.json
 .pytest_cache/
 .ruff_cache/
 .import_linter_cache/
+
+# Auto-generated render-prompts / memory artifacts (regenerate, don't commit)
+/.goosehints
+/CLAUDE.md
+/src/beagle/CLAUDE.md
+/src/beagle/MEMORY_INDEX.md
 .benchmarks/
 .coverage
 htmlcov/
