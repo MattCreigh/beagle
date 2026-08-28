@@ -94,7 +94,7 @@ TOOL_THRESHOLDS: dict[str, dict[str, float]] = {
 
 def validate_tool_output(
     tool_name: str,
-    output: str,
+    output: object,
     max_length: int = MAX_OUTPUT_LENGTH,
 ) -> tuple[bool, str]:
     """Validate a tool output before committing it to workflow state.

@@ -284,7 +284,7 @@ class _SecurityASTVisitor(ast.NodeVisitor):
 
 
 def validate_python_code_ast(
-    code: str,
+    code: object,
     strict: bool = True,
     allowed_imports: set[str] | None = None,
 ) -> tuple[bool, str]:

@@ -142,7 +142,7 @@ def _cached_pattern_check_impl(normalized_text: str) -> bool:
     )
 
 
-def validate_regex_pattern(pattern: str) -> tuple[bool, str]:
+def validate_regex_pattern(pattern: object) -> tuple[bool, str]:
     """Validate a regex pattern for syntax errors.
 
     v1.2.0 (RG-5, BGL-006): this function is no longer used by the code_search
@@ -230,7 +230,7 @@ def get_agent_whitelist() -> set[str]:
     return {p.stem.lower() for p in recipes_dir.glob("*.xml")}
 
 
-def validate_agent_type(agent_type: str) -> tuple[bool, str]:
+def validate_agent_type(agent_type: object) -> tuple[bool, str]:
     """Validate that an agent type is in the whitelist.
 
     Args:
@@ -314,7 +314,7 @@ async def validate_query_async(query: str, mock_firewall: bool = False) -> tuple
     return True, ""
 
 
-def _validate_query_core(query: str) -> tuple[bool, str]:
+def _validate_query_core(query: object) -> tuple[bool, str]:
     """Shared non-LLM validation logic for sync and async variants.
 
     Performs length, type, injection-pattern, and backtick checks.

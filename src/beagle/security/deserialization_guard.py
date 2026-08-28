@@ -58,7 +58,7 @@ def safe_loads(blob: str) -> Any:
 
     """
     try:
-        from langchain_core.load import loads  # type: ignore[import-untyped]
+        from langchain_core.load import loads
     except ImportError as _exc:
         raise ImportError(
             "langchain-core is required for safe_loads. "
@@ -94,23 +94,11 @@ def safe_load_prompt(path: str | Path) -> Any:
         ImportError: If langchain-core is not installed.
 
     """
-    try:
-        from typing import Any as _Any
-
-        from langchain_core.load import (
-            load_prompt as _lc_load_prompt_raw,  # type: ignore[import-untyped]
-        )
-
-        _lc_load_prompt: _Any = _lc_load_prompt_raw
-    except ImportError as _exc:
-        raise ImportError(
-            "langchain-core is required for safe_load_prompt. "
-            "Install with: pip install langchain-core>=1.2.22"
-        ) from _exc
-
     resolved = Path(path).resolve()
 
-    # CVE-2026-34070 defense: reject path traversal
+    # CVE-2026-34070 defense: reject path traversal — do this BEFORE the
+    # langchain import so the security check cannot be masked by an ImportError
+    # from a missing/broken langchain-core.
     if ".." in str(path):
         raise ValueError(f"Path traversal rejected (CVE-2026-34070): '{path}' contains '..'")
 
@@ -140,5 +128,19 @@ def safe_load_prompt(path: str | Path) -> Any:
                     f"'{path}' resolved to '{resolved}'. "
                     f"Set BEAGLE_PROMPT_ROOT to allow loading from external directories."
                 ) from None
+
+    try:
+        from typing import Any as _Any
+
+        from langchain_core.prompts.loading import (
+            load_prompt as _lc_load_prompt_raw,
+        )
+
+        _lc_load_prompt: _Any = _lc_load_prompt_raw
+    except ImportError as _exc:
+        raise ImportError(
+            "langchain-core is required for safe_load_prompt. "
+            "Install with: pip install langchain-core>=1.2.22"
+        ) from _exc
 
     return _lc_load_prompt(str(resolved))
