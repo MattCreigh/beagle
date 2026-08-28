@@ -30,7 +30,7 @@ RUN uv pip install --system --prefix=/install --no-deps \
 # Single-tool extraction (no pipeline → no pipefail concern). The base python
 # (not /install/bin/python) reads the installed dist-info under /install.
 RUN set -eux; \
-    META="$(find /install -path '*/beagle-*.dist-info/METADATA' | head -n1)"; \
+    META="$(find /install -path '*/beagle-*.dist-info/METADATA' -print -quit)"; \
     TORCH_PIN="$(awk '/^Requires-Dist: torch==/ { print $2; exit }' "$META")"; \
     echo "torch pin from wheel metadata: $TORCH_PIN"; \
     uv pip install --system --prefix=/install "$TORCH_PIN" \
