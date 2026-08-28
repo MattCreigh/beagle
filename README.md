@@ -252,3 +252,16 @@ clusters, an optional proprietary shared-memory transport named **Orpheus**
 (`beagle-orpheus`) is available. Beagle runs completely self-contained without
 it, gracefully falling back to standard local Unix domain sockets and Redis
 coordination paths by default.
+
+---
+
+## Licence
+
+The Beagle core is MIT-licensed. The [`LICENSE`](LICENSE) file gives the full
+terms. The MIT licence covers the Beagle source code, the documentation, and
+the vendored `pi` frontend fork. The `license` field in `pyproject.toml`
+declares the same licence.
+
+Optional add-ons have a different licence. The `beagle-orpheus` transport wheel
+is separately licensed proprietary software. Beagle does not install it. Read
+the licence of that distribution before you install it.
