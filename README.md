@@ -351,13 +351,33 @@ flowchart LR
 
 ## Extensibility & Proprietary Add-Ons
 
-Beagle is an independent, self-contained open-source engine (MIT).
+**Orpheus** is a shared-memory transport for Beagle. It comes as the separately
+licensed `beagle-orpheus` wheel. The open-source distribution contains no
+proprietary transport code.
 
-For high-throughput, lock-free inter-process communication in production daemon
-clusters, an optional proprietary shared-memory transport named **Orpheus**
-(`beagle-orpheus`) is available. Beagle runs completely self-contained without
-it, gracefully falling back to standard local Unix domain sockets and Redis
-coordination paths by default.
+Orpheus adds two functions:
+
+- **Throughput.** Orpheus sends FlatBuffers frames over lock-free ring buffers.
+  The default ring directory is `/run/orpheus_ring`. This transport replaces
+  HTTP for outbound connections between Beagle processes.
+- **Process separation.** The agent harness does not start agent processes
+  itself. It dispatches each task over Orpheus IPC to the OpenClaw controller,
+  which runs the agent in a container. The harness also pauses, resumes, and
+  cancels a task through that client.
+
+You need Orpheus in these two conditions:
+
+1. You select Orpheus as the active transport. Set `BEAGLE_TRANSPORT=orpheus`,
+   or set `[connections] transport` in the configuration file.
+2. You give the agent harness an Orpheus client for containerized dispatch.
+   Without the wheel, the stub client raises an error when you construct it.
+
+Beagle detects the wheel automatically after you install it. Beagle does not
+activate it automatically. Activation is always an explicit operator decision.
+
+**Fallback path.** Beagle runs fully without Orpheus. The built-in HTTP
+transport is the default. An install with no configuration reports `http` as the
+active transport.
 
 ---
 
