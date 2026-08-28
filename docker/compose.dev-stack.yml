@@ -112,6 +112,25 @@ services:
       retries: 5
     logging: { driver: json-file, options: { max-size: "10m", max-file: "3" } }
 
+  # ── Web dashboard (real Beagle-backed) ────────────────────────────────
+  beagle-webui:
+    image: ${BEAGLE_IMAGE:-beagle}:${BEAGLE_VERSION:-latest}
+    restart: unless-stopped
+    command: ["webui", "--host", "0.0.0.0", "--port", "8080"]
+    environment:
+      BEAGLE_EXECUTION_ENV: docker
+      BEAGLE_LOG_LEVEL: ${BEAGLE_LOG_LEVEL:-INFO}
+      GOOSE_PROVIDER: ${GOOSE_PROVIDER:-ollama}
+      GOOSE_MODEL: ${GOOSE_MODEL:-qwen3}
+      OLLAMA_BASE_URL: http://ollama:11434
+      OLLAMA_EMBED_MODEL: ${OLLAMA_EMBED_MODEL:-nomic-embed-code}
+    depends_on:
+      ollama:
+        condition: service_healthy
+    # Internal-network only; expose via Traefik with an explicit route if
+    # you want LAN access. No host port is published here.
+    logging: { driver: json-file, options: { max-size: "10m", max-file: "3" } }
+
 volumes:
   beagle-rag:
   beagle-state:

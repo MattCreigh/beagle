@@ -51,6 +51,35 @@ services:
         max-size: "10m"
         max-file: "3"
 
+  # ── Web dashboard (real Beagle-backed, served by `beagle webui`) ──────
+  # Serves the vendored React dashboard on :8080, wired to live Beagle data
+  # (workflows, runs, cost, agents, RAG). Bound to loopback only — expose it
+  # via a reverse proxy (Traefik etc.) when you want LAN/internet access.
+  beagle-webui:
+    image: ${BEAGLE_IMAGE:-beagle}:${BEAGLE_VERSION:-latest}
+    restart: unless-stopped
+    command: ["webui", "--host", "0.0.0.0", "--port", "8080"]
+    ports:
+      - "127.0.0.1:8080:8080"   # web dashboard (loopback only)
+    volumes:
+      - beagle-state:/app/state
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,size=256m,noexec,nosuid,nodev
+    mem_limit: ${BEAGLE_WEBUI_MEM_LIMIT:-256m}
+    environment:
+      BEAGLE_EXECUTION_ENV: docker
+      BEAGLE_LOG_LEVEL: ${BEAGLE_LOG_LEVEL:-INFO}
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
 volumes:
   beagle-rag:
   beagle-state:

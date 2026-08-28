@@ -29,6 +29,7 @@ from .commands.render import render_app
 from .commands.runs import runs_app
 from .commands.slo import slo_app
 from .commands.system import system_app
+from .commands.webui import webui_app
 from .commands.workflows import workflows_app
 
 logger = logging.getLogger(__name__)
@@ -61,6 +62,9 @@ app.add_typer(config_app, name="config")
 app.add_typer(checkpoint_app, name="checkpoint")
 app.add_typer(slo_app, name="slo")
 app.add_typer(coord_app, name="coord")
+# webui_app's single "webui" command flattens into the root namespace, so
+# ``beagle webui --port`` works directly (same pattern as execution_app).
+app.add_typer(webui_app)
 
 
 def _version_callback(value: bool) -> None:

@@ -82,8 +82,8 @@ ENV \
     BEAGLE_KNOWLEDGE_DIR=/app/data/rag \
     BEAGLE_KUZU_PATH=/app/data/rag
 
-# A2A federation port
-EXPOSE 8420
+# A2A federation port + web dashboard (`beagle webui`, real Beagle-backed).
+EXPOSE 8420 8080
 
 STOPSIGNAL SIGTERM
 

@@ -1,0 +1,7 @@
+upstream: https://github.com/google-generated/beagle-webui (unreachable; source retained from local clone)
+source:   https://github.com/MattCreigh/Google-Generated-Beagle-Webui (private; cloned as reference)
+vendored: 2026-08-28
+license:  MIT (vendor/webui/LICENSE)
+deps:     React 19 + Vite 8 + Tailwind 4 (see vendor/webui/package.json)
+prebuild: vendor/webui-prebuild/dist (built via `npm run build`, then copied)
+resync:   procedure in src/beagle/frontends/webui/README.md
