@@ -210,7 +210,20 @@ transport from stdio to streamable-http, which requires `BEAGLE_MCP_TOKEN`.
 
 ## Configuration
 
-Beagle is configured via environment variables (shell or `.env` file).
+Run `beagle config init` to create the configuration file. The command writes
+`config.toml` and prints the path. The default path is
+`~/.config/beagle/beagle_core_config/config.toml`. Set `BEAGLE_CONFIG_ROOT` to
+move the configuration root. Set `BEAGLE_CONFIG_TOML` to select one specific
+file.
+
+The generated file has 20 sections: `[orchestrator]`, `[goose]`, `[models]`,
+`[budget]`, `[cache]`, `[rate_limit]`, `[mcp]`, `[logging]`, `[node_timeout]`,
+`[pool]`, `[context_threshold]`, `[memory]`, `[security]`, `[output]`,
+`[circuit_breaker]`, `[orpheus]`, `[paths]`, `[behavior]`, `[mcp_auth]`, and
+`[mcp_cors]`.
+
+Beagle reads the file first. Beagle then applies the environment variables. An
+environment variable therefore overrides the value in the file.
 
 | Variable | Description | Default |
 |---|---|---|
@@ -218,12 +231,18 @@ Beagle is configured via environment variables (shell or `.env` file).
 | `BEAGLE_DATA_ROOT` | Directory for writable state (tracking DB, checkpoints) | XDG state root |
 | `BEAGLE_MCP_TOKEN` | Bearer token required for HTTP MCP connections (fail-closed) | *(not set)* |
 | `BEAGLE_LOG_LEVEL` | Logging verbosity (`DEBUG`, `INFO`, `WARNING`, `ERROR`) | `INFO` |
+| `FIREWALL_PROVIDER` | Provider for the semantic firewall. Beagle reads it from the environment only. | `ollama_cloud` |
+| `FIREWALL_MODEL` | Model for the semantic firewall. It must be on `[models.allowed]`. | `gemma4:31b` |
 
 > **Generate a secure MCP token:**
 >
 > ```bash
 > export BEAGLE_MCP_TOKEN=$(openssl rand -hex 32)
 > ```
+
+For every tunable default, see
+[`docs/CONFIG_DEFAULTS.md`](docs/CONFIG_DEFAULTS.md). For the full environment
+variable list, see [`docs/CLI.md`](docs/CLI.md).
 
 ---
 
