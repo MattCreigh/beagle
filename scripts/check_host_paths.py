@@ -198,7 +198,7 @@ def _selftest() -> int:
         (root / "__pycache__" / "skip.py").write_text(
             "/opt/beagle/beagle_venv/bin/python", encoding="utf-8"
         )
-        (root / "hit.py").write_text("PROJ = '/home/server/Projects/beagle'\n", encoding="utf-8")
+        (root / "hit.py").write_text("PROJ = '/home/example-user/proj'\n", encoding="utf-8")
         found = _scan(root, {})
         if not any("hit.py:1" in v for v in found):
             print("SELFTEST FAILED: planted violation was not caught", file=sys.stderr)

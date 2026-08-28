@@ -12,7 +12,7 @@ logic blocks with a `where:` legend, one notation per block.
 ## 1. Problem
 
 Beagle runs many concurrent goose sessions against the same working directory
-(observed 2026-08-21: 5+ live sessions in `/home/server/Projects/beagle` at
+(observed 2026-08-21: 5+ live sessions in `<repo root>` at
 once). Today there is **no live inter-session coordination primitive**. The
 coordination state is scattered across disk-backed, per-session, last-writer
 wins stores:
@@ -232,7 +232,7 @@ observer draws the same agent with the same colour across their own session.
 `beagle coord` (or `beagle beacon`) renders a live, colour-coded roster:
 
 ```text
- Coord (beagle) ─── 3 agents in /home/server/Projects/beagle ──────────────
+ Coord (beagle) ─── 3 agents in <repo root> ──────────────
  agent 20260821_13   ● active   model=deepseek-v4-flash  phase=writing
    plan : beagle-master-sequence (in-flight)
    head : b3ebcf7  "fix: suppress aeca-walltime-for-interval ..."
