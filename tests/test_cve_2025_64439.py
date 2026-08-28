@@ -155,12 +155,16 @@ class TestCVE202564439Mitigation:
 class TestRequirementPinning:
     """Verify security-related requirements are properly pinned."""
 
-    def test_langgraph_checkpoint_pinned_in_requirements(self):
-        """Verify requirements.txt pins langgraph-checkpoint >= 3.0.0."""
-        req_path = PROJECT_ROOT / "requirements.txt"
-        content = req_path.read_text()
-        assert "langgraph-checkpoint" in content, (
-            "langgraph-checkpoint should be in requirements.txt"
+    def test_requirements_file_removed_pyproject_is_ssot(self):
+        """requirements.txt was removed in bd4c296; pyproject.toml is the SSOT.
+
+        Guards against a stale requirements.txt reappearing and drifting from
+        pyproject.toml's pins (the CVE-2025-64439 pin must live in exactly one
+        place).
+
+        """
+        assert not (PROJECT_ROOT / "requirements.txt").exists(), (
+            "requirements.txt was removed (bd4c296); pyproject.toml is the dependency SSOT"
         )
 
     def test_langgraph_checkpoint_pinned_in_pyproject(self):

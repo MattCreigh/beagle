@@ -1,8 +1,9 @@
 """Integration tests for TurboQuant compression functionality."""
 
 import sys
+from pathlib import Path
 
-sys.path.insert(0, "/home/server/Projects/beagle")
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 
 import pytest

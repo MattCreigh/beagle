@@ -88,13 +88,13 @@ def test_discover_repos_excludes_ssot_and_legacy(tmp_path: Path) -> None:
 
     _make_git_repo(tmp_path / "beagle", tracked_files=("x.md",))
     _make_git_repo(tmp_path / "legacy_projects_root", tracked_files=("x.md",))
-    _make_git_repo(tmp_path / "skylon", tracked_files=("x.md",))
+    _make_git_repo(tmp_path / "server_1_skylon", tracked_files=("x.md",))
 
     found = discover_repos(tmp_path)
     names = {p.name for p in found}
     assert "beagle" not in names
     assert "legacy_projects_root" not in names
-    assert "skylon" in names
+    assert "server_1_skylon" in names
 
 
 def test_discover_repos_dedupes_symlinks(tmp_path: Path) -> None:
@@ -173,7 +173,7 @@ def test_render_one_creates_commit_with_reversion_ref(tmp_path: Path) -> None:
     """
     from beagle.style_guides.bulk_render import render_one
 
-    repo = tmp_path / "skylon"
+    repo = tmp_path / "server_1_skylon"
     _make_git_repo(repo, tracked_files=("README.md",))
     pre_sha = _git(["rev-parse", "HEAD"], repo)
 
@@ -197,7 +197,7 @@ def test_render_one_reports_no_changes_when_already_current(tmp_path: Path) -> N
     """A second run on a repo whose pointers match the SSOT returns no-changes."""
     from beagle.style_guides.bulk_render import render_one
 
-    repo = tmp_path / "skylon"
+    repo = tmp_path / "server_1_skylon"
     _make_git_repo(repo, tracked_files=("README.md",))
     first = render_one(repo, push=False)
     assert first.status == "ok"
@@ -212,12 +212,12 @@ def test_render_one_push_succeeds_against_bare_remote(tmp_path: Path) -> None:
     actually lands on origin (verified via git ls-remote)."""
     from beagle.style_guides.bulk_render import render_one
 
-    repo = tmp_path / "skylon"
+    repo = tmp_path / "server_1_skylon"
     _make_git_repo(repo, tracked_files=("README.md",))
     result = render_one(repo, push=True)
     assert result.status == "ok", f"push failed: {result.reason}"
 
-    bare = tmp_path / "skylon-bare.git"
+    bare = tmp_path / "server_1_skylon-bare.git"
     # HEAD on origin should now match the post-mutation SHA. In a bare
     # repo ``git rev-parse HEAD`` returns the literal "HEAD" (it has
     # no working tree). The branch's actual ref name is whatever the
@@ -282,13 +282,13 @@ def test_bulk_render_exclude_supports_glob(tmp_path: Path) -> None:
 
     _make_git_repo(tmp_path / "skylon_plugin_fan", tracked_files=("x.md",))
     _make_git_repo(tmp_path / "skylon_plugin_spin", tracked_files=("x.md",))
-    _make_git_repo(tmp_path / "skylon", tracked_files=("x.md",))
+    _make_git_repo(tmp_path / "server_1_skylon", tracked_files=("x.md",))
 
     report = bulk_render(tmp_path, push=False, exclude=["skylon_plugin_*"])
     skipped = {r.repo.name for r in report.results if r.status == "skipped"}
     assert {"skylon_plugin_fan", "skylon_plugin_spin"} <= skipped
     rendered = {r.repo.name for r in report.results if r.status == "ok"}
-    assert "skylon" in rendered
+    assert "server_1_skylon" in rendered
 
 
 def test_bulk_render_aggregates_results(tmp_path: Path) -> None:
@@ -316,7 +316,7 @@ def test_bulk_render_aggregates_results(tmp_path: Path) -> None:
 # 14 known projects are always discovered, and allows additional ones.
 @pytest.mark.local_only
 def test_bulk_render_against_actual_projects_dir() -> None:
-    """Smoke test against the real /home/server/Projects tree.
+    """Smoke test against the host's ~/Projects tree.
 
     Verifies that the bulk module discovers a stable set of repos that
     this monorepo's own family of projects belong to. The set is a subset
@@ -326,9 +326,9 @@ def test_bulk_render_against_actual_projects_dir() -> None:
     pytest.importorskip("pathlib")
     from beagle.style_guides.bulk_render import discover_repos
 
-    projects = Path("/home/server/Projects")
+    projects = Path.home() / "Projects"
     if not projects.is_dir():
-        pytest.skip("/home/server/Projects not present on this host")
+        pytest.skip("~/Projects not present on this host")
 
     found = discover_repos(projects)
     names = {p.name for p in found}

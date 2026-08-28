@@ -252,7 +252,7 @@ def test_render_all_target_root_writes_per_repo_pointers(tmp_output: Path, monke
     prompt) are unaffected and still go to the home directory.
 
     This is the contract that powers ``beagle render-prompts --target <dir>``
-    so sibling repos (skylon, server_1, orpheus) can carry the v13.22.1
+    so sibling repos (server_1_skylon, server_1_orpheus) can carry the v13.22.1
     XML-pointer style on their own pointer files.
     """
     from beagle.style_guides import render as render_mod

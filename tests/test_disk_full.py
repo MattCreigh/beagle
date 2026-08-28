@@ -101,9 +101,12 @@ class TestDiskFullTaskStore:
         from beagle.checkpointer import CheckpointManager as WfCheckpointManager
 
         mgr = WfCheckpointManager(checkpoint_dir=tmp_path)
-        # Patch Path.write_text to simulate disk full
+        # Patch tempfile.mkstemp to simulate disk full: checkpoint saves go
+        # through atomic_write_text (write-temp-fsync-rename), not
+        # Path.write_text, so the temp-file creation is the first disk write
+        # the protocol performs.
         with (
-            patch.object(Path, "write_text", side_effect=OSError(28, "No space left on device")),
+            patch("beagle.utils.atomic.tempfile.mkstemp", side_effect=OSError(28, "No space left on device")),
             pytest.raises(OSError, match="No space left on device"),
         ):
             mgr.save_state("wf-1", "query", {"key": "val"})

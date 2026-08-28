@@ -20,9 +20,10 @@ POST. The test asserts:
 from __future__ import annotations
 
 import sys
+from pathlib import Path
 from unittest.mock import MagicMock
 
-sys.path.insert(0, "/home/server/Projects/beagle")
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from beagle.infrastructure.services import embedding as emb_mod
 from beagle.infrastructure.services.embedding import (
@@ -176,14 +177,35 @@ def test_batch_failure_falls_back_to_sentence_transformers(monkeypatch):
     sentence-transformers so the rest of the ingest still gets
     usable embeddings.
     """
-    monkeypatch.setattr(emb_mod, "httpx", MagicMock())
+    # The embedder builds clients via the beagle.core.transports seam
+    # (_transport().sync_client()), NOT emb_mod.httpx — patch the seam.
+    # Patching emb_mod.httpx is a no-op for _embed_batch and let the test
+    # hit real localhost:11434 (httpx.ReadTimeout when Ollama is down).
+    recorder = MagicMock()
+    recorder.posts = []
 
-    class _BrokenClient(_RecordedClient):
-        def post(self, url, json=None, headers=None):  # type: ignore[override]
+    class _BrokenClient:
+        def __init__(self, **_kwargs):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            return False
+
+        def post(self, url, json=None, headers=None):  # type: ignore[override, no-untyped-def]
             resp = MagicMock()
             resp.status_code = 500
             resp.text = "internal oops"
             return resp
+
+    class _T:
+        def sync_client(self, **_kwargs):  # type: ignore[no-untyped-def]
+            return _BrokenClient()
+
+    _stub_transport(monkeypatch, recorder)  # seam stubbed for symmetry
+    monkeypatch.setattr(emb_mod, "_transport", lambda: _T())
 
     inst = OllamaCloudEmbedder.__new__(OllamaCloudEmbedder)
     inst._provider = "local"

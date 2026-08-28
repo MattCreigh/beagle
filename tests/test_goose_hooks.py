@@ -41,11 +41,12 @@ from pathlib import Path
 
 import pytest
 
-sys.path.insert(0, "/home/server/Projects/beagle")
+_REPO_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(_REPO_ROOT))
 
 # Find the hook scripts and add their dir to sys.path so we can
 # import them as modules without invoking them as subprocesses.
-_HOOKS_DIR = Path("/home/server/Projects/beagle/scripts/hooks")
+_HOOKS_DIR = _REPO_ROOT / "scripts" / "hooks"
 sys.path.insert(0, str(_HOOKS_DIR.parent))
 
 
@@ -65,7 +66,7 @@ def test_beagle_bootstrap_emits_single_line_json():
         capture_output=True,
         text=True,
         timeout=120,
-        cwd="/home/server/Projects/beagle",
+        cwd=str(_REPO_ROOT),
         env={**os.environ, "BEAGLE_SKIP_HYDRATION": "1"},
     )
     # The hook exits 0 even on partial failure (per its docstring).
@@ -98,7 +99,7 @@ def test_beagle_bootstrap_idempotent():
             capture_output=True,
             text=True,
             timeout=120,
-            cwd="/home/server/Projects/beagle",
+            cwd=str(_REPO_ROOT),
             env=env,
         )
         assert proc.returncode == 0, f"second invocation (i={i}) failed: {proc.stderr}"
@@ -152,7 +153,7 @@ def test_beagle_post_fold_marks_rag_stale(monkeypatch, tmp_path):
         capture_output=True,
         text=True,
         timeout=60,
-        cwd="/home/server/Projects/beagle",
+        cwd=str(_REPO_ROOT),
         env=os.environ,
     )
     assert proc.returncode == 0, f"hook failed: {proc.stderr}"
@@ -175,7 +176,7 @@ def test_beagle_post_fold_emits_single_line_json():
         capture_output=True,
         text=True,
         timeout=60,
-        cwd="/home/server/Projects/beagle",
+        cwd=str(_REPO_ROOT),
         env=os.environ,
     )
     assert proc.returncode == 0
@@ -213,7 +214,7 @@ def test_fire_and_forget_returns_quickly(monkeypatch):
     )
 
     config = ah.AutoHydrationConfig(
-        project_dir="/home/server/Projects/beagle",
+        project_dir=str(_REPO_ROOT),
         force=True,
         fire_and_forget=True,
     )
@@ -267,7 +268,7 @@ def test_fire_and_forget_thread_is_daemon(monkeypatch):
     monkeypatch.setattr(_threading, "Thread", _RecordingThread)
 
     config = ah.AutoHydrationConfig(
-        project_dir="/home/server/Projects/beagle",
+        project_dir=str(_REPO_ROOT),
         force=True,
         fire_and_forget=True,
     )
@@ -324,7 +325,7 @@ def test_fire_and_forget_falls_back_to_blocking_on_import_error(monkeypatch):
     )
 
     config = ah.AutoHydrationConfig(
-        project_dir="/home/server/Projects/beagle",
+        project_dir=str(_REPO_ROOT),
         force=True,
         fire_and_forget=True,
     )
@@ -361,7 +362,7 @@ def test_default_path_remains_blocking(monkeypatch):
     )
 
     config = ah.AutoHydrationConfig(
-        project_dir="/home/server/Projects/beagle",
+        project_dir=str(_REPO_ROOT),
         force=True,
         # fire_and_forget defaults to False
     )
@@ -382,7 +383,7 @@ def test_pre_commit_config_declares_beagle_hooks():
     """The .pre-commit-config.yaml must declare both beagle-bootstrap
     and beagle-post-fold hooks so pre-commit fires them on every commit.
     """
-    cfg_path = Path("/home/server/Projects/beagle/.pre-commit-config.yaml")
+    cfg_path = _REPO_ROOT / ".pre-commit-config.yaml"
     assert cfg_path.exists(), f"{cfg_path} not found"
     cfg = cfg_path.read_text(encoding="utf-8")
     assert "beagle-bootstrap" in cfg, (
@@ -443,7 +444,7 @@ def _run_hook(script: str, python: str = _SYSTEM_PYTHON, **env_extra: str):
         capture_output=True,
         text=True,
         timeout=120,
-        cwd="/home/server/Projects/beagle",
+        cwd=str(_REPO_ROOT),
         env={**os.environ, **env_extra},
         check=False,
     )
@@ -519,7 +520,7 @@ def test_pre_commit_entries_use_the_project_interpreter():
     interpreter, which has none of the project's dependencies. That is what
     made every hook step fail while pre-commit reported "Passed".
     """
-    cfg = Path("/home/server/Projects/beagle/.pre-commit-config.yaml")
+    cfg = _REPO_ROOT / ".pre-commit-config.yaml"
     text = cfg.read_text(encoding="utf-8")
     for script in ("beagle_bootstrap.py", "beagle_post_fold.py"):
         assert f".venv/bin/python scripts/hooks/{script}" in text, (

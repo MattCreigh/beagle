@@ -109,6 +109,20 @@ def _seconds_since(epoch: float) -> float:
 _LIVE_REINGEST_THREADS: set[threading.Thread] = set()
 _EXIT_JOIN_REGISTERED = False
 
+#: Threads whose result-delivery failed because the caller's event loop closed
+#: before ``call_soon_threadsafe`` could run. The result is genuinely lost (the
+#: fire-and-forget caller has moved on), but the loss must stay observable —
+#: health reporting reads this counter the same way it reads
+#: observability.logging.trace_correlation_failures(). A bare ``pass`` here
+#: would make delivery failures invisible (SP-1 doctrine gate).
+_LOST_REINGEST_RESULTS = 0
+
+
+def lost_reingest_results() -> int:
+    """Count of reingest results that could not be delivered to their caller."""
+    global _LOST_REINGEST_RESULTS
+    return _LOST_REINGEST_RESULTS
+
 
 def _join_pending_reingests() -> None:
     """Join in-flight reingest threads at exit, bounded by a total timeout."""
@@ -535,8 +549,16 @@ class RAGStalenessTracker:
             try:
                 if not loop.is_closed():
                     loop.call_soon_threadsafe(_set_result, res)
+                else:
+                    raise RuntimeError("event loop closed before result delivery")
             except RuntimeError:
-                pass  # loop already closed — fire-and-forget caller moved on
+                # Loop already closed — the fire-and-forget caller moved on and
+                # the result is undeliverable. The failure is recorded via the
+                # module counter (readable through lost_reingest_results())
+                # because logging from here risks nothing but observability
+                # requires the loss to be counted, not silent (SP-1).
+                global _LOST_REINGEST_RESULTS
+                _LOST_REINGEST_RESULTS += 1
 
         thread = threading.Thread(
             target=_work,

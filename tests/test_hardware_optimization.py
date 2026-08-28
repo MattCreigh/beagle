@@ -74,14 +74,28 @@ class TestIncrementalIngestCache:
         loaded = _load_ingest_cache(str(tmp_path))
         assert loaded == cache
 
-    def test_cache_file_created(self, tmp_path):
-        """Cache file is created on disk."""
+    def test_cache_file_created(self, tmp_path, monkeypatch):
+        """Cache file is created on disk — at the v13.22.5 data-root location.
+
+        The cache was relocated out of the target directory (v13.22.5): it is
+        runtime state, not corpus, and keeping it beside the indexed sources
+        meant any redeploy/rsync of the target wiped it and reset mtimes,
+        forcing full re-parse + re-embed. Location is keyed by a digest of the
+        resolved target path under $BEAGLE_DATA_ROOT.
+        """
         from beagle.infrastructure.cast_ingestion import (
+            _ingest_cache_path,
             _save_ingest_cache,
         )
 
+        monkeypatch.setenv("BEAGLE_DATA_ROOT", str(tmp_path / "data_root"))
         _save_ingest_cache(str(tmp_path), {"f.py": {"mtime": "1", "hash": "a"}})
-        assert (tmp_path / ".beagle_ingest_cache.json").exists()
+        cache_path = _ingest_cache_path(str(tmp_path))
+        assert cache_path.exists()
+        assert cache_path.parent == tmp_path / "data_root"
+        # The legacy in-target location must stay clean (that is the point of
+        # the relocation).
+        assert not (tmp_path / ".beagle_ingest_cache.json").exists()
 
 
 class TestDynamicConcurrency:

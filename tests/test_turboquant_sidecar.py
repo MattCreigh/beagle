@@ -24,8 +24,9 @@ These tests pin the contract end-to-end:
 2. write_turboquant_sidecar() on the recovered matrix produces a file
    that decompresses back to the same matrix (within TurboQuant's
    expected quantisation error).
-3. The fix works on a real on-disk corpus (uses the live /mnt/4TB
-   SSD LanceDB table if present; otherwise a synthetic fixture).
+3. The fix works on a real on-disk corpus (uses the host's live
+   ~/.beagle/instance_rag LanceDB table if present; otherwise a
+   synthetic fixture).
 """
 
 from __future__ import annotations
@@ -37,7 +38,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-sys.path.insert(0, "/home/server/Projects/beagle")
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from beagle.infrastructure.cast_ingestion import (
     LANCE_TABLE_NAME,
@@ -260,12 +261,12 @@ def test_old_flatten_path_documents_known_bug(tmp_path: Path):
     reason="Live on-disk corpus test; set BEAGLE_LIVE_RAG_TEST=1 to run",
 )
 def test_live_corpus_sidecar_build(tmp_path: Path):
-    """If the live corpus exists at /mnt/4TB_SATA_SSD/beagle/instance_rag,
+    """If the live corpus exists under ~/.beagle/instance_rag,
     verify the sidecar rebuilds without error on the production data.
     """
     import lancedb
 
-    live_lance = Path(os.path.realpath("/home/server/.beagle/instance_rag/lancedb"))
+    live_lance = Path(os.path.realpath(Path.home() / ".beagle" / "instance_rag" / "lancedb"))
     if not live_lance.exists():
         pytest.skip(f"live corpus not present at {live_lance}")
     db = lancedb.connect(str(live_lance))

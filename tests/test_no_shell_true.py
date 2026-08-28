@@ -27,6 +27,13 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
+# Audit scope: first-party source and tests. The project venv
+# (.venv/) and any virtualenv are third-party build artifacts —
+# vendored packages (e.g. sympy's own test-suite) legitimately use
+# shell=True and are not under beagle doctrine. Ruff runs the same
+# scoping rule for this repo.
+SCAN_ROOTS = ("src", "tests", "scripts")
+
 # Functions that accept `shell=` as a kwarg (or, in os.system's case, are
 # inherently shell-invoking). These are the only call sites we audit.
 DANGEROUS_FUNCS = {
@@ -66,7 +73,11 @@ def _format_qualified_name(node: ast.Call) -> str:
 def test_no_subprocess_shell_true() -> None:
     """No subprocess.* or os.system/popen call may use shell=True."""
     offenders: list[tuple[str, int, str]] = []  # (file, line, call)
-    py_files = list(PROJECT_ROOT.rglob("*.py"))
+    py_files: list[Path] = []
+    for root in SCAN_ROOTS:
+        base = PROJECT_ROOT / root
+        if base.is_dir():
+            py_files.extend(base.rglob("*.py"))
     for py_file in py_files:
         try:
             source = py_file.read_text(encoding="utf-8", errors="replace")
