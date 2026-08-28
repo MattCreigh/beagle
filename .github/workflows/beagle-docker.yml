@@ -11,8 +11,8 @@ permissions:
 
 env:
   REGISTRY: ghcr.io
-  # GHCR requires lowercase repository names. `beagle` is the fixed lowercase
-  # image name (matches the repo's Dockerfile IMAGE default).
+  # GHCR requires lowercase repository names; the owner (MattCreigh) must be
+  # lowercased. We derive the full lowercase image ref in a step below.
   IMAGE_NAME: beagle
 
 jobs:
@@ -52,12 +52,17 @@ jobs:
       # Derive the version from the git tag (v1.4.1 -> 1.4.1) and use it for
       # both the image tag and the Dockerfile build arg so the tag always
       # matches the wheel version.
-      - name: Extract version from tag
+      - name: Extract version and lowercase owner
         id: version
         run: |
           TAG="${GITHUB_REF#refs/tags/}"
           echo "tag=$TAG"
           echo "VERSION=${TAG#v}" >> "$GITHUB_OUTPUT"
+          # GHCR requires lowercase: ghcr.io/<owner>/beagle
+          OWNER="${{ github.repository_owner }}"
+          OWNER_LOWER="$(echo "$OWNER" | tr '[:upper:]' '[:lower:]')"
+          echo "IMAGE=${{ env.REGISTRY }}/${OWNER_LOWER}/${{ env.IMAGE_NAME }}" >> "$GITHUB_OUTPUT"
+          echo "Full image: ghcr.io/${OWNER_LOWER}/beagle:${TAG#v}"
 
       - name: Build and push image
         uses: docker/build-push-action@2ca78c6bec76527009825f31aae0532b4d40d820 # v6.15.0
@@ -66,8 +71,8 @@ jobs:
           file: docker/Dockerfile
           push: true
           tags: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.VERSION }}
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            ${{ steps.version.outputs.IMAGE }}:${{ steps.version.outputs.VERSION }}
+            ${{ steps.version.outputs.IMAGE }}:latest
           labels: |
             org.opencontainers.image.source=${{ github.event.repository.html_url }}
             org.opencontainers.image.version=${{ steps.version.outputs.VERSION }}
