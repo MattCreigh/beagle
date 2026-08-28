@@ -19,6 +19,7 @@ from typing import Any, cast
 
 from beagle.config.config import get_config
 
+from ..utils.atomic import atomic_write_text
 from .checkpoint import CompactionCheckpoint
 
 logger = logging.getLogger("Beagle.context.trigger")
@@ -212,7 +213,9 @@ class ContextMonitor:
                 "last_compaction": time.time(),
                 "history": self._compaction_history[-10:],
             }
-            state_path.write_text(json.dumps(state, indent=2))
+            # Atomic write: rehydration reads this file after restarts; a
+            # partial write would corrupt the persisted fold state.
+            atomic_write_text(state_path, json.dumps(state, indent=2), mode=0o644)
         except (OSError, RuntimeError, ValueError):  # catch: NARROWED
             logger.debug("Failed to persist compaction state", exc_info=True)
 
@@ -267,7 +270,8 @@ class ContextMonitor:
                 "last_fold_type": "sovereignty",
                 "history": self._compaction_history[-10:],
             }
-            state_path.write_text(json.dumps(state, indent=2))
+            # Atomic write, same rationale as the compaction-state site above.
+            atomic_write_text(state_path, json.dumps(state, indent=2), mode=0o644)
         except (OSError, RuntimeError, ValueError):  # catch: NARROWED
             logger.debug("Failed to persist sovereignty-fold state", exc_info=True)
 

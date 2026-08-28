@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Any
 
 # Import TaskStore for persistence
+from ..utils.atomic import atomic_write_text
 from .task_store import TaskStore, get_task_store
 
 log = logging.getLogger("Beagle.infrastructure.audit_logger")
@@ -57,9 +58,10 @@ if AUDIT_SECRET is None:
             # Generate and persist a new secret
             AUDIT_SECRET = _secrets.token_hex(32)
             try:
-                _AUDIT_SECRET_FILE.parent.mkdir(parents=True, exist_ok=True)
-                _AUDIT_SECRET_FILE.write_text(AUDIT_SECRET)
-                _AUDIT_SECRET_FILE.chmod(0o600)
+                # Atomic 0600 write: mode applied before rename, closing the
+                # wrong-permission and partial-secret windows of the old
+                # write-then-chmod sequence.
+                atomic_write_text(_AUDIT_SECRET_FILE, AUDIT_SECRET, mode=0o600)
                 log.info("Generated and persisted audit secret to %s", _AUDIT_SECRET_FILE)
             except OSError as exc:
                 log.warning(

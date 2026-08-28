@@ -23,6 +23,7 @@ from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
+from ..utils.atomic import atomic_write_bytes
 from .a2a_types import AgentCard as AgentCard
 from .config import get_a2a_config
 
@@ -145,8 +146,9 @@ class BeagleToA2ABridge:
                 self._signing_key = nacl.signing.SigningKey(seed)
             else:
                 self._signing_key = nacl.signing.SigningKey.generate()
-                key_file.write_bytes(bytes(self._signing_key))  # type: ignore[call-overload]
-                key_file.chmod(0o600)
+                # Atomic 0600 write: mode applied before rename, so the key is
+                # never world-visible or partially observable.
+                atomic_write_bytes(key_file, bytes(self._signing_key), mode=0o600)
                 logger.info(f"A2A: Generated Ed25519 signing key at {key_file}")
 
             return self._signing_key

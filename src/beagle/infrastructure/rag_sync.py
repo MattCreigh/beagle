@@ -20,16 +20,28 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPT_DIR.parent
 # v1.2.0 (RG-6, BGL-009): resolve the data dir from the canonical data root.
 from beagle.config.paths import get_data_root as _get_data_root  # ruff: ignore[E402]
+from beagle.utils.atomic import atomic_write_text  # ruff: ignore[E402]
 
 DATA_DIR = _get_data_root()
-CODEBASES = [
-    (str(Path.home() / "Projects/skylon"), "skylon"),
-    (str(Path.home() / "Projects/orpheus"), "orpheus"),
-    (str(Path.home() / "Projects/orpheus_lib"), "orpheus_lib"),
-    (str(Path.home() / "Servers/homelab"), "homelab"),
-    (str(Path.home() / "Servers/server_1"), "server_1"),
-    (str(Path.home() / "Dev/beagle"), "beagle"),
-]
+# Sync targets are operator-specific and intentionally NOT shipped with the
+# public repo. Configure them via the environment as a JSON array of
+# [absolute_path, name] pairs, e.g.:
+#   export BEAGLE_RAG_SYNC_CODEBASES='[["/opt/repos/myproject", "myproject"]]'
+def _load_codebases() -> list[tuple[str, str]]:
+    raw = os.environ.get("BEAGLE_RAG_SYNC_CODEBASES", "")
+    if not raw.strip():
+        return []
+    try:
+        pairs = json.loads(raw)
+        return [(str(path_), str(name)) for path_, name in pairs]
+    except (json.JSONDecodeError, TypeError, ValueError) as exc:
+        logger.warning(
+            "Invalid BEAGLE_RAG_SYNC_CODEBASES (%s); no sync targets configured", exc
+        )
+        return []
+
+
+CODEBASES: list[tuple[str, str]] = _load_codebases()
 
 SYNC_STATE_FILE = DATA_DIR / "sync_state.json"
 
@@ -43,7 +55,9 @@ def load_sync_state() -> dict[str, str]:
 
 def save_sync_state(state: dict[str, str]) -> None:
     """Save sync timestamps."""
-    SYNC_STATE_FILE.write_text(json.dumps(state, indent=2))
+    # Atomic write: the sync state is read by the next cron invocation; a
+    # crash mid-write must never leave a truncated document to parse.
+    atomic_write_text(SYNC_STATE_FILE, json.dumps(state, indent=2), mode=0o644)
 
 
 def get_changed_files(codebase_path: str, last_sync: str | None) -> list[Path]:

@@ -32,6 +32,7 @@ from pathlib import Path
 
 from beagle.config.paths import resolve_executable
 from beagle.security.validation import validate_http_url
+from beagle.utils.atomic import atomic_write_text
 
 # ── path resolution ─────────────────────────────────────────────────────────
 
@@ -426,7 +427,9 @@ def _start_proxy() -> None:
         stderr=subprocess.DEVNULL,
         start_new_session=True,  # survives os.execv() — proxy outlives goose sessions
     )
-    _PROXY_PID_FILE.write_text(str(_proxy_proc.pid))
+    # Atomic write: a stale-proxy reader must never parse a partial PID,
+    # which could misclassify liveness or spawn against a wrong PID.
+    atomic_write_text(_PROXY_PID_FILE, str(_proxy_proc.pid), mode=0o644)
     # No atexit/signal cleanup — os.execv() replaces this process entirely.
     # The proxy is killed on next launch by the stale-proxy logic above.
 

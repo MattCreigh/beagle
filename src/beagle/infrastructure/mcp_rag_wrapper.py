@@ -14,6 +14,8 @@ import tempfile
 import time
 from pathlib import Path
 
+from beagle.utils.atomic import atomic_write_text
+
 # Use the system temp directory (respecting TMPDIR) so the wrapper is not
 # coupled to a literal /tmp mount and a shared path is found across hosts.
 # A healthcheck/companion process resolves these through the same temp root.
@@ -28,11 +30,14 @@ _server: subprocess.Popen | None = None
 def _write_health(state: str) -> None:
     """Write the health state to the health file.
 
+    Atomic: healthcheck/companion readers must never observe a partial
+    state string during startup/shutdown transitions.
+
     Args:
         state: The health state string.
 
     """
-    HEALTH_FILE.write_text(state, encoding="utf-8")
+    atomic_write_text(HEALTH_FILE, state, mode=0o644)
 
 
 def _cleanup(_signum: int, _frame: object) -> None:

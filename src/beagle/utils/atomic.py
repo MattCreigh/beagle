@@ -51,3 +51,43 @@ def atomic_write_text(path: Path, text: str, *, mode: int = 0o600) -> Path:
         tmp.unlink(missing_ok=True)
         raise
     return path
+
+
+def atomic_write_bytes(path: Path, data: bytes, *, mode: int = 0o600) -> Path:
+    """Write ``data`` to ``path`` atomically (binary variant).
+
+    Same write-temp-fsync-rename protocol as :func:`atomic_write_text`, for
+    raw binary payloads (e.g. Ed25519 signing seeds) whose on-disk format
+    must stay byte-exact across versions.
+
+    Args:
+        path: Destination path.  Its parent directory is created if absent.
+        data: Complete binary content to write.
+        mode: Permission bits applied before the rename.
+
+    Returns:
+        The destination path.
+
+    Raises:
+        OSError: The write, the fsync, or the rename failed.
+
+    <invariant>
+      A concurrent reader of ``path`` never observes a partial document and
+      never observes the file with permissions wider than ``mode``.
+    </invariant>
+
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp_name = tempfile.mkstemp(dir=str(path.parent), prefix=f".{path.name}.", suffix=".tmp")
+    tmp = Path(tmp_name)
+    try:
+        with os.fdopen(fd, "wb") as fh:
+            fh.write(data)
+            fh.flush()
+            os.fsync(fh.fileno())
+        os.chmod(tmp, mode)
+        os.replace(tmp, path)
+    except OSError:
+        tmp.unlink(missing_ok=True)
+        raise
+    return path

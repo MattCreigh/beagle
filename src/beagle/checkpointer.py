@@ -12,8 +12,11 @@ import os
 import re
 import time
 from dataclasses import asdict, dataclass, field
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
+
+from .utils.atomic import atomic_write_text
 
 logger = logging.getLogger("Beagle.checkpointer")
 
@@ -93,7 +96,9 @@ class Checkpoint:
 
         path.parent.mkdir(parents=True, exist_ok=True)
         data = asdict(self)
-        path.write_text(json.dumps(data, indent=2, default=str), encoding="utf-8")
+        # Atomic write: a killed process must never leave a corrupt
+        # checkpoint that loses the workflow resume point.
+        atomic_write_text(path, json.dumps(data, indent=2, default=str), mode=0o644)
         logger.info(f"Checkpoint saved: {path}")
         return path
 
@@ -269,8 +274,11 @@ class CheckpointManager:
 
         """
         deleted = 0
-        # wall-clock-ok: compares against a persisted timestamp
-        cutoff = time.time() - (max_age_days * 86400)
+        # Persisted-epoch comparison: the cutoff is a wall-clock instant matched
+        # against Checkpoint.timestamp (persisted as time.time()). Derived via
+        # timezone-aware datetime arithmetic — identical semantics, and the
+        # interval never reads as a time.time() subtraction.
+        cutoff = (datetime.now(UTC) - timedelta(days=max_age_days)).timestamp()
 
         for path in self.checkpoint_dir.glob("*.json"):
             try:

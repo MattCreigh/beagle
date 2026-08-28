@@ -22,6 +22,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from ..utils.atomic import atomic_write_text
+
 
 def _default_model() -> str:
     """Resolve the default model from the canonical config preset.
@@ -269,7 +271,9 @@ def _update_context_window(state: ContextTrackerState, model: str) -> None:
 def _persist_state(state: ContextTrackerState) -> None:
     """Persist tracker state to file."""
     try:
-        _session_state_file.write_text(json.dumps(state.to_dict(), indent=2))
+        # Atomic write: rehydration after a crash must never parse a
+        # truncated session-state document.
+        atomic_write_text(_session_state_file, json.dumps(state.to_dict(), indent=2), mode=0o644)
     except Exception as e:  # ruff: ignore[BLE001]  # broad catch intentional
         logger.debug(f"Could not persist state: {e}")
 

@@ -203,9 +203,13 @@ class OrpheusHTTPTransport:
         """
         try:
             client = await self._get_http()
+            # Explicit per-call timeout: the shared client sets one today,
+            # but the per-call bound must survive any future client refactor
+            # (doctrine: no HTTP call without an explicit timeout).
             resp = await client.post(
                 "http://127.0.0.1:8430/orpheus/publish",
                 json={"event_type": event_type, "data": data},
+                timeout=10.0,
             )
             return bool(resp.status_code == 200)
         except Exception as exc:  # ruff: ignore[BLE001]  # broad catch intentional

@@ -32,6 +32,7 @@ from typing import Any
 from ..cost_tracker import estimate_tokens_agnostic
 from ..output.schema import Finding
 from ..tracking.database import TrackingDatabase
+from ..utils.atomic import atomic_write_text
 
 logger = logging.getLogger("Beagle.memory.index")
 
@@ -322,7 +323,7 @@ class MemoryIndex:
 
         if current_tokens <= self.token_budget:
             # Under budget, no pruning needed
-            self.index_path.write_text(content, encoding="utf-8")
+            atomic_write_text(self.index_path, content, mode=0o644)
             return
 
         # Budget exceeded — apply pruning based on strategy
@@ -330,7 +331,7 @@ class MemoryIndex:
 
         # Final rebuild and write
         content = self._rebuild_content(data)
-        self.index_path.write_text(content, encoding="utf-8")
+        atomic_write_text(self.index_path, content, mode=0o644)
 
     def _apply_prune_strategy(
         self, data: dict[str, list[str]], current_tokens: int

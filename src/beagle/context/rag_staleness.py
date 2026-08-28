@@ -28,6 +28,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from ..utils.atomic import atomic_write_text
+
 logger = logging.getLogger("Beagle.RAGStaleness")
 
 # ── Configuration ──────────────────────────────────────────────────────────────
@@ -263,10 +265,12 @@ class RAGStalenessTracker:
     def _save(self) -> None:
         """Persist staleness record to sidecar file."""
         try:
-            self._file.parent.mkdir(parents=True, exist_ok=True)
-            self._file.write_text(
+            # Atomic write: the hydration gate reads this sidecar on every
+            # tick; a partial write could flip the perceived staleness state.
+            atomic_write_text(
+                self._file,
                 json.dumps(self._record.to_dict(), indent=2),
-                encoding="utf-8",
+                mode=0o644,
             )
         except OSError as e:
             logger.warning(f"[RAGStaleness] Failed to persist record: {e}")
