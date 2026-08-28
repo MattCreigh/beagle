@@ -27,6 +27,10 @@ prompt, and it:
 > isolation, fail-closed policies, and the threat model, see
 > [`docs/SECURITY.md`](docs/SECURITY.md).
 
+Beagle builds on LangGraph's durable graph execution and layers on hard cost
+governance, sandboxed isolation, hybrid code grounding, and adversarial
+verification.
+
 ---
 
 ## Key Concepts & Acronyms Explained
@@ -154,42 +158,40 @@ Beagle is configured via environment variables (shell or `.env` file).
 ## How It Works
 
 ```text
-   ┌──────────────────────────┐
-   │ User                     │
-   └──────────────────────────┘
-                │
-                ▼
-   ┌──────────────────────────┐
-   │ CLI / MCP Interface      │
-   └──────────────────────────┘
-                │
-                ▼
-   ┌──────────────────────────┐
-   │ DAG Orchestrator         │
-   └──────────────────────────┘
-                │
-                ▼
-   ┌──────────────────────────┐
-   │ Hybrid RAG Search        │
-   └──────────────────────────┘
-                │
-                ▼
-   ┌──────────────────────────┐
-   │ Sandboxed Agent          │
-   └──────────────────────────┘
-                │
-                ▼
-   ┌──────────────────────────┐
-   │ CVCP Adversarial Review  │
-   └──────────────────────────┘
-                │
-                ▼
-   ┌──────────────────────────┐
-   │ Verified Report          │
-   └──────────────────────────┘
-                │
-                ▼
-       (returned to the User)
+   ┌────────────────────────────┐
+   │            User            │
+   └────────────────────────────┘
+                 │
+                 ▼
+   ┌────────────────────────────┐
+   │    CLI / MCP Interface     │
+   └────────────────────────────┘
+                 │
+                 ▼
+   ┌────────────────────────────┐
+   │      DAG Orchestrator      │
+   └────────────────────────────┘
+                 │
+                 ▼
+   ┌────────────────────────────┐
+   │     Hybrid RAG Search      │
+   └────────────────────────────┘
+                 │
+                 ▼
+   ┌────────────────────────────┐
+   │      Sandboxed Agent       │
+   └────────────────────────────┘
+                 │
+                 ▼
+   ┌────────────────────────────┐
+   │  CVCP Adversarial Review   │
+   └────────────────────────────┘
+                 │
+                 ▼
+   ┌────────────────────────────┐
+   │      Verified Report       │
+   └────────────────────────────┘
+            (returned to the User)
 ```
 
 ```mermaid
