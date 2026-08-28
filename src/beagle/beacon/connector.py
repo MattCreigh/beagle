@@ -29,16 +29,6 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
-# orpheus / beacon_lib are the optional proprietary ring transport. Without
-# them the connector degrades to the socket RPC path (D-06) — every op still
-# succeeds over the socket, so orpheus is never a hard dependency.
-try:
-    import orpheus
-    from beacon_lib.codec import encode_signal
-except ImportError:  # pragma: no cover - exercised only when the wheel is absent
-    orpheus = None
-    encode_signal = None
-
 from beagle.beacon import contact
 from beagle.beacon.archive import elect_flush_owner, flush_archive
 from beagle.beacon.backend import StoreClient
@@ -47,6 +37,21 @@ from beagle.beacon.contact import Channel, Unreachable
 from beagle.beacon.keys import BeaconPaths, filehash
 from beagle.beacon.records import AgentRecord
 from beagle.config.config import get_config
+
+# orpheus / beacon_lib are the optional proprietary ring transport. Without
+# them the connector degrades to the socket RPC path (D-06) — every op still
+# succeeds over the socket, so orpheus is never a hard dependency. The
+# annotation is declared once and the conditional import is aliased, so
+# neither mypy (no-redef) nor ruff (E402) fires on the optional block.
+encode_signal: Callable[..., bytes] | None
+try:
+    import orpheus
+    from beacon_lib.codec import encode_signal as _encode_signal
+
+    encode_signal = _encode_signal
+except ImportError:  # pragma: no cover - exercised only when the wheel is absent
+    orpheus = None
+    encode_signal = None
 
 logger = logging.getLogger("Beagle.beacon.connector")
 

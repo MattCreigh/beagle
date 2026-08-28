@@ -49,22 +49,27 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-# orpheus / beacon_lib are the optional proprietary ring transport. Without
-# them the server still serves the store over its socket (RPC path); only the
-# ring fast-path drain is disabled.
-try:
-    import orpheus
-    from beacon_lib.codec import decode_signal
-except ImportError:  # pragma: no cover - exercised only when the wheel is absent
-    orpheus = None
-    decode_signal = None
-
 from beagle.beacon import contact
 from beagle.beacon.archive import elect_flush_owner, flush_archive
 from beagle.beacon.backend import ServerHandle, StoreClient
 from beagle.beacon.backends import get_driver
 from beagle.beacon.keys import BeaconPaths, resolve_paths
 from beagle.config.config import get_config
+
+# orpheus / beacon_lib are the optional proprietary ring transport. Without
+# them the server still serves the store over its socket (RPC path); only the
+# ring fast-path drain is disabled. The annotation is declared once here, and
+# the conditional import is aliased, so neither mypy (no-redef) nor ruff (E402)
+# fires on the optional block.
+decode_signal: Callable[[bytes], tuple[str, str, dict[str, Any]]] | None
+try:
+    import orpheus
+    from beacon_lib.codec import decode_signal as _decode_signal
+
+    decode_signal = _decode_signal
+except ImportError:  # pragma: no cover - exercised only when the wheel is absent
+    orpheus = None
+    decode_signal = None
 
 logger = logging.getLogger("Beagle.beacon.server")
 
