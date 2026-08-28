@@ -151,8 +151,8 @@ Phase 0/1 remediations applied from `docs/audits/release_readiness_code_audit_20
 - `[tool.ruff] cache-dir` and `[tool.pytest.ini_options] cache_dir` →
   `~/.cache/beagle/<tool>` (both expand `~`); `[tool.mypy] cache_dir` → an
   absolute host cache path such as `~/.cache/beagle/mypy` (mypy does not
-  expand `~`, so the configured path is absolute — host-specific by design, same as the orpheus wheel in
-  `[tool.uv.sources]`).
+  expand `~`, so the configured path is absolute — host-specific by design, same
+  as the orpheus wheel in `[tool.uv.sources]`).
 - `Makefile` exports `PYTHONPYCACHEPREFIX ?= $(HOME)/.cache/beagle/pycache`
   so bytecode never lands next to `.py` files.
 - `.gitignore` gains `.mypy_cache/`, `.import_linter_cache/`, `.benchmarks/`.
