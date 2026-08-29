@@ -21,8 +21,11 @@ so the dashboard never 500s.
 from __future__ import annotations
 
 import asyncio
+import hmac
+import ipaddress
 import json
 import logging
+import math
 import os
 from pathlib import Path
 from typing import Any
@@ -31,9 +34,67 @@ from aiohttp import web
 
 logger = logging.getLogger("Beagle.webui")
 
-# ── Bundle resolution ────────────────────────────────────────────────────────
+# ── Authentication (D-02) ─────────────────────────────────────────────────────
 
+# The project's own rule (core/a2a_protocol.py:63): "Localhost only — never
+# bind to 0.0.0.0". The web dashboard exposes live workflow execution, so the
+# loopback default is enforced here as well, with a hard refuse-to-start when a
+# non-loopback bind is requested without a token.
+_DEFAULT_HOST = "127.0.0.1"
+# HTTP header name, not a credential — semgrep's S105 sees a string assigned to
+# a *_HEADER constant and assumes it is a hardcoded password.
+_AUTH_HEADER = "Authorization"  # noqa: S105
 _DEFAULT_PORT = 8080
+# Hard ceiling for caller-supplied budgets in _handle_api_execute (D-14). A
+# rogue `float("inf")` must never reach the runner.
+_BUDGET_CEILING = 1_000_000.0
+
+
+def _webui_token() -> str:
+    """Return the configured bearer token, or "" when none is set."""
+    return os.environ.get("BEAGLE_WEBUI_TOKEN", "")
+
+
+def _is_loopback(host: str) -> bool:
+    """True when ``host`` resolves to a loopback address (127.0.0.0/8, ::1)."""
+    try:
+        addr = ipaddress.ip_address(host.strip())
+    except ValueError:
+        return False
+    return addr.is_loopback
+
+
+async def _auth_middleware(
+    app: web.Application,
+    handler: Any,
+) -> Any:
+    """Require the BEAGLE_WEBUI_TOKEN bearer header on every route.
+
+    aiohttp 3.14 still routes middlewares through the legacy
+    ``await m(app, handler)`` factory form (a function tagged with
+    ``web.middleware`` is treated as old-style, which is what this module's
+    pre-existing handlers rely on). The factory returns the per-request
+    coroutine; the 401 path short-circuits before calling ``handler``.
+
+    When a token is *configured*, every request must present it — missing or
+    wrong returns 401. When no token is configured the dashboard is
+    unauthenticated, which is only safe because :func:`main` refuses to bind
+    to a non-loopback address in that case.
+    """
+
+    async def _middleware_handler(request: web.Request) -> Any:
+        token = _webui_token()
+        if token:
+            received = request.headers.get(_AUTH_HEADER, "")
+            if received.startswith("Bearer "):
+                received = received[7:]
+            if not hmac.compare_digest(token, received):
+                return web.Response(status=401, text="Unauthorized")
+        return await handler(request)
+
+    return _middleware_handler
+
+# ── Bundle resolution ────────────────────────────────────────────────────────
 
 
 def _bundle_dir() -> Path:
@@ -323,7 +384,28 @@ async def _handle_api_execute(req: web.Request) -> web.Response:
     except Exception:  # noqa: BLE001 — malformed body → default
         body = {}
     goal = body.get("goal", "WebUI-triggered execution")
-    budget = float(body.get("budgetLimitUsd", 10.0))
+    raw_budget = body.get("budgetLimitUsd", 10.0)
+    try:
+        budget = float(raw_budget)
+    except (TypeError, ValueError) as exc:
+        return _json_response(
+            {"error": f"budgetLimitUsd must be a finite number: {exc}"},
+            status=400,
+        )
+    # float("inf") / float("nan") / negatives are accepted by float() and are
+    # not a budget at all — reject and clamp rather than let them reach the
+    # runner (D-14).
+    if not math.isfinite(budget) or budget < 0.0:
+        return _json_response(
+            {
+                "error": (
+                    "budgetLimitUsd must be a finite, non-negative number "
+                    f"(got {raw_budget!r})"
+                )
+            },
+            status=400,
+        )
+    budget = min(budget, _BUDGET_CEILING)
 
     from beagle.core.graph import run_workflow
 
@@ -383,7 +465,11 @@ async def _handle_static(req: web.Request) -> web.Response:
 
 
 def build_app() -> web.Application:
-    """Construct the aiohttp application."""
+    """Construct the aiohttp application.
+
+    Every route is wrapped by :func:`_auth_middleware`, so a configured
+    ``BEAGLE_WEBUI_TOKEN`` is required on every request.
+    """
     app = web.Application()
     # API routes (take precedence over the SPA catch-all).
     app.router.add_get("/api/workflows", _handle_api_workflows)
@@ -396,13 +482,21 @@ def build_app() -> web.Application:
     app.router.add_get("/api/rag/search", _handle_api_rag_search)
     # SPA catch-all — static assets and any unmatched route serve index.html.
     app.router.add_get("/{path:.*}", _handle_static)
+    app.middlewares.append(_auth_middleware)  # type: ignore[arg-type]
     return app
 
 
 def main() -> int:
-    """Start the web dashboard server (``beagle webui`` CLI entry)."""
+    """Start the web dashboard server (``beagle webui`` CLI entry).
+
+    Refuses to bind to a non-loopback address unless BEAGLE_WEBUI_TOKEN is
+    set (D-02): the project's own rule (core/a2a_protocol.py:63) is "Localhost
+    only — never bind to 0.0.0.0", and the dashboard runs live workflows.
+    """
+    import sys
+
     port = int(os.environ.get("BEAGLE_WEBUI_PORT", str(_DEFAULT_PORT)))
-    host = os.environ.get("BEAGLE_WEBUI_HOST", "0.0.0.0")
+    host = os.environ.get("BEAGLE_WEBUI_HOST", _DEFAULT_HOST)
 
     logging.basicConfig(
         level=logging.INFO,
@@ -412,7 +506,18 @@ def main() -> int:
     try:
         _bundle_dir()  # fail fast with a clear message if the bundle is missing
     except FileNotFoundError as exc:
-        print(f"beagle webui: {exc}", file=__import__("sys").stderr)
+        print(f"beagle webui: {exc}", file=sys.stderr)
+        return 1
+
+    token = _webui_token()
+    if not _is_loopback(host) and not token:
+        print(
+            "beagle webui: refusing to bind to "
+            f"{host} without BEAGLE_WEBUI_TOKEN — non-loopback binds run live "
+            "workflows and must be authenticated (D-02; "
+            "core/a2a_protocol.py:63)",
+            file=sys.stderr,
+        )
         return 1
 
     app = build_app()

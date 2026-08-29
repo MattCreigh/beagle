@@ -87,6 +87,7 @@ from beagle.events import (
     WorkflowStarted,
     get_event_bus,
 )
+from beagle.fault_recovery.outbox import OutboxError
 from beagle.security import validate_query_async
 from beagle.steering import SteeringManager
 from beagle.utils.env_manager import (
@@ -174,8 +175,11 @@ def _get_outbox() -> Any | None:
     The client is created once and reused for the life of the process.
     """
     global _outbox_client
+    # Match the four sibling loaders (lines 118/167/211/224): a False cache
+    # means "loader failed, stay unavailable", so return None instead of
+    # handing the caller a sentinel that is truthy-by-accident.
     if _outbox_client is not None:
-        return _outbox_client
+        return _outbox_client if _outbox_client is not False else None
     try:
         from beagle.fault_recovery.outbox import OutboxClient
 
@@ -957,7 +961,7 @@ class DAGOrchestrator:
             # state to the Redis Streams WAL BEFORE execution and a completion
             # event AFTER. Both are best-effort — an outbox failure must never
             # break the workflow (it is a hardening aid, not a hard dependency).
-            _outbox = await self._get_outbox()
+            _outbox = _get_outbox()
             if _outbox is not None:
                 try:
                     await _outbox.write_pending(
@@ -969,7 +973,13 @@ class DAGOrchestrator:
                             "skill_name": getattr(node, "skill_name", ""),
                         },
                     )
-                except Exception as _oe:  # broad catch: outbox is best-effort
+                except (
+                    OSError,
+                    RuntimeError,
+                    OutboxError,
+                    ValueError,
+                    TypeError,
+                ) as _oe:  # RATIONALE=outbox is best-effort; narrow the catch to the failure modes _append() can actually raise (redis/connection/serialisation) rather than any Exception
                     logger.debug(
                         "[%s] Outbox pending write failed (node %s): %s",
                         self.workflow_id,
@@ -1006,7 +1016,13 @@ class DAGOrchestrator:
                             "skill_name": getattr(node, "skill_name", ""),
                         },
                     )
-                except Exception as _oe:  # broad catch: outbox is best-effort
+                except (
+                    OSError,
+                    RuntimeError,
+                    OutboxError,
+                    ValueError,
+                    TypeError,
+                ) as _oe:  # RATIONALE=outbox is best-effort; narrow the catch to the failure modes _append() can actually raise (redis/connection/serialisation) rather than any Exception
                     logger.debug(
                         "[%s] Outbox completed write failed (node %s): %s",
                         self.workflow_id,
