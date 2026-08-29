@@ -50,6 +50,71 @@ def _canonical_top_of_mind_path() -> Path:
     return Path.home() / ".config" / "goose" / "beagle_top_of_mind.xml"
 
 
+def _domain_map_path() -> Path:
+    """Resolve ``<style_guides_dir>/domain_map.toml`` at call time.
+
+    Lives one level ABOVE ``guides/`` so the ``*.toml`` guide glob does not
+    load it as a style guide. The map declares, per domain, which guide stems
+    belong to it and which working-directory glob patterns select it. Absent
+    file -> empty map -> every domain resolves to the universal set.
+    """
+    from ..config._config_path import find_guides_dir
+
+    return find_guides_dir().parent / "domain_map.toml"
+
+
+def load_domain_map() -> dict[str, dict]:
+    """Load and normalise ``domain_map.toml``.
+
+    Returns ``{domain_name: {"guides": [stem, ...], "cwd_globs": [pat, ...]}}``.
+    Never raises: a missing or malformed file yields ``{}``.
+    """
+    path = _domain_map_path()
+    try:
+        import tomllib
+
+        with path.open("rb") as fh:
+            raw = tomllib.load(fh)
+    except (OSError, ValueError):
+        return {}
+    domains = raw.get("domains", {})
+    if not isinstance(domains, dict):
+        return {}
+    out: dict[str, dict] = {}
+    for name, spec in domains.items():
+        if not isinstance(spec, dict):
+            continue
+        guides = [str(g) for g in spec.get("guides", []) if isinstance(g, str)]
+        globs = [str(p) for p in spec.get("cwd_globs", []) if isinstance(p, str)]
+        if guides:
+            out[str(name)] = {"guides": guides, "cwd_globs": globs}
+    return out
+
+
+def resolve_domain(cwd: Path | str | None) -> str | None:
+    """Return the domain whose ``cwd_globs`` match *cwd*, or ``None``.
+
+    Matching is on the resolved absolute path and each of its parents, so
+    ``.../beagle/src/beagle/foo`` matches a ``**/src/**`` glob. First domain
+    with any matching glob wins (declaration order in ``domain_map.toml``).
+    """
+    if cwd is None:
+        return None
+    import fnmatch
+
+    try:
+        target = Path(cwd).resolve()
+    except (OSError, RuntimeError):
+        return None
+    candidates = [str(target), *(str(p) for p in target.parents)]
+    dmap = load_domain_map()
+    for name, spec in dmap.items():
+        for pat in spec.get("cwd_globs", []):
+            if any(fnmatch.fnmatch(c, pat) for c in candidates):
+                return name
+    return None
+
+
 class GooseTopOfMindRenderer:
     """Render style-guide TOMLs into an XML block for the Top-of-Mind injection.
 
@@ -130,28 +195,38 @@ class GooseTopOfMindRenderer:
         if compact:
             return self._render_compact_xml(guides, effective_domain)
 
-        # v13.21.3 (F3 fix): apply the soft cap. First render with
-        # all patterns; if the result exceeds ``FULL_SOFT_CAP_BYTES``,
-        # re-render with only load_bearing patterns. If even the
-        # load_bearing-only render exceeds the cap, keep it as-is
-        # (the cap is soft — load_bearing is a hard floor).
+        # The full render is now used only by non-per-turn consumers
+        # (emit / render_to_file / the get_style_guide MCP tool / tests).
+        # The per-turn artefact is the tiered render (render_canonical ->
+        # render_to_file_hydrated -> render_with_placeholders(tiered=True)),
+        # which is where the size budget lives. So the full render always
+        # emits every section — a size-driven drop of background patterns
+        # here silently loses load-bearing keywords (datetime.now,
+        # uuid.uuid4, additionalProperties) that SSOT-coverage tests
+        # require. The soft-cap-drops-background behaviour was retired in
+        # the tiered-Top-of-Mind restructure (2026-08-29).
         full_xml = self._render_full_xml(guides, effective_domain)
         if len(full_xml.encode("utf-8")) > self.FULL_SOFT_CAP_BYTES:
-            load_bearing_only = self._render_full_xml(
-                guides, effective_domain, tier_filter=self.PATTERN_TIER_LOAD_BEARING
+            logger.info(
+                "render(): full render is %d bytes (> soft reference %d); "
+                "emitting complete — the tiered per-turn artefact is the "
+                "size-bounded one",
+                len(full_xml.encode("utf-8")),
+                self.FULL_SOFT_CAP_BYTES,
             )
-            if len(load_bearing_only.encode("utf-8")) < len(full_xml.encode("utf-8")):
-                logger.info(
-                    "render(): soft cap triggered — %d -> %d bytes "
-                    "(background-tier patterns dropped)",
-                    len(full_xml.encode("utf-8")),
-                    len(load_bearing_only.encode("utf-8")),
-                )
-                return load_bearing_only
         return full_xml
 
-    def render_with_placeholders(self, domain: str | None = None) -> tuple[str, list[dict]]:
+    def render_with_placeholders(
+        self, domain: str | None = None, *, tiered: bool = False
+    ) -> tuple[str, list[dict]]:
         """Render with hydration placeholders for the Layered-Tom (E3) design.
+
+        When *tiered* is true (the canonical per-turn path via
+        :meth:`render_canonical`), only load-bearing content is emitted
+        inline and the rest is named in an ``<expand>`` block for
+        retrieval via the ``get_style_guide`` MCP tool. When false (the
+        ``emit`` / ``render_to_file`` / on-demand paths), the full guide
+        text is rendered.
 
         Returns:
             (xml_str, queries) — the XML contains ``<hydrator>`` blocks with
@@ -193,8 +268,14 @@ class GooseTopOfMindRenderer:
                 qid = f"chat_{len(queries)}"
                 queries.append({"id": qid, "source": "chat", "query": str(q), "guide": guide_name})
 
-        # Render the full XML (E3 path: with placeholders)
-        xml = self._render_full_xml(guides, effective_domain)
+        # Render the XML (E3 path: with placeholders). The canonical
+        # per-turn path is tiered (load-bearing only); every other path
+        # renders the full guide text.
+        xml = (
+            self._render_tiered_xml(guides, effective_domain)
+            if tiered
+            else self._render_full_xml(guides, effective_domain)
+        )
 
         if not queries:
             return xml, queries
@@ -212,14 +293,18 @@ class GooseTopOfMindRenderer:
         xml = xml.replace("</beagle_top_of_mind>", f"{hydrator_block}\n</beagle_top_of_mind>")
         return xml, queries
 
-    def _render_full_xml(
+    def _tom_header_lines(
         self,
         guides: list[dict],
         effective_domain: str | None,
-        tier_filter: str | None = None,
-    ) -> str:
-        # Build the license-to-deviate element with 1-turn expiry
-        # This is a structural XML element that forces model compliance
+        *,
+        tiered: bool = False,
+    ) -> list[str]:
+        """Shared Top-of-Mind header: comment, license, system identity.
+
+        One source for both ``_render_full_xml`` and ``_render_tiered_xml``
+        so the coercive license/identity block never drifts between them.
+        """
         license_to_deviate = (
             '  <license_to_deviate expires_after_turn="1" reason="explicit_user_override">'
             "<warning>Deviation from Beagle doctrine requires explicit user instruction. "
@@ -227,12 +312,15 @@ class GooseTopOfMindRenderer:
             "Default behavior: FOLLOW ALL RULES.</warning>"
             "</license_to_deviate>"
         )
-        names = ", ".join(g["meta"].get("name", g.get("__file__", "?")) for g in guides)
-        lines = [
+        names = ", ".join(
+            (g.get("meta") or {}).get("name", g.get("__file__", "?")) for g in guides
+        )
+        variant = "tiered (load-bearing tier — expand on demand)" if tiered else "full"
+        return [
             "<!--",
             "  Beagle Top-of-Mind Context — auto-generated by GooseTopOfMindRenderer.",
             "  Source: src/beagle/style_guides/guides/*.toml",
-            f"  Domain: {effective_domain or 'universal'}",
+            f"  Domain: {effective_domain or 'universal'}    Variant: {variant}",
             f"  Guides included: {names}",
             "  Injected every goose turn via tom extension (GOOSE_MOIM_MESSAGE_FILE).",
             "  Regenerate: beagle render-hints",
@@ -256,14 +344,185 @@ class GooseTopOfMindRenderer:
             "  </beagle_system_identity>",
         ]
 
+    def _render_full_xml(
+        self,
+        guides: list[dict],
+        effective_domain: str | None,
+        tier_filter: str | None = None,
+    ) -> str:
+        lines = self._tom_header_lines(guides, effective_domain, tiered=False)
+
         for guide in guides:
-            name = guide["meta"].get("name", guide["meta"].get("file", "unnamed"))
+            _m = guide.get("meta") or {}
+            name = _m.get("name", _m.get("file", "unnamed"))
             lines.append(f'  <style_guide name="{self._xml_escape(name)}">')
             lines.extend(self._render_sections(guide, indent=4, tier_filter=tier_filter))
             lines.append("  </style_guide>")
 
         lines.append("</beagle_top_of_mind>")
         return "\n".join(lines) + "\n"
+
+    # Sections rendered in FULL on the tiered per-turn path — the protocol
+    # the controller executes every turn. Everything else is summarised or
+    # dropped and named in the <expand> block.
+    _TIERED_FULL_SECTIONS: ClassVar[frozenset[str]] = frozenset(
+        {
+            "CRITICAL_ROUTING_PROTOCOL",
+            "critical_routing_protocol",
+            "routing",
+            "EXECUTOR_PROTOCOL",
+            "executor_protocol",
+            "formatting",
+        }
+    )
+
+    # Soft ceiling for the tiered artefact. Load-bearing content is the
+    # hard floor and is never dropped to meet this; exceeding it only
+    # logs a warning (the guide TOMLs have grown their load-bearing tier
+    # past the budget and need pruning, not the renderer clipping them).
+    SESSION_TIER_SOFT_CAP_BYTES: ClassVar[int] = 10_000
+
+    def _always_bytes_cap(self, guides: list[dict]) -> int:
+        """The doctrine's declared always-on budget (informational).
+
+        Read from ``09_agentic_doctrine_spec.toml [doctrine].always_bytes_cap``
+        when that guide is in scope; falls back to 3072.
+        """
+        for g in guides:
+            doctrine = g.get("doctrine")
+            if isinstance(doctrine, dict) and "always_bytes_cap" in doctrine:
+                try:
+                    return int(doctrine["always_bytes_cap"])
+                except (TypeError, ValueError):
+                    break
+        return 3072
+
+    def _render_tiered_xml(self, guides: list[dict], effective_domain: str | None) -> str:
+        """Render the load-bearing tier only, plus an ``<expand>`` pointer.
+
+        This is the canonical per-turn artefact. Full section text is
+        available on demand via the ``get_style_guide`` / ``list_style_guides``
+        MCP tools, named in the ``<expand>`` block.
+        """
+        lines = self._tom_header_lines(guides, effective_domain, tiered=True)
+
+        for guide in guides:
+            meta = guide.get("meta", {}) or {}
+            name = meta.get("name", meta.get("file", "unnamed"))
+
+            # The immutable security floor (tier 4 / immutable) is entrenched
+            # doctrine (09_agentic_doctrine_spec [entrenchment] T4=true) and
+            # small — render it in full every turn, not summarised.
+            if meta.get("immutable") or meta.get("tier") == 4:
+                lines.append(f'  <style_guide name="{self._xml_escape(name)}" tier="immutable">')
+                lines.extend(self._render_sections(guide, indent=4))
+                lines.append("  </style_guide>")
+                continue
+
+            lines.append(f'  <style_guide name="{self._xml_escape(name)}" tier="load_bearing">')
+
+            # 1. Protocol sections. A ``_tiered`` key inside the section
+            #    (string or dict) is the terse per-turn form; absent it, the
+            #    full section prose is rendered.
+            rendered: set[str] = set()
+            for key, value in guide.items():
+                if key not in self._TIERED_FULL_SECTIONS or not isinstance(value, dict):
+                    continue
+                terse = value.get("_tiered")
+                if isinstance(terse, str) and terse.strip():
+                    lines.append(
+                        f'    <{key} tier="load_bearing">'
+                        f"{self._xml_escape(terse.strip())}</{key}>"
+                    )
+                elif isinstance(terse, dict) and terse:
+                    lines.append(f'    <{key} tier="load_bearing">')
+                    for k, v in terse.items():
+                        lines.append(f"      <{k}>{self._xml_escape(str(v).strip())}</{k}>")
+                    lines.append(f"    </{key}>")
+                else:
+                    lines.extend(self._render_dict_section(key, value, 4, rendered))
+
+            # 2. architecture.patterns — load-bearing subset, name + gist only
+            #    (full pattern text via get_style_guide).
+            load_bearing = self._tiered_patterns(guide, tier=self.PATTERN_TIER_LOAD_BEARING)
+            if load_bearing:
+                lines.append("    <load_bearing_patterns>")
+                for p in load_bearing:
+                    head, _, tail = str(p).partition(":")
+                    gist = tail.strip().split(". ", 1)[0].strip()[:160]
+                    if gist:
+                        lines.append(
+                            f'      <pattern name="{self._xml_escape(head.strip())}">'
+                            f"{self._xml_escape(gist)}</pattern>"
+                        )
+                    else:
+                        lines.append(f"      <pattern>{self._xml_escape(head.strip())}</pattern>")
+                lines.append("    </load_bearing_patterns>")
+
+            # 3. anti_patterns — one-line summaries only; full text in the fold.
+            lines.extend(self._render_forbidden_section(guide, indent=4, summary_only=True))
+
+            # 4. run-to-completion rules — load-bearing summaries only.
+            lines.extend(self._render_rules_meta(guide, indent=4))
+
+            lines.append("  </style_guide>")
+
+        lines.extend(self._expand_block_lines(guides))
+        lines.append("</beagle_top_of_mind>")
+        xml = "\n".join(lines) + "\n"
+
+        size = len(xml.encode("utf-8"))
+        cap = self._always_bytes_cap(guides)
+        if size > self.SESSION_TIER_SOFT_CAP_BYTES:
+            logger.warning(
+                "tiered Top-of-Mind is %d bytes (doctrine always_bytes_cap=%d, "
+                "soft ceiling=%d) — the load-bearing tier of the guide TOMLs "
+                "needs pruning",
+                size,
+                cap,
+                self.SESSION_TIER_SOFT_CAP_BYTES,
+            )
+        return xml
+
+    def _render_rules_meta(self, guide: dict, indent: int = 4) -> list[str]:
+        """Render ``rules_meta`` (run-to-completion) load-bearing summaries.
+
+        ``rules_meta`` mirrors ``anti_patterns.forbidden_meta``: a list of
+        ``{id, tier, summary}`` inline tables under ``[meta]``. Only
+        ``tier = "load_bearing"`` entries are emitted; the full rule text
+        lives in the guide and is retrievable via ``get_style_guide``.
+        """
+        meta = (guide.get("meta") or {}).get("rules_meta") or guide.get("rules_meta")
+        if not isinstance(meta, list) or not meta:
+            return []
+        pad = " " * indent
+        load = [m for m in meta if isinstance(m, dict) and m.get("tier") == "load_bearing"]
+        if not load:
+            return []
+        lines = [f'{pad}<run_to_completion_rules count="{len(meta)}" load_bearing="{len(load)}">']
+        for m in load:
+            rid = self._xml_escape(str(m.get("id", "?")))
+            summary = self._xml_escape(str(m.get("summary", "")))
+            lines.append(f'{pad}  <rule id="{rid}">{summary}</rule>')
+        lines.append(f"{pad}</run_to_completion_rules>")
+        return lines
+
+    def _expand_block_lines(self, guides: list[dict]) -> list[str]:
+        """The ``<expand>`` pointer: how to pull full guide text on demand."""
+        names = " ".join(
+            str((g.get("meta") or {}).get("name", "?")).replace(" ", "_") for g in guides
+        )
+        return [
+            "  <expand>",
+            "    <notice>This is the load-bearing tier. Full section text "
+            "(all architecture patterns, the complete forbidden list, every "
+            "run-to-completion rule, and any domain guide) is retrieved on "
+            "demand — it is NOT missing, it is one tool call away.</notice>",
+            '    <tool name="get_style_guide" args="name[, section]"/>',
+            '    <tool name="list_style_guides" args=""/>',
+            f"    <available>{self._xml_escape(names)}</available>",
+            "  </expand>",
+        ]
 
     def render_compact(self, domain: str | None = None) -> str:
         """Render only load-bearing sections (routing + anti-patterns) capped at 2 KB.
@@ -479,7 +738,8 @@ class GooseTopOfMindRenderer:
         ]
 
         for guide in guides:
-            name = guide["meta"].get("name", guide["meta"].get("file", "unnamed"))
+            _m = guide.get("meta") or {}
+            name = _m.get("name", _m.get("file", "unnamed"))
             lines.append(f'  <style_guide name="{self._xml_escape(name)}">')
             lines.extend(self._render_sections(guide, indent=4))
             lines.append("  </style_guide>")
@@ -590,7 +850,11 @@ class GooseTopOfMindRenderer:
         from beagle.style_guides.targets.base import EmitOptions
         from beagle.style_guides.targets.base import emit as _emit
 
-        content = self.render(domain=domain)
+        # Resolve the domain from the scope directory when the caller did
+        # not name one explicitly, so `--dir <py-repo>` pulls the python
+        # domain guide instead of the full universal set.
+        effective = domain if domain is not None else resolve_domain(scope)
+        content = self.render(domain=effective)
         options = EmitOptions(
             scope=Path(scope) if scope else None,
             layers=layers,
@@ -712,12 +976,18 @@ class GooseTopOfMindRenderer:
         age = (now - hydrated_at).total_seconds()
         return age > ttl_seconds
 
-    def render_to_file_hydrated(self, path: Path, domain: str | None = None) -> Path:
+    def render_to_file_hydrated(
+        self, path: Path, domain: str | None = None, *, tiered: bool = True
+    ) -> Path:
         """Render with placeholders, then hydrate via tom_hydrator, then write.
 
         This is the E3 (Layered-Tom) integration point. The pure renderer
         produces the XML with ``<hydrator>`` placeholders; the hydrator
         resolves them; the result is atomically written to *path*.
+
+        *tiered* defaults to True: the canonical per-turn artefact carries
+        only the load-bearing tier, with the rest reachable via the
+        ``get_style_guide`` MCP tool.
 
         If the hydrator fails (MCP servers down, network error), the
         unhydrated XML is written instead — the canonical path is never
@@ -726,7 +996,7 @@ class GooseTopOfMindRenderer:
         tags and emit a degraded-mode warning.
         """
         # Step 1: pure render with placeholders
-        xml, queries = self.render_with_placeholders(domain=domain)
+        xml, queries = self.render_with_placeholders(domain=domain, tiered=tiered)
 
         # Step 2: hydrate (only if there are queries)
         if queries:
@@ -751,8 +1021,13 @@ class GooseTopOfMindRenderer:
     # ── internals ─────────────────────────────────────────────────────────
 
     def _select_guides(self, domain: str | None) -> list[dict]:
-        """Select guides: domain → core + domain file; else → universal."""
-        if domain is not None and domain in self._KNOWN_DOMAINS:
+        """Select guides: domain → core + domain file(s); else → universal.
+
+        A *domain* is recognised if it is a legacy ``_KNOWN_DOMAINS`` stem or
+        a key in ``domain_map.toml``. An unrecognised domain falls through to
+        the universal set (back-compatible — never an error).
+        """
+        if domain is not None and (domain in self._KNOWN_DOMAINS or domain in load_domain_map()):
             guides = self._domain_guides(domain)
         else:
             guides = self._universal_guides()
@@ -775,19 +1050,27 @@ class GooseTopOfMindRenderer:
                 pins["package_version"] = live
 
     def _domain_guides(self, domain: str) -> list[dict]:
-        """Return ``[beagle_core_directives, <domain>]`` if both exist.
+        """Return ``[beagle_core_directives, *domain_guides]``.
 
-        Uses ``get_by_stem`` for the domain guide because the loader
-        caches by ``meta.name`` (e.g. ``"Python Backend"``) while the
-        domain argument is a filename stem (``"python_backend"``).
+        The domain guide stems come from ``domain_map.toml`` when *domain*
+        is a key there (one domain may map to several guide stems), else
+        from the legacy convention that the domain name IS the stem.
+
+        Uses ``get_by_stem`` because the loader caches by ``meta.name``
+        (e.g. ``"Python Backend"``) while the domain argument is a stem.
         """
         guides: list[dict] = []
         core = self.loader.get_by_stem(self.DEFAULT_CORE)
         if core is not None:
             guides.append(core)
-        domain_guide = self.loader.get_by_stem(domain)
-        if domain_guide is not None:
-            guides.append(domain_guide)
+
+        dmap = load_domain_map()
+        stems = dmap[domain]["guides"] if domain in dmap else [domain]
+        for stem in stems:
+            g = self.loader.get_by_stem(stem)
+            if g is not None and g not in guides:
+                guides.append(g)
+
         # Fallback if core not found by stem: try meta.name
         if not guides and (core := self.loader.get(self.DEFAULT_CORE)):
             guides.append(core)
@@ -916,6 +1199,9 @@ class GooseTopOfMindRenderer:
         prefix = " " * indent
         lines = [f"{prefix}<{section_name}>"]
         for k, v in data.items():
+            if k == "_tiered":
+                # tiered-render-only terse form; not part of the full section
+                continue
             if isinstance(v, dict):
                 lines.extend(self._render_dict_section(k, v, indent + 2, set()))
             elif isinstance(v, list):
@@ -1174,7 +1460,9 @@ class GooseTopOfMindRenderer:
             )
             return None
 
-    def _render_forbidden_section(self, guide: dict, indent: int = 4) -> list[str]:
+    def _render_forbidden_section(
+        self, guide: dict, indent: int = 4, *, summary_only: bool = False
+    ) -> list[str]:
         """Render the forbidden-list section with tier + fold metadata.
 
         Output shape::
@@ -1215,7 +1503,7 @@ class GooseTopOfMindRenderer:
         for idx, rule in enumerate(rules, 1):
             tier = meta[idx - 1]["tier"] if meta else "background"
             summary = meta[idx - 1]["summary"] if meta else ""
-            if tier == "load_bearing":
+            if tier == "load_bearing" and not summary_only:
                 esc_rule = self._xml_escape(rule)
                 esc_sum = self._xml_escape(summary)
                 lines.append(
@@ -1223,11 +1511,20 @@ class GooseTopOfMindRenderer:
                 )
                 lines.append(f"{pad}    {esc_rule}")
                 lines.append(f"{pad}  </forbidden>")
-            else:
+            elif tier == "load_bearing":
+                # summary_only (tiered per-turn path): the 1-line summary is
+                # the reminder; the full text is in the fold below.
+                esc_sum = self._xml_escape(summary or rule[:160])
+                lines.append(
+                    f'{pad}  <forbidden tier="load_bearing" index="{idx}">{esc_sum}</forbidden>'
+                )
+            elif not summary_only:
                 esc_sum = self._xml_escape(summary)
                 lines.append(
                     f'{pad}  <forbidden_ref tier="background" index="{idx}" summary="{esc_sum}"/>'
                 )
+            # summary_only: background rules are dropped from the per-turn view
+            # entirely — they live in the fold + get_style_guide.
         lines.append(f"{pad}</anti_patterns>")
 
         # Fold reference for the full text (all rules, including the

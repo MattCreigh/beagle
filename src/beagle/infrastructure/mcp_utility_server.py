@@ -1457,6 +1457,111 @@ def _list_agents_impl() -> str:
     return json.dumps(agents, indent=2)
 
 
+# ── Style-guide expansion (Layered Top-of-Mind) ──────────────────────────────
+#
+# The per-turn Top-of-Mind carries only the load-bearing tier. These two tools
+# are the on-demand expansion path named in its <expand> block: an agent pulls
+# the full text of a guide (or one section) when it starts work the guide
+# governs — e.g. get_style_guide("04_lang_python") on opening a .py file.
+
+
+@mcp.tool()
+async def list_style_guides() -> str:
+    """List every Beagle style guide with its tier and one-line summary.
+
+    Returns:
+        JSON array of ``{name, stem, tier, applies_to, summary}`` objects.
+        ``stem`` is the value to pass to ``get_style_guide``.
+
+    """
+    _check_mcp_rate_limit()
+    import tomllib
+
+    from beagle.style_guides.loader import StyleGuideLoader
+
+    loader = StyleGuideLoader()
+    out: list[dict] = []
+    # Iterate the source files so the stem (the get_style_guide key) is exact.
+    for path in sorted(loader.guides_dir.glob("*.toml")):
+        try:
+            with path.open("rb") as fh:
+                guide = tomllib.load(fh)
+        except (OSError, ValueError):
+            continue
+        meta = guide.get("meta", {}) or {}
+        out.append(
+            {
+                "name": meta.get("name", path.stem),
+                "stem": path.stem,
+                "tier": meta.get("tier", "unspecified"),
+                "applies_to": meta.get("applies_to", []),
+                "summary": str(meta.get("description", ""))[:200],
+            }
+        )
+    return json.dumps(out, indent=2)
+
+
+@mcp.tool()
+async def get_style_guide(name: str, section: str = "") -> str:
+    """Return the full text of one Beagle style guide (or one section of it).
+
+    Args:
+        name: Guide stem (``04_lang_python``) or ``meta.name``
+            (``Python Domain Engineering``). Use ``list_style_guides`` to
+            discover valid values.
+        section: Optional top-level TOML section to return alone
+            (``architecture``, ``anti_patterns``, ``CRITICAL_ROUTING_PROTOCOL``).
+            Empty returns the whole guide.
+
+    Returns:
+        The guide (or section) rendered as XML, or a JSON error object.
+
+    """
+    _check_mcp_rate_limit()
+    if ".." in name or "/" in name or not re.match(r"^[A-Za-z0-9][A-Za-z0-9 _.\-]{0,79}$", name):
+        return json.dumps(
+            {"status": "error", "code": "INVALID_INPUT", "error": f"Invalid guide name: {name!r}"}
+        )
+    if section and not re.match(r"^[A-Za-z0-9_]{1,64}$", section):
+        return json.dumps(
+            {"status": "error", "code": "INVALID_INPUT", "error": f"Invalid section: {section!r}"}
+        )
+
+    from beagle.style_guides.loader import StyleGuideLoader
+    from beagle.style_guides.render import GooseTopOfMindRenderer
+
+    loader = StyleGuideLoader()
+    guide = loader.get_by_stem(name) or loader.get(name)
+    if guide is None:
+        return json.dumps(
+            {
+                "status": "error",
+                "code": "NOT_FOUND",
+                "error": f"No style guide: {name}",
+                "available": sorted(loader.available),
+            },
+            indent=2,
+        )
+
+    renderer = GooseTopOfMindRenderer(loader=loader)
+    if section:
+        value = guide.get(section)
+        if not isinstance(value, dict):
+            return json.dumps(
+                {
+                    "status": "error",
+                    "code": "NO_SECTION",
+                    "error": f"Guide {name!r} has no section {section!r}",
+                    "sections": [k for k in guide if k != "meta"],
+                },
+                indent=2,
+            )
+        lines = renderer._render_dict_section(section, value, 0, set())
+        return "\n".join(lines) + "\n"
+
+    return renderer._render_full_xml([guide], effective_domain=name)
+
+
 # ── Observability Tools ──────────────────────────────────────────────────────
 
 

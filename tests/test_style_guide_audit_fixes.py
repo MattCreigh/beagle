@@ -20,12 +20,10 @@ def test_loader_get_by_stem_returns_loaded_guide():
     from beagle.style_guides.loader import StyleGuideLoader
 
     loader = StyleGuideLoader()
-    guide = loader.get_by_stem("python_backend")
-    assert guide is not None, "get_by_stem('python_backend') returned None"
+    guide = loader.get_by_stem("04_lang_python")
+    assert guide is not None, "get_by_stem('04_lang_python') returned None"
     meta = guide.get("meta", {})
-    assert meta.get("name") == "Python Backend"
-    assert "formatting" in guide
-    assert guide["formatting"].get("max_line_length") == 100
+    assert meta.get("name") == "Python Domain Engineering"
 
 
 def test_loader_get_by_stem_missing_returns_none():
@@ -54,10 +52,10 @@ def test_loader_get_by_stem_works_for_all_canonical_guides():
         "06_domain_frontend",
         "07_domain_devops",
         "08_security_baseline",
+        "09_agentic_doctrine_spec",
         "beagle_core_directives",
         "local_tool_inventory",
-        "python_backend",
-        "security_baseline",
+        "run_to_completion",
     ):
         g = loader.get_by_stem(stem)
         assert g is not None, f"get_by_stem({stem!r}) returned None"
