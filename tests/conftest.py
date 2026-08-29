@@ -7,28 +7,29 @@ from __future__ import annotations
 
 import asyncio
 import sys
+from collections.abc import Callable, Iterator
 from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
 
-# Add project root to sys.path for all tests
+# Add the source tree to sys.path for all tests. The package lives at
+# src/beagle, not at the repository root, so tests import the development
+# tree here rather than whatever wheel happens to be installed.
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
-
-# Ensure source takes precedence over installed package
-# This allows tests to import from the development tree
+SRC_ROOT = PROJECT_ROOT / "src"
+if str(SRC_ROOT) not in sys.path:
+    sys.path.insert(0, str(SRC_ROOT))
 
 
-def pytest_configure(config):
+def pytest_configure(config: pytest.Config) -> None:
     """Register custom markers so pytest doesn't emit warnings."""
     config.addinivalue_line("markers", "requires_valid_api_key: test requires a valid live API key")
 
 
 @pytest.fixture(autouse=True)
-def _hermetic_env(monkeypatch):
+def _hermetic_env(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
     """v1.0.9 (audit M5): make the suite hermetic against ambient colour env.
 
     The 2026-08-15 audit found the ambient ``FORCE_COLOR`` variable produced
@@ -44,15 +45,48 @@ def _hermetic_env(monkeypatch):
     yield
 
 
+@pytest.fixture(autouse=True)
+def _no_real_rag_reingest() -> Iterator[None]:
+    """Refuse automatic reingest against the real, on-disk sidecar file.
+
+    D-04 (release audit 2026-08-29): pointed at the source tree, the suite
+    was OOM-killed by the kernel — twice, kernel-confirmed — because some
+    test reached the production ``RAGStalenessTracker`` singleton (the real
+    on-disk sidecar file, genuinely stale relative to this checkout)
+    without isolating its own tracker or mocking ``hotswap_ingest``, and
+    that spawned a real, unbounded CAST/Kuzu rebuild of the whole codebase
+    on a background thread mid-suite.
+
+    This only gates the DEFAULT tracker (see
+    ``rag_staleness._is_default_sidecar``). A test that isolates its own
+    tracker with an explicit ``staleness_file`` — the pattern every
+    existing reingest test already follows — is unaffected; this closes
+    the gap for the tests that do not.
+
+    Function-scoped, not session-scoped, and deliberately so:
+    ``tests/test_rag_reingest_guard.py`` calls ``importlib.reload(rs)`` twice
+    (to test ``_MIN_REINGEST_INTERVAL``'s env-parsed default), which
+    re-executes the module body and silently resets this flag to its
+    default — a session-scoped fixture set once at the start would be
+    defeated for every test after that reload. Re-asserting before each
+    test survives it.
+    """
+    from beagle.context.rag_staleness import set_default_reingest_disabled
+
+    set_default_reingest_disabled(True)
+    yield
+    set_default_reingest_disabled(False)
+
+
 @pytest.fixture
-def tmp_workspace(tmp_path):
+def tmp_workspace(tmp_path: Path) -> Path:
     ws = tmp_path / "workspace"
     ws.mkdir()
     return ws
 
 
 @pytest.fixture
-def mock_ollama():
+def mock_ollama() -> MagicMock:
     mock = MagicMock()
     mock.chat.return_value = {
         "message": {"content": "mocked response"},
@@ -69,7 +103,7 @@ def mock_ollama():
 
 
 @pytest.fixture
-def mock_mcp_server():
+def mock_mcp_server() -> MagicMock:
     """Mock the mcp.server.fastmcp.FastMCP interface.
 
     Returns a MagicMock that mimics the FastMCP class used in
@@ -87,7 +121,7 @@ def mock_mcp_server():
 
 
 @pytest.fixture
-def test_config():
+def test_config() -> dict[str, Any]:
     """A default Beagle config dict suitable for `get_config()` patching.
 
     Returns a fresh dict per-test so mutation does not leak. Tests that
@@ -121,7 +155,7 @@ def test_config():
 
 
 @pytest.fixture
-def mock_llm_response():
+def mock_llm_response() -> Callable[..., dict[str, Any]]:
     """Factory for canned LLM response dicts.
 
     Returns a function that takes (content="...", eval_count=100, prompt_eval_count=50)
@@ -145,7 +179,7 @@ def mock_llm_response():
 
 
 @pytest.fixture
-def isolated_db(tmp_path):
+def isolated_db(tmp_path: Path) -> Path:
     """A fresh SQLite database file in a tmp directory, with cleanup.
 
     Returns the path to the database file. The directory is automatically
@@ -160,7 +194,7 @@ def isolated_db(tmp_path):
 
 
 @pytest.fixture
-def beagle_event_loop_policy():
+def beagle_event_loop_policy() -> asyncio.DefaultEventLoopPolicy:
     """Provide a default asyncio event-loop policy for tests.
 
     Use this when a test creates its own asyncio.run / loop and needs

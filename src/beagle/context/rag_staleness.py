@@ -79,6 +79,41 @@ _MAX_STALE_AGE = _env_int("BEAGLE_MAX_STALE_AGE_SECONDS", 3600)
 # Tasks are added here on creation and discarded by a done-callback.
 _BACKGROUND_TASKS: set[asyncio.Task[Any]] = set()
 
+# D-04 (release audit 2026-08-29): test-only kill switch for the DEFAULT
+# (production sidecar file) reingest path only. A test that isolates its own
+# tracker with an explicit, non-default `staleness_file` — the pattern every
+# existing reingest test already follows to stay off the real project's
+# sidecar — is never affected by this flag; only a caller reaching the
+# production singleton against the real on-disk file is. This is what let a
+# test that neither isolates its tracker nor mocks `hotswap_ingest` spawn a
+# real, unbounded CAST/Kuzu rebuild of the whole codebase mid-suite.
+_DEFAULT_REINGEST_DISABLED = False
+
+
+def set_default_reingest_disabled(disabled: bool) -> None:
+    """Enable or disable automatic reingest for the DEFAULT tracker only.
+
+    Test-only hook. A tracker instance pointed at an explicit, non-default
+    ``staleness_file`` (every existing reingest test already does this) is
+    unaffected — this gates only the production singleton reached via the
+    real on-disk sidecar file, never a test-isolated one.
+
+    Args:
+        disabled: True to refuse automatic reingest on the default tracker.
+    """
+    global _DEFAULT_REINGEST_DISABLED
+    _DEFAULT_REINGEST_DISABLED = disabled
+
+
+def _is_default_sidecar(tracker: RAGStalenessTracker) -> bool:
+    """True if `tracker` is pointed at the real, on-disk sidecar file.
+
+    False for any tracker a test constructed with an explicit
+    ``staleness_file`` override, which is how every existing reingest test
+    already isolates itself from the production state.
+    """
+    return str(tracker._file) == str(Path(_STALENESS_FILE))  # type: ignore[has-type]
+
 
 def _seconds_since(epoch: float) -> float:
     """Seconds elapsed since a *persisted* wall-clock epoch.
@@ -429,6 +464,9 @@ class RAGStalenessTracker:
             Dict with reingest result, or {"status": "skipped"} if not needed.
 
         """
+        if _DEFAULT_REINGEST_DISABLED and _is_default_sidecar(self):
+            return {"status": "skipped", "reason": "disabled_for_tests"}
+
         if not self.is_stale:
             return {"status": "skipped", "reason": "not_stale"}
 
@@ -480,6 +518,13 @@ class RAGStalenessTracker:
             Callers should NOT await the returned task — fire and forget.
 
         """
+        if _DEFAULT_REINGEST_DISABLED and _is_default_sidecar(self):
+            logger.debug(
+                "[RAGStaleness] trigger_reingest_async: disabled for the default "
+                "tracker (test mode), skipping"
+            )
+            return None
+
         if not self.is_stale:
             logger.debug("[RAGStaleness] trigger_reingest_async: not stale, skipping")
             return None

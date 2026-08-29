@@ -159,14 +159,14 @@ def _load_ingest_cache(target_dir: str) -> dict[str, dict[str, str]]:
     cache_path = _ingest_cache_path(target_dir)
     if cache_path.exists():
         try:
-            return json.loads(cache_path.read_text(encoding="utf-8"))  # type: ignore[no-any-return]
+            return json.loads(cache_path.read_text(encoding="utf-8"))
         except (json.JSONDecodeError, OSError):
             return {}
     # Legacy fallback (pre-relocation location inside the target dir).
     legacy_path = Path(target_dir) / ".beagle_ingest_cache.json"
     if legacy_path.exists():
         try:
-            return json.loads(legacy_path.read_text(encoding="utf-8"))  # type: ignore[no-any-return]
+            return json.loads(legacy_path.read_text(encoding="utf-8"))
         except (json.JSONDecodeError, OSError):
             return {}
     return {}
@@ -301,7 +301,7 @@ class ASTChunk:
     parent_name: str = ""
     ast_entity_id: str = ""
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not self.ast_entity_id:
             self.ast_entity_id = self.chunk_id
 
@@ -1669,6 +1669,17 @@ def scan_codebase(root: Path) -> list[Path]:
         ".ruff_cache",
         ".hypothesis",
         "site-packages",
+        # D-04 / D-18 interim measure (release audit 2026-08-29): node_modules
+        # and dist above already exclude the BUILT frontend artifacts, but not
+        # the vendored frontend SOURCE under frontends/*/vendor — 2101 TS/JS
+        # files against 391 Beagle Python files, which is what made a real
+        # reingest during the test suite OOM-kill the host. Revert this
+        # exclusion once the frontends move to their own plugin repositories
+        # and the tree no longer exists in this package (see WP-6 in
+        # plans/beagle-1.4.1-release-remediation.xml) — a stale exclusion for
+        # a removed tree is a silent blind spot.
+        "vendor",
+
         # Runtime / session state (NEW v13.22.3) — not code, not config
         ".beagle",  # Beagle runtime state (cache, folds, progress.xml)
         ".goose",  # goose session state
