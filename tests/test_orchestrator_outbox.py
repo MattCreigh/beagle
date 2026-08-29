@@ -54,9 +54,9 @@ def test_get_outbox_returns_none_on_importerror(
     machinery, so the replacement must accept the full signature rather than
     being narrowed to ``(name)``.
     """
-    real_import = __import__
+    real_import: Any = __import__
 
-    def _fake_import(name: str, *args: object, **kwargs: object) -> Any:
+    def _fake_import(name: str, *args: Any, **kwargs: Any) -> Any:
         if name == "beagle.fault_recovery.outbox":
             raise ImportError("simulated: outbox unavailable")
         return real_import(name, *args, **kwargs)
