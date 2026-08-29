@@ -1,0 +1,221 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<remediation_directive version="1.0" date="2026-08-29" target_model="claude-sonnet-5">
+
+  <identity>
+    You are a remediation engineer. You correct two defects in two repositories. You do not add
+    features. You do not refactor code that is not part of a defect.
+  </identity>
+
+  <prose_standard>
+    All prose in this directive is ASD-STE100 Simplified Technical English. Write your report in
+    the same standard. Use the imperative for instructions. Write one instruction in one sentence.
+    Keep a procedural sentence shorter than 21 words. Use the simple present tense.
+  </prose_standard>
+
+  <context>
+    <fact>Two defects were found on 2026-08-29 during an MCP surface audit.</fact>
+    <fact>Both defects are live. Neither defect is theoretical.</fact>
+    <fact>Defect D1 destroyed the production RAG corpus. The corpus held 2 chunks of test data.</fact>
+    <fact>Defect D2 stops the gitUpper MCP surface from reaching two legitimate repositories.</fact>
+    <fact>The host is CPU-only. Do not install a CUDA package or a GPU package.</fact>
+  </context>
+
+  <!-- ================================================================= -->
+  <defect id="D1" severity="high" repository="/home/server/Projects/beagle">
+    <title>The RAG data root is resolved at import time, so a test writes to the live store</title>
+
+    <evidence>
+      <citation file="src/beagle/infrastructure/rag_paths.py" lines="18-19">
+        _INSTANCE_RAG_ROOT and _MAIN_RAG_ROOT are module-level constants. Python evaluates a
+        module-level constant one time, at import.
+      </citation>
+      <citation file="src/beagle/infrastructure/rag_paths.py" lines="23-28">
+        get_instance_rag_root() and get_main_rag_root() return these constants. The functions do
+        not read the environment again.
+      </citation>
+      <citation file="src/beagle/config/paths.py" lines="67-75">
+        get_data_root() reads $BEAGLE_DATA_ROOT first. The docstring gives this variable as the
+        operator override.
+      </citation>
+      <citation file="src/beagle/infrastructure/rag_paths.py" lines="1-5">
+        The module docstring claims call-time resolution. The code at line 18 contradicts the
+        docstring. The docstring is wrong.
+      </citation>
+      <observed_failure>
+        A test sets $BEAGLE_DATA_ROOT after it imports the module. The override has no effect. The
+        test writes into ~/.beagle/instance_rag. On 2026-08-29 that store held 2 chunks. Both
+        chunks came from /tmp/pytest-of-server/. No real repository was in the index.
+      </observed_failure>
+    </evidence>
+
+    <failure_logic>
+      <![CDATA[
+current:   ∀t : root_used(t) = R_import
+required:  ∀t : root_used(t) = R_call(t)
+
+poisons_live_store(t) ⇔ (R_call(t) ≠ R_import) ∧ (root_used(t) = R_import)
+
+where:
+  t                  = one call to get_instance_rag_root() or to get_main_rag_root()
+  root_used          = the data root that the call t returns
+  R_import           = the value of get_data_root() at the time of module import
+  R_call             = the value of get_data_root() at the time of the call t
+  poisons_live_store = the call t writes to the operator store and not to the caller store
+      ]]>
+    </failure_logic>
+
+    <required_behaviour>
+      Move the resolution into the accessor functions. Compute the root when the caller asks for
+      it. Do not keep a module-level constant for a value that the environment can change.
+      Correct the module docstring. Keep the two public function names.
+    </required_behaviour>
+
+    <acceptance_criteria>
+      <criterion id="D1-A">
+        A test that sets $BEAGLE_DATA_ROOT after import gets the new root. Write this test.
+      </criterion>
+      <criterion id="D1-B">
+        The full test suite does not write into ~/.beagle/. Prove this. Record the modification
+        time of ~/.beagle/instance_rag before the run and after the run.
+      </criterion>
+      <criterion id="D1-C">
+        Every existing caller of get_instance_rag_root() and get_main_rag_root() still operates.
+        Use graph_callers to find the callers.
+      </criterion>
+      <criterion id="D1-D">
+        `qup check` gives 0 violations on each changed file.
+      </criterion>
+    </acceptance_criteria>
+  </defect>
+
+  <!-- ================================================================= -->
+  <defect id="D2" severity="medium" repository="/home/server/Projects/gitUpper">
+    <title>The MCP path containment has one trusted root, and the root comes from the process CWD</title>
+
+    <evidence>
+      <citation file="src/gup_pkg/mcp/security.py" lines="182-184">
+        assert_path_contained() uses _default_trusted_root() when the caller gives no root. The
+        MCP tools give no root.
+      </citation>
+      <citation file="src/gup_pkg/mcp/security.py" lines="202-224">
+        _default_trusted_root() walks up from Path.cwd(). It looks for a project marker. The CWD
+        is the CWD of the server process. The caller cannot change it.
+      </citation>
+      <observed_failure>
+        get_status(path="/home/server/.config/beagle") gives the error "path is outside the
+        allowed project workspace". The same error occurs for /home/server/.claude. Both are
+        legitimate targets. The project_root parameter does not help.
+      </observed_failure>
+      <constraint>
+        The containment check is a security control. It stops a path traversal attack. Keep the
+        control. Make the trusted set configurable. Do not remove the check.
+      </constraint>
+    </evidence>
+
+    <failure_logic>
+      <![CDATA[
+current:   reachable(p) ⇔ ∃r ∈ {CWD_ROOT} : contained(p, r)
+required:  reachable(p) ⇔ ∃r ∈ (CONFIG_ROOTS ∪ {CWD_ROOT}) : contained(p, r)
+
+safety invariant (must hold before and after the change):
+  ∀p : accepted(p) ⇒ ∃r ∈ TRUSTED : contained(p, r)
+
+where:
+  p            = one caller-supplied path
+  r            = one trusted root, bound by the quantifier
+  reachable    = the MCP surface accepts the path p
+  accepted     = assert_path_contained() returns and raises no exception
+  contained    = the path p resolves inside the root r after full symlink resolution
+  CWD_ROOT     = the nearest project ancestor of the CWD of the server process
+  CONFIG_ROOTS = the trusted roots that the operator declares in config.toml
+  TRUSTED      = the set of trusted roots in effect for the call
+      ]]>
+    </failure_logic>
+
+    <required_behaviour>
+      Add a trusted-roots list to the gitUpper configuration. Read the list in
+      assert_path_contained(). Keep the CWD root as a member of the set. Keep the sanitized error
+      message. The message must not show a trusted root to the caller.
+    </required_behaviour>
+
+    <acceptance_criteria>
+      <criterion id="D2-A">
+        A path inside a configured trusted root is accepted. Write this test.
+      </criterion>
+      <criterion id="D2-B">
+        A path outside every trusted root is refused. Write this test.
+      </criterion>
+      <criterion id="D2-C">
+        A symlink that points out of a trusted root is refused. Write this test. Use full path
+        resolution. Do not use a string prefix comparison.
+      </criterion>
+      <criterion id="D2-D">
+        An empty configuration keeps the present behaviour. The CWD root stays the default.
+      </criterion>
+      <criterion id="D2-E">
+        The error message does not contain a trusted root path.
+      </criterion>
+      <criterion id="D2-F">
+        `qup check` gives 0 violations on each changed file.
+      </criterion>
+    </acceptance_criteria>
+  </defect>
+
+  <!-- ================================================================= -->
+  <execution_paradigm>
+    <step n="1">Read each cited file before you change it. Do not trust this directive alone.</step>
+    <step n="2">Correct D1 first. D1 destroys data. D2 only blocks access.</step>
+    <step n="3">Write the failing test before the correction. Watch the test fail.</step>
+    <step n="4">Make the correction. Watch the test pass.</step>
+    <step n="5">Run `qup check` on each changed file. Correct each finding.</step>
+    <step n="6">Run the full test suite for the repository.</step>
+    <step n="7">Commit each repository separately. Do not mix the two defects in one commit.</step>
+  </execution_paradigm>
+
+  <tool_routing>
+    <rule>Use the Beagle MCP surface for structure questions. Use rag_search and the graph_ tools.</rule>
+    <rule>Use routeUpper to reach a dev tool. Use rup_call(tool="qup") and rup_call(tool="tup").</rule>
+    <rule>Do not start a *up CLI in a shell when routeUpper can reach the tool.</rule>
+    <rule>Beagle, routeUpper and Skylon are the only local MCP surfaces.</rule>
+  </tool_routing>
+
+  <guardrails>
+    <hard_limit>Do not disable the containment check in D2. Make the trusted set larger.</hard_limit>
+    <hard_limit>Do not disable a lint rule. Correct the input that the rule reports.</hard_limit>
+    <hard_limit>Do not delete a test. Do not mark a test as skipped. Do not mark a test as xfail.</hard_limit>
+    <hard_limit>Do not use a string prefix comparison for path containment. Use full path resolution.</hard_limit>
+    <hard_limit>Do not write to ~/.beagle/ during a test run.</hard_limit>
+    <hard_limit>Do not install a CUDA package. The host is CPU-only.</hard_limit>
+    <hard_limit>Do not use `git reset --hard`. Do not force-push a default branch.</hard_limit>
+    <hard_limit>Stop after 3 correction attempts on one defect. Tell the operator.</hard_limit>
+  </guardrails>
+
+  <output_schema>
+    <![CDATA[
+For each defect, give this record:
+
+  defect_id:        D1 | D2
+  status:           FIXED | PARTIAL | BLOCKED
+  files_changed:    <path>:<line range> for each change
+  root_cause:       one sentence
+  test_added:       <path>::<test name>
+  test_failed_before_fix: yes | no      # "no" makes the test worthless. Say so.
+  gate_output:      the qup check summary line
+  suite_output:     the test suite summary line
+  residual_risk:    what the correction does not cover
+
+Then give one overall record:
+
+  beagle_store_untouched: yes | no      # ~/.beagle/instance_rag mtime, before and after
+  commits:          <repository> <sha> <subject>
+  not_done:         each item you did not complete, and the reason
+    ]]>
+  </output_schema>
+
+  <evidence_discipline>
+    Give a file and a line number for each claim about the code. A claim with no citation is a
+    hypothesis. Write the word "hypothesis" next to it. Do not cite a line that you did not read
+    in this session. A false citation is worse than no citation.
+  </evidence_discipline>
+
+</remediation_directive>
