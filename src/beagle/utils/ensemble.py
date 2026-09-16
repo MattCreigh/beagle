@@ -129,7 +129,7 @@ def _parse_judge_json(raw: str) -> dict[str, Any] | None:
     try:
         import json
 
-        return json.loads(match.group())  # type: ignore[no-any-return]
+        return json.loads(match.group())
     except (json.JSONDecodeError, ValueError):
         return None
 

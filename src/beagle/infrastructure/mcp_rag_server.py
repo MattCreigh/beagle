@@ -68,7 +68,7 @@ _correlation_id_var: contextvars.ContextVar[str] = contextvars.ContextVar(
 class CorrelationIdFilter(logging.Filter):
     """Inject correlation_id into log records."""
 
-    def filter(self, record):
+    def filter(self, record: logging.LogRecord) -> bool:
         record.correlation_id = _correlation_id_var.get("none")
         return True
 
@@ -103,7 +103,7 @@ _metrics: dict[str, dict] = {
 }
 
 
-def record_metric(_event_type: str, duration: float | None = None, success: bool = True):
+def record_metric(_event_type: str, duration: float | None = None, success: bool = True) -> None:
     """Record a metric event."""
     _metrics["requests"]["total"] += 1
     if success:
@@ -183,7 +183,7 @@ except ImportError:
                 )
             self.transport = transport
 
-        def tool(self):
+        def tool(self) -> Any:
             return lambda f: f
 
         def run(self) -> None:
@@ -877,7 +877,7 @@ def _vector_search_with_turboquant(
         import numpy as _np
 
         corpus = sidecar.get_vectors()  # (n, 768) float32
-        q = _np.asarray(query_vector, dtype=_np.float32)
+        q: Any = _np.asarray(query_vector, dtype=_np.float32)
         results = cosine_search_numpy(q, corpus, top_k=top_k)
         # cos distance returned as 1 - sim; consumers expect _distance
         # in [0, 2] per the B-23 fix. Use 1 - sim (cos distance in [0, 2]).
@@ -2093,10 +2093,10 @@ if __name__ == "__main__":
             before it reaches FastMCP's internal router.
             """
 
-            def __init__(self, inner_app):
+            def __init__(self, inner_app: Any) -> None:
                 self.inner_app = inner_app
 
-            async def __call__(self, scope, receive, send):
+            async def __call__(self, scope: Any, receive: Any, send: Any) -> Any:
                 if scope["type"] != "http":
                     return await self.inner_app(scope, receive, send)
                 path = scope.get("path", "/")
@@ -2115,7 +2115,7 @@ if __name__ == "__main__":
                 return await self.inner_app(scope, receive, send)
 
             @staticmethod
-            async def _reject(send, status: int, detail: str) -> None:
+            async def _reject(send: Any, status: int, detail: str) -> None:
                 await send(
                     {
                         "type": "http.response.start",

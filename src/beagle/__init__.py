@@ -16,6 +16,7 @@ Initialization:
 """
 
 from importlib import import_module
+from typing import Any
 
 from .constants import PACKAGE_VERSION
 
@@ -29,7 +30,7 @@ from .constants import PACKAGE_VERSION
 __version__ = PACKAGE_VERSION
 
 # v1.0.0: the security/permission names below were re-exported by a nested
-# subpackage (`aeca/`, briefly `beagle/beagle/`). That subpackage was a second
+# subpackage (briefly `beagle/beagle/`). That subpackage was a second
 # name for this same package, and the duplication is what broke packaging.
 # It is dissolved — there is one Beagle, and these are exported from it.
 __all__ = [
@@ -58,7 +59,7 @@ __all__ = [
 ]
 
 
-def __getattr__(name: str):
+def __getattr__(name: str) -> Any:
     """Lazy import to avoid circular dependencies."""
     lazy_imports = {
         "AutonomousOrchestrator": (".core.autonomous_orchestrator", "AutonomousOrchestrator"),

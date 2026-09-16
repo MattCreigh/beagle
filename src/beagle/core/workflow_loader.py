@@ -27,7 +27,7 @@ from .orchestrator_types import AgentState, DAGNode
 logger = logging.getLogger(__name__)
 
 try:
-    from langgraph.graph import StateGraph  # type: ignore[attr-defined]
+    from langgraph.graph import StateGraph
 
     _HAS_LANGGRAPH = True
 except ImportError:

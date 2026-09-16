@@ -463,6 +463,6 @@ class ConstraintRegistry:
         self.load()
         return self
 
-    def __exit__(self, exc_type, exc_val, _exc_tb) -> None:
+    def __exit__(self, exc_type: Any, exc_val: Any, _exc_tb: Any) -> None:
         """Context manager exit - save constraints."""
         self.save()

@@ -93,7 +93,7 @@ class KnowledgeEntry:
     related_ids: list[str] = field(default_factory=list)
     metadata: dict[str, Any] = field(default_factory=dict)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Generate ID from content if not provided."""
         if not self.id:
             # Generate deterministic ID from content hash.
@@ -388,7 +388,7 @@ class SemanticKnowledgeIndex:
 
         """
         # wall-clock-ok: compares against a persisted timestamp
-        cutoff = time.time() - (days * 24 * 3600)  # nosemgrep: aeca-walltime-for-interval
+        cutoff = time.time() - (days * 24 * 3600)  # nosemgrep: beagle-walltime-for-interval
         recent = [e for e in self.entries.values() if e.created_at >= cutoff]
         recent.sort(key=lambda e: e.created_at, reverse=True)
         return recent[:limit]
@@ -506,6 +506,6 @@ class SemanticKnowledgeIndex:
         self.load()
         return self
 
-    def __exit__(self, _exc_type, _exc_val, _exc_tb) -> None:
+    def __exit__(self, _exc_type: Any, _exc_val: Any, _exc_tb: Any) -> None:
         """Context manager exit."""
         self.save()

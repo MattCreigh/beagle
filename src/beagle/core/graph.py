@@ -29,10 +29,10 @@ import asyncio
 import copy
 import logging
 import os
-from collections.abc import Callable
+from collections.abc import AsyncIterator, Callable
 from typing import Any
 
-from langgraph.graph import StateGraph
+from langgraph.graph.state import StateGraph
 
 # langgraph's END is typed Any in its stubs; pin it to the str constant it
 # actually is so circuit-breaker returns satisfy the no-any-return gate.
@@ -219,7 +219,7 @@ async def _grpo_node(
     import asyncio as _asyncio
     import time as _time
 
-    prompt = prompt_builder(state)  # type: ignore[misc]
+    prompt = prompt_builder(state)
     state.get("_complexity", "normal")
 
     # Distinct strategies for each trajectory
@@ -390,7 +390,7 @@ async def _ensemble_node(
     judge_model = ensemble_cfg.judge_model
     timeout = ensemble_cfg.timeout_per_model
 
-    prompt = prompt_builder(state)  # type: ignore[misc]
+    prompt = prompt_builder(state)
 
     # Load recipe as system directive
     recipe_path = get_recipes_dir() / f"{skill}.xml"
@@ -562,11 +562,11 @@ def build_research_graph(include_hydration: bool = True) -> StateGraph:
 
     # H-MEM: Add hydration node if available and requested
     if include_hydration and HYDRATION_AVAILABLE:
-        graph.add_node("hydration", hydration_node)  # type: ignore[type-var]
-        graph.add_node("planning", planning_node)  # type: ignore[type-var]
-        graph.add_node("execution", execution_node)  # type: ignore[type-var]
-        graph.add_node("verification", verification_node)  # type: ignore[type-var]
-        graph.add_node("synthesis", synthesis_node)  # type: ignore[type-var]
+        graph.add_node("hydration", hydration_node)
+        graph.add_node("planning", planning_node)
+        graph.add_node("execution", execution_node)
+        graph.add_node("verification", verification_node)
+        graph.add_node("synthesis", synthesis_node)
 
         graph.set_entry_point("hydration")
         graph.add_edge("hydration", "planning")
@@ -593,10 +593,10 @@ def build_research_graph(include_hydration: bool = True) -> StateGraph:
         )
         graph.add_edge("synthesis", END)
     else:
-        graph.add_node("planning", planning_node)  # type: ignore[type-var]
-        graph.add_node("execution", execution_node)  # type: ignore[type-var]
-        graph.add_node("verification", verification_node)  # type: ignore[type-var]
-        graph.add_node("synthesis", synthesis_node)  # type: ignore[type-var]
+        graph.add_node("planning", planning_node)
+        graph.add_node("execution", execution_node)
+        graph.add_node("verification", verification_node)
+        graph.add_node("synthesis", synthesis_node)
 
         graph.set_entry_point("planning")
         graph.add_edge("planning", "execution")
@@ -678,11 +678,14 @@ async def run_workflow(
         Final state dict
 
     """
-    # OpenTelemetry span for workflow execution (Phase 5)
+    # OpenTelemetry span for workflow execution (Phase 5).
+    # Imported as the module and accessed by dotted name: under the gate's
+    # mypy (--no-namespace-packages) `opentelemetry.trace` exposes no symbols
+    # via `from ... import`, so either form of that is an attr-defined error.
     try:
-        from opentelemetry import trace  # type: ignore[import-untyped,attr-defined]
+        import opentelemetry.trace as _otrace
 
-        _graph_tracer = trace.get_tracer("beagle.graph", "13.4.0")
+        _graph_tracer: Any = _otrace.get_tracer("beagle.graph", "13.4.0")
     except ImportError:
         from contextlib import nullcontext
 
@@ -690,7 +693,7 @@ async def run_workflow(
             def start_as_current_span(self, *_a: Any, **_kw: Any) -> Any:
                 return nullcontext()
 
-        _graph_tracer = _Nop()  # type: ignore[assignment]
+        _graph_tracer = _Nop()
 
     with _graph_tracer.start_as_current_span("beagle.run_workflow") as wf_span:
         try:
@@ -712,7 +715,7 @@ async def run_workflow(
             return result
         except RuntimeError as e:
             if hasattr(wf_span, "set_status"):
-                from opentelemetry.trace.status import StatusCode  # type: ignore[import-untyped]
+                from opentelemetry.trace.status import StatusCode
 
                 wf_span.set_status(StatusCode.ERROR, str(e))
             raise
@@ -797,7 +800,7 @@ async def _run_workflow_impl(
         async with checkpointer_cm as checkpointer:
             compiled = graph.compile(checkpointer=checkpointer)
             if resume and thread_id:
-                result = await compiled.ainvoke(None, config)  # type: ignore[call-overload]
+                result = await compiled.ainvoke(None, config)
             else:
                 initial = create_initial_state(
                     query=query,
@@ -806,11 +809,11 @@ async def _run_workflow_impl(
                     workflow_mode=workflow_mode,
                     approval_granted=approval_granted,
                 )
-                result = await compiled.ainvoke(initial, config)  # type: ignore[call-overload]
+                result = await compiled.ainvoke(initial, config)
     else:
         compiled = graph.compile(checkpointer=None)
         if resume and thread_id:
-            result = await compiled.ainvoke(None, config)  # type: ignore[call-overload]
+            result = await compiled.ainvoke(None, config)
         else:
             initial = create_initial_state(
                 query=query,
@@ -819,7 +822,7 @@ async def _run_workflow_impl(
                 workflow_mode=workflow_mode,
                 approval_granted=approval_granted,
             )
-            result = await compiled.ainvoke(initial, config)  # type: ignore[call-overload]
+            result = await compiled.ainvoke(initial, config)
 
     # Log completion status
     completed = result.get("completed_nodes", [])
@@ -830,7 +833,7 @@ async def _run_workflow_impl(
     if errors:
         logger.warning(f"[Workflow] Completed with {len(errors)} errors: {errors}")
 
-    return result  # type: ignore[no-any-return]
+    return result
 
 
 async def stream_submit_message(
@@ -842,16 +845,16 @@ async def stream_submit_message(
     resume: bool = False,
     workflow_mode: str = "audit",
     approval_granted: bool = False,
-):
+) -> AsyncIterator[BeagleEvent]:
     """Run a workflow and yield execution events in real-time.
 
     Inspired by claw-code unified streaming events.
     """
-    queue = asyncio.Queue()  # type: ignore[var-annotated]
+    queue: asyncio.Queue[BeagleEvent] = asyncio.Queue()
     bus = get_event_bus()
 
     # Subscribe to all events for this loop
-    async def subscriber(event: BeagleEvent):
+    async def subscriber(event: BeagleEvent) -> None:
         await queue.put(event)
 
     await bus.subscribe(subscriber)  # type: ignore[arg-type,call-arg,misc]

@@ -98,7 +98,7 @@ class ExtractedConstraint:
 class PatternExtractor:
     """Extract constraints using regex patterns."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize pattern compiler."""
         self._compiled_patterns = {}
 
@@ -319,7 +319,7 @@ Only respond with the JSON, no other text."""
         errors: list[str] = []
         for candidate in candidates:
             try:
-                return json.loads(candidate)  # type: ignore[no-any-return]
+                return json.loads(candidate)
             except json.JSONDecodeError as exc:
                 errors.append(str(exc))
 

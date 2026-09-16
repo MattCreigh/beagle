@@ -50,7 +50,7 @@ class GuardianAction:
     # For caching
     action_hash: str = ""
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not self.action_hash:
             self.action_hash = self._compute_hash()
 

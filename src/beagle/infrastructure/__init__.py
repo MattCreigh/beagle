@@ -10,6 +10,7 @@
 """Infrastructure services - RAG, OpenClaw, Docker, etc."""
 
 from importlib import import_module
+from types import ModuleType
 
 __all__ = [
     "cast_ingestion",
@@ -24,7 +25,7 @@ __all__ = [
 ]
 
 
-def __getattr__(name: str):
+def __getattr__(name: str) -> ModuleType:
     """Lazy import infrastructure components."""
     lazy_imports = {
         "cast_ingestion": ".cast_ingestion",

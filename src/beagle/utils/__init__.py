@@ -1,6 +1,7 @@
 """Utility modules for caching, rate limiting, tracing, etc."""
 
 from importlib import import_module
+from types import ModuleType
 
 __all__ = [
     "cache",
@@ -15,7 +16,7 @@ __all__ = [
 ]
 
 
-def __getattr__(name: str):
+def __getattr__(name: str) -> ModuleType:
     """Lazy import utility components."""
     lazy_imports = {
         "cache": ".cache",

@@ -325,7 +325,7 @@ class VFSArchive:
         self,
         content: str,
         token_threshold: int = 2000,
-        **kwargs,
+        **kwargs: Any,
     ) -> tuple[str, bool]:
         """Archive content if it exceeds token threshold.
 

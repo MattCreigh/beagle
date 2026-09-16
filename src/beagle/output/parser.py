@@ -45,7 +45,7 @@ class OutputParser:
 
         if match:
             try:
-                return json.loads(match.group(1))  # type: ignore[no-any-return]
+                return json.loads(match.group(1))
             except json.JSONDecodeError:
                 logger.warning("Found JSON block but failed to parse it")
         return None

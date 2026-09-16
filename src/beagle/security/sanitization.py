@@ -30,7 +30,7 @@ class RegexTimeoutError(Exception):
     pass
 
 
-def _timeout_handler(signum, _frame):
+def _timeout_handler(signum: int, _frame: Any) -> None:
     raise RegexTimeoutError("Regex operation timed out (possible ReDoS)")
 
 
