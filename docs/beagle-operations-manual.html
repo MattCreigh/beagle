@@ -1,0 +1,1306 @@
+<title>Beagle Operations Manual</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&amp;family=IBM+Plex+Sans+Condensed:wght@400;500;600;700&amp;family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&amp;display=swap">
+
+<style>
+:root{
+  --ground:#F4F6F5;
+  --surface:#FFFFFF;
+  --surface-2:#EDF1F0;
+  --ink:#101A1C;
+  --ink-2:#4C5D60;
+  --ink-3:#79898B;
+  --rule:#D6DEDD;
+  --rule-strong:#B6C3C2;
+  --accent:#14566E;
+  --accent-2:#1E7290;
+  --accent-soft:#E2EDF1;
+  --ok:#2C6B4F;
+  --ok-soft:#DEEBE4;
+  --warn:#8A6510;
+  --warn-soft:#F2E9D5;
+  --crit:#A03528;
+  --crit-soft:#F4E2DF;
+  --plate:#EFF2F1;
+  --shadow:0 1px 2px rgba(16,26,28,.05), 0 8px 24px -18px rgba(16,26,28,.4);
+  --measure:68ch;
+  --wide:min(1180px, 100%);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#0C1214;
+    --surface:#131B1E;
+    --surface-2:#182225;
+    --ink:#E4EBEA;
+    --ink-2:#A5B4B5;
+    --ink-3:#758688;
+    --rule:#253133;
+    --rule-strong:#37474A;
+    --accent:#6FB6CF;
+    --accent-2:#8ECBE0;
+    --accent-soft:#123039;
+    --ok:#79C4A2;
+    --ok-soft:#14302A;
+    --warn:#D9AF5E;
+    --warn-soft:#33290F;
+    --crit:#E58F82;
+    --crit-soft:#331B18;
+    --shadow:0 1px 2px rgba(0,0,0,.5), 0 8px 24px -18px rgba(0,0,0,.9);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0C1214;
+  --surface:#131B1E;
+  --surface-2:#182225;
+  --ink:#E4EBEA;
+  --ink-2:#A5B4B5;
+  --ink-3:#758688;
+  --rule:#253133;
+  --rule-strong:#37474A;
+  --accent:#6FB6CF;
+  --accent-2:#8ECBE0;
+  --accent-soft:#123039;
+  --ok:#79C4A2;
+  --ok-soft:#14302A;
+  --warn:#D9AF5E;
+  --warn-soft:#33290F;
+  --crit:#E58F82;
+  --crit-soft:#331B18;
+  --shadow:0 1px 2px rgba(0,0,0,.5), 0 8px 24px -18px rgba(0,0,0,.9);
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:var(--ground);
+  color:var(--ink);
+  font-family:"Source Serif 4","Iowan Old Style",Georgia,serif;
+  font-size:17px;
+  line-height:1.62;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* ── Shell ───────────────────────────────────────────────── */
+.shell{display:grid;grid-template-columns:1fr;max-width:1440px;margin:0 auto}
+@media (min-width:1080px){
+  .shell{grid-template-columns:266px minmax(0,1fr);gap:0}
+}
+
+/* ── Sidebar ─────────────────────────────────────────────── */
+.rail{
+  border-right:1px solid var(--rule);
+  padding:28px 22px 60px;
+  display:none;
+}
+@media (min-width:1080px){
+  .rail{display:block;position:sticky;top:0;align-self:start;max-height:100vh;overflow-y:auto}
+}
+.rail-brand{
+  font-family:"IBM Plex Sans Condensed",system-ui,sans-serif;
+  font-weight:700;letter-spacing:.02em;font-size:20px;line-height:1.1;
+  color:var(--ink);margin:0 0 2px;
+}
+.rail-sub{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--ink-3);margin:0 0 22px;
+}
+.rail nav{display:flex;flex-direction:column;gap:1px}
+.rail a{
+  display:grid;grid-template-columns:26px 1fr;gap:8px;align-items:baseline;
+  font-family:"IBM Plex Sans Condensed",system-ui,sans-serif;
+  font-size:14.5px;line-height:1.35;
+  color:var(--ink-2);text-decoration:none;
+  padding:5px 8px;border-radius:3px;
+  border-left:2px solid transparent;
+}
+.rail a .n{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:11px;color:var(--ink-3);font-variant-numeric:tabular-nums;
+}
+.rail a:hover{background:var(--surface-2);color:var(--ink)}
+.rail a.on{color:var(--accent);border-left-color:var(--accent);background:var(--accent-soft)}
+.rail a.on .n{color:var(--accent)}
+.rail a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ── Main ────────────────────────────────────────────────── */
+main{padding:0 26px 120px;min-width:0}
+@media (min-width:1080px){main{padding:0 56px 140px}}
+.wrap{max-width:var(--wide);margin:0 auto}
+.prose{max-width:var(--measure)}
+
+/* ── Masthead ────────────────────────────────────────────── */
+.mast{padding:56px 0 30px;border-bottom:2px solid var(--ink);margin-bottom:0}
+.eyebrow{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--accent);margin:0 0 16px;
+}
+h1{
+  font-family:"IBM Plex Sans Condensed",system-ui,sans-serif;
+  font-weight:700;font-size:clamp(34px,5.4vw,58px);line-height:1.02;
+  letter-spacing:-.015em;margin:0 0 14px;text-wrap:balance;max-width:20ch;
+}
+.deck{
+  font-size:19.5px;line-height:1.55;color:var(--ink-2);margin:0;max-width:60ch;
+}
+
+/* ── Document control strip ──────────────────────────────── */
+.control{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));
+  border-bottom:1px solid var(--rule);
+}
+.control div{
+  padding:16px 18px 16px 0;border-right:1px solid var(--rule);
+}
+.control div:last-child{border-right:0}
+.control dt{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:10px;letter-spacing:.13em;text-transform:uppercase;
+  color:var(--ink-3);margin:0 0 5px;
+}
+.control dd{
+  font-family:"IBM Plex Sans Condensed",system-ui,sans-serif;
+  font-size:16px;font-weight:600;margin:0;color:var(--ink);
+  font-variant-numeric:tabular-nums;
+}
+
+/* ── Sections ────────────────────────────────────────────── */
+section{padding-top:52px;scroll-margin-top:16px}
+h2{
+  font-family:"IBM Plex Sans Condensed",system-ui,sans-serif;
+  font-weight:700;font-size:clamp(25px,3vw,33px);line-height:1.12;
+  letter-spacing:-.01em;margin:0 0 26px;padding-bottom:12px;
+  border-bottom:1px solid var(--rule-strong);
+  display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:baseline;
+  text-wrap:balance;
+}
+h2 .sec-no{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:15px;font-weight:500;color:var(--accent);
+  font-variant-numeric:tabular-nums;
+}
+h3{
+  font-family:"IBM Plex Sans Condensed",system-ui,sans-serif;
+  font-weight:600;font-size:20.5px;line-height:1.25;letter-spacing:.005em;
+  margin:38px 0 12px;color:var(--ink);text-wrap:balance;
+}
+h3 .sub-no{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:13px;color:var(--ink-3);margin-right:9px;font-weight:500;
+  font-variant-numeric:tabular-nums;
+}
+h4{
+  font-family:"IBM Plex Sans Condensed",system-ui,sans-serif;
+  font-weight:600;font-size:16px;margin:26px 0 8px;color:var(--ink);
+  letter-spacing:.02em;
+}
+p{margin:0 0 16px}
+.prose ul,.prose ol{margin:0 0 18px;padding-left:22px}
+.prose li{margin-bottom:7px}
+strong{font-weight:600;color:var(--ink)}
+a{color:var(--accent);text-underline-offset:2px}
+a:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:2px}
+
+/* ── Source citation chip ────────────────────────────────── */
+.src{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:11.5px;color:var(--ink-3);
+  background:var(--surface-2);border:1px solid var(--rule);
+  padding:1px 5px;border-radius:3px;white-space:nowrap;
+}
+
+/* ── Tables ──────────────────────────────────────────────── */
+.tbl-wrap{overflow-x:auto;margin:0 0 26px;border:1px solid var(--rule);border-radius:4px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:520px;font-size:14.5px}
+caption{
+  caption-side:top;text-align:left;
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-3);
+  padding:12px 16px 8px;
+}
+th{
+  font-family:"IBM Plex Sans Condensed",system-ui,sans-serif;
+  font-weight:600;font-size:13px;letter-spacing:.03em;text-transform:uppercase;
+  text-align:left;color:var(--ink-2);
+  padding:10px 16px;border-bottom:1.5px solid var(--rule-strong);
+  background:var(--surface-2);white-space:nowrap;
+}
+td{
+  padding:10px 16px;border-bottom:1px solid var(--rule);
+  vertical-align:top;color:var(--ink-2);line-height:1.5;
+}
+tbody tr:last-child td{border-bottom:0}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:13px}
+td code,th code{font-size:12.5px}
+td strong{color:var(--ink)}
+
+/* ── Code ────────────────────────────────────────────────── */
+code{
+  font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:.87em;background:var(--surface-2);color:var(--ink);
+  padding:1px 5px;border-radius:3px;border:1px solid var(--rule);
+}
+pre.code{
+  margin:0 0 26px;padding:18px 20px;overflow-x:auto;
+  background:var(--surface);border:1px solid var(--rule);border-radius:4px;
+  box-shadow:var(--shadow);
+}
+pre.code code{
+  background:none;border:0;padding:0;font-size:13.5px;line-height:1.7;
+  color:var(--ink);white-space:pre;display:block;
+}
+pre.code .c{color:var(--ink-3)}
+pre.code .p{color:var(--accent)}
+
+/* ── Diagram plate ───────────────────────────────────────── */
+figure.plate{
+  margin:0 0 30px;border:1px solid var(--rule-strong);border-radius:4px;
+  background:var(--plate);overflow:hidden;box-shadow:var(--shadow);
+}
+figure.plate .sheet{overflow-x:auto;padding:26px 20px 18px;display:flex;justify-content:center}
+figure.plate pre.mermaid{margin:0;background:none;border:0;min-width:0}
+figure.plate figcaption{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+  color:#4C5D60;background:#E4E9E8;border-top:1px solid var(--rule-strong);
+  padding:9px 16px;
+}
+
+/* ── Callout ─────────────────────────────────────────────── */
+.note{
+  border:1px solid var(--rule);border-left:3px solid var(--accent);
+  background:var(--surface);border-radius:3px;
+  padding:16px 20px;margin:0 0 26px;font-size:15.5px;color:var(--ink-2);
+}
+.note.warn{border-left-color:var(--warn);background:var(--warn-soft)}
+.note.warn strong{color:var(--ink)}
+.note p:last-child{margin-bottom:0}
+.note .lbl{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;
+  color:var(--accent);display:block;margin-bottom:6px;
+}
+.note.warn .lbl{color:var(--warn)}
+
+/* ── Status chips ────────────────────────────────────────── */
+.chip{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:11px;letter-spacing:.05em;text-transform:uppercase;
+  padding:2px 7px;border-radius:3px;white-space:nowrap;border:1px solid transparent;
+}
+.chip.ok{background:var(--ok-soft);color:var(--ok);border-color:var(--ok)}
+.chip.warn{background:var(--warn-soft);color:var(--warn);border-color:var(--warn)}
+.chip.crit{background:var(--crit-soft);color:var(--crit);border-color:var(--crit)}
+.chip.neutral{background:var(--surface-2);color:var(--ink-2);border-color:var(--rule-strong)}
+
+/* ── Metric row ──────────────────────────────────────────── */
+.metrics{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+  gap:1px;background:var(--rule);border:1px solid var(--rule);
+  border-radius:4px;overflow:hidden;margin:0 0 30px;
+}
+.metrics div{background:var(--surface);padding:16px 18px}
+.metrics .v{
+  font-family:"IBM Plex Sans Condensed",system-ui,sans-serif;
+  font-weight:700;font-size:27px;line-height:1;color:var(--ink);
+  font-variant-numeric:tabular-nums;letter-spacing:-.01em;
+}
+.metrics .k{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:10px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--ink-3);margin-top:7px;
+}
+
+/* ── Logic block ─────────────────────────────────────────── */
+.logic{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:13.5px;line-height:1.75;background:var(--surface);
+  border:1px solid var(--rule);border-left:3px solid var(--accent-2);
+  border-radius:3px;padding:16px 20px;margin:0 0 26px;overflow-x:auto;
+  color:var(--ink);white-space:pre;
+}
+
+/* ── Footer ──────────────────────────────────────────────── */
+footer{
+  margin-top:70px;padding-top:24px;border-top:2px solid var(--ink);
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:11.5px;line-height:1.8;color:var(--ink-3);
+}
+
+@media (prefers-reduced-motion:reduce){
+  *{animation:none !important;transition:none !important;scroll-behavior:auto !important}
+}
+html{scroll-behavior:smooth}
+</style>
+
+<div class="shell">
+
+  <aside class="rail">
+    <p class="rail-brand">Beagle</p>
+    <p class="rail-sub">Spec &amp; Ops · v1.4.1</p>
+    <nav id="toc">
+      <a href="#s1"><span class="n">1</span><span>Front Matter</span></a>
+      <a href="#s2"><span class="n">2</span><span>System Architecture</span></a>
+      <a href="#s3"><span class="n">3</span><span>Data &amp; State</span></a>
+      <a href="#s4"><span class="n">4</span><span>Interfaces</span></a>
+      <a href="#s5"><span class="n">5</span><span>Security</span></a>
+      <a href="#s6"><span class="n">6</span><span>Observability</span></a>
+      <a href="#s7"><span class="n">7</span><span>Operational Runbook</span></a>
+      <a href="#s8"><span class="n">8</span><span>Verification Matrix</span></a>
+      <a href="#s9"><span class="n">9</span><span>Hazards &amp; Limits</span></a>
+    </nav>
+  </aside>
+
+  <main>
+  <div class="wrap">
+
+    <header class="mast">
+      <p class="eyebrow">System Specification and Operations Manual</p>
+      <h1>Beagle Autonomous Workflow Engine</h1>
+      <p class="deck">A budget-governed, sandboxed multi-agent orchestration engine built on LangGraph, with hybrid vector–graph code retrieval and adversarial output verification.</p>
+    </header>
+
+    <dl class="control">
+      <div><dt>System</dt><dd>beagle</dd></div>
+      <div><dt>Version</dt><dd>1.4.1</dd></div>
+      <div><dt>Status</dt><dd>Production/Stable</dd></div>
+      <div><dt>Licence</dt><dd>MIT</dd></div>
+      <div><dt>Runtime</dt><dd>Python ≥ 3.12</dd></div>
+      <div><dt>Issued</dt><dd>2026-08-28</dd></div>
+    </dl>
+
+    <!-- ═══════════════════════ 1 ═══════════════════════ -->
+    <section id="s1">
+      <h2><span class="sec-no">1</span><span>Front Matter</span></h2>
+
+      <div class="prose">
+        <h3><span class="sub-no">1.1</span>Purpose and Scope</h3>
+        <p>This document specifies the architecture, interfaces, security posture, and operational procedures of <strong>Beagle</strong>, version 1.4.1. It is derived by direct analysis of the source distribution and is intended for solutions architects evaluating the system, platform engineers deploying it, and site reliability engineers operating it.</p>
+        <p>Scope covers the open-source engine as distributed. It excludes the separately licensed <code>beagle-orpheus</code> shared-memory transport, which is an optional, operator-installed plugin and is not a dependency of any code path described here.</p>
+
+        <h3><span class="sub-no">1.2</span>Executive Summary</h3>
+        <p>Autonomous LLM agents fail in three commercially significant ways: they consume unbounded API spend, they act outside their intended blast radius, and they return confident output that is not true. Beagle is an execution substrate that constrains all three as a precondition of running work at all.</p>
+        <p>A request enters as a natural-language query bound to a named workflow and a hard USD ceiling. Beagle compiles it into a directed acyclic graph of agent phases, hydrates each phase with real code context retrieved from a hybrid vector-plus-graph index of the target repository, executes each phase as an isolated sub-agent process, and subjects the result to an adversarial cross-verification pass before releasing it. Every model call is metered against the ceiling; every run is recorded to a relational store with a per-node cost breakdown, so an operator can answer "what did this cost and which agent spent it" after the fact.</p>
+        <p>The commercial argument is governance. The engine converts agentic work from an open-ended spend with unverified output into a bounded, auditable, replayable unit of execution — with a receipt.</p>
+      </div>
+
+      <div class="metrics">
+        <div><div class="v">391</div><div class="k">Source modules</div></div>
+        <div><div class="v">108,689</div><div class="k">Lines, src/beagle</div></div>
+        <div><div class="v">3,368</div><div class="k">Test functions</div></div>
+        <div><div class="v">40</div><div class="k">Subsystem packages</div></div>
+        <div><div class="v">139</div><div class="k">Env variables read</div></div>
+      </div>
+
+      <div class="prose">
+        <p style="font-size:14.5px;color:var(--ink-3)">Counts measured against the working tree at issue date: <code>find src -name '*.py'</code>, aggregate line count, and <code>def test_*</code> occurrences under <code>tests/</code>.</p>
+
+        <h3><span class="sub-no">1.3</span>Technology Stack</h3>
+      </div>
+
+      <div class="tbl-wrap">
+        <table>
+          <caption>Table 1.3-A — Primary stack, pinned in <code>pyproject.toml</code></caption>
+          <thead><tr><th>Layer</th><th>Component</th><th>Pin</th><th>Role in the system</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Language</strong></td><td>CPython</td><td><code>&gt;=3.12</code></td><td>Lint and type gates target <code>py313</code>; the deployed venv and CI both run 3.13.</td></tr>
+            <tr><td><strong>Orchestration</strong></td><td>LangGraph</td><td><code>1.2.4</code></td><td>Durable stateful graph execution; supplies the <code>StateGraph</code>, conditional edges, and checkpointer contract.</td></tr>
+            <tr><td></td><td>LangChain</td><td><code>1.3.9</code></td><td>Model and tool abstractions consumed by the LLM/tool node bridges.</td></tr>
+            <tr><td></td><td>langgraph-checkpoint-sqlite</td><td><code>&gt;=3.0.1</code></td><td>Durable checkpoint backend for pause, resume, and replay.</td></tr>
+            <tr><td><strong>Retrieval</strong></td><td>LanceDB</td><td><code>0.30.2</code></td><td>Embedded vector store; table <code>ast_code_chunks</code>.</td></tr>
+            <tr><td></td><td>Kùzu</td><td><code>0.11.3</code></td><td>Embedded property-graph store for the AST call/import/inheritance graph.</td></tr>
+            <tr><td></td><td>faiss-cpu</td><td><code>1.13.2</code></td><td>Candidate prefilter ahead of the LanceDB scan.</td></tr>
+            <tr><td></td><td>sentence-transformers / torch</td><td><code>&gt;=5.4</code> / <code>2.11.0</code></td><td>Local embedding. CPU wheel is pinned from the PyTorch CPU index in the container build.</td></tr>
+            <tr><td><strong>Integration</strong></td><td>mcp / fastmcp</td><td><code>1.28.1</code> / <code>3.4.7</code></td><td>Model Context Protocol servers exposing Beagle to external agent frontends.</td></tr>
+            <tr><td></td><td>aiohttp / httpx</td><td><code>3.14.0</code> / <code>&gt;=0.28</code></td><td>Web dashboard server and outbound HTTP client surface.</td></tr>
+            <tr><td><strong>Interface</strong></td><td>typer / click / rich</td><td><code>&gt;=0.24</code> / <code>8.3.3</code> / <code>15.0.0</code></td><td>CLI command tree and terminal rendering.</td></tr>
+            <tr><td><strong>Security</strong></td><td>PyJWT / PyNaCl / casbin</td><td><code>&gt;=2.12</code> / <code>&gt;=1.6</code> / <code>&gt;=1.30</code></td><td>JWT session validation, Ed25519 agent-card signing, policy-based RBAC.</td></tr>
+            <tr><td></td><td>google-re2 / defusedxml</td><td><code>1.1.20251105</code> / <code>&gt;=0.7.1</code></td><td>Backtracking-safe regex for untrusted input; hardened XML parsing.</td></tr>
+            <tr><td><strong>Telemetry</strong></td><td>opentelemetry-sdk / structlog</td><td><code>&gt;=1.41</code> / <code>&gt;=24.0</code></td><td>Traces and metrics; structured JSON logging with trace correlation.</td></tr>
+            <tr><td><strong>State</strong></td><td>aiosqlite / redis + fakeredis</td><td><code>0.22.1</code> / <code>2.37.1</code></td><td>Async relational access; in-process coordination store (no Redis server binary required).</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="prose">
+        <p>Five optional extras gate non-core capability: <code>dev</code> (pytest, mypy, ruff, hypothesis), <code>observability</code> (<code>prometheus_client</code>), <code>scraping</code> (BeautifulSoup), <code>code_parsing</code> (tree-sitter), and <code>tui</code> (Textual). Absence of any extra degrades a feature; none prevents boot.</p>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════ 2 ═══════════════════════ -->
+    <section id="s2">
+      <h2><span class="sec-no">2</span><span>System Architecture</span></h2>
+
+      <div class="prose">
+        <h3><span class="sub-no">2.1</span>Structural Paradigm</h3>
+        <p>Beagle is a <strong>modular monolith executing a directed acyclic graph</strong>. One Python process owns orchestration; work is fanned out to isolated sub-agent processes and pulled back into a single typed state object. It is not a microservice mesh — the container topology in §7.4 runs multiple copies of the same image with different entrypoints, not different services.</p>
+        <p>Three architectural properties define the system:</p>
+        <ul>
+          <li><strong>The DAG is the unit of governance.</strong> Acyclicity is enforced at load time, so an agent cannot loop indefinitely. Iteration counters and a circuit breaker in the routers bound retries independently <span class="src">core/graph.py:446,464</span>.</li>
+          <li><strong>Plugin seams, not hard-wired vendors.</strong> The sub-agent runtime is selected through a Python entry-point group (<code>beagle.runtimes</code>), with <code>goose_cli</code> as the default and <code>http_agent</code> for remote A2A execution. Outbound transports resolve through a second group (<code>beagle.transports</code>) and are auto-detected but never auto-activated.</li>
+          <li><strong>Configuration is data, not code.</strong> A ~55-section dataclass schema is populated from a TOML config root; model identities are resolved through named role presets rather than literals, so retuning the model panel is a TOML edit <span class="src">config/schema.py:779</span>.</li>
+        </ul>
+      </div>
+
+      <figure class="plate">
+        <div class="sheet">
+<pre class="mermaid">
+%%{init: {'theme':'neutral'}}%%
+flowchart TB
+  subgraph CP["Client plane"]
+    direction LR
+    PI["pi TUI<br/>vendored, default frontend"]
+    CLI["beagle CLI<br/>typer command tree"]
+    WEB["Web dashboard<br/>aiohttp :8080"]
+    EXT["External MCP clients<br/>goose · Claude Code · Cursor"]
+  end
+
+  subgraph MCP["MCP surface"]
+    direction LR
+    UNI["mcp_beagle_server<br/>unified stdio endpoint"]
+    COORD["mcp_coord_server<br/>Beacon · 14 tools"]
+  end
+
+  subgraph ORCH["Orchestration core"]
+    direction TB
+    ROUTER["Router<br/>query to workflow"]
+    LOADER["Workflow loader<br/>YAML to DAG · path guard"]
+    GRAPH["LangGraph StateGraph<br/>BeagleState"]
+    CVCP["CVCP subgraph<br/>2 parallel attackers"]
+    COST["Cost tracker<br/>hard USD ceiling"]
+  end
+
+  subgraph EXEC["Execution plane"]
+    direction LR
+    SPAWN["Agent spawner<br/>subprocess pool"]
+    SBX["Sandbox<br/>rlimits · env scrub"]
+    VM["MicroVM<br/>Firecracker + jailer"]
+  end
+
+  subgraph KNOW["Knowledge plane"]
+    direction LR
+    LANCE[("LanceDB<br/>ast_code_chunks")]
+    KUZU[("Kuzu<br/>ASTNode graph")]
+    FAISS["FAISS prefilter"]
+  end
+
+  subgraph STATE["State plane"]
+    direction LR
+    TRACK[("SQLite<br/>runs · nodes · findings")]
+    CKPT[("Checkpoints<br/>langgraph-sqlite")]
+    SLO[("SQLite<br/>SLO measurements")]
+    BUS["Event bus<br/>ring buffer + NDJSON"]
+  end
+
+  subgraph OUT["External services"]
+    direction LR
+    LLM["OpenAI-compatible<br/>chat completions API"]
+    EMB["Ollama<br/>embeddings"]
+    A2A["Remote A2A agents<br/>:8420"]
+  end
+
+  PI --> UNI
+  EXT --> UNI
+  CLI --> ROUTER
+  WEB --> ROUTER
+  UNI --> ROUTER
+  COORD -.file locks, roster.-> ORCH
+
+  ROUTER --> LOADER --> GRAPH
+  GRAPH --> CVCP
+  GRAPH <--> COST
+  GRAPH --> SPAWN
+  SPAWN --> SBX --> VM
+  SBX --> LLM
+  GRAPH --> KNOW
+  FAISS --> LANCE
+  LANCE --> GRAPH
+  KUZU --> GRAPH
+  KNOW --> EMB
+  SPAWN --> A2A
+  GRAPH --> STATE
+  COST --> TRACK
+</pre>
+        </div>
+        <figcaption>Plate 2.2 — Component and integration topology</figcaption>
+      </figure>
+
+      <div class="prose">
+        <h3><span class="sub-no">2.3</span>Core Modules</h3>
+        <p>The package decomposes into forty subsystem directories under <code>src/beagle/</code>. The eleven that carry the system's behaviour are specified below; the remainder are supporting leaves.</p>
+      </div>
+
+      <div class="tbl-wrap">
+        <table>
+          <caption>Table 2.3-A — Principal subsystems, ordered by weight</caption>
+          <thead><tr><th>Package</th><th class="num">LOC</th><th class="num">Files</th><th>Responsibility</th></tr></thead>
+          <tbody>
+            <tr><td><code>infrastructure/</code></td><td class="num">20,927</td><td class="num">42</td><td>MCP servers, AST ingestion into LanceDB and Kùzu, hot-swap index rebuild, planner agent, task store, audit log.</td></tr>
+            <tr><td><code>core/</code></td><td class="num">16,796</td><td class="num">40</td><td>Graph construction and routers, node implementations, workflow loader and validator, DAG utilities, sandbox, agent spawner, A2A integration.</td></tr>
+            <tr><td><code>context/</code></td><td class="num">11,185</td><td class="num">30</td><td>Context-window accounting, hydration from RAG, compaction and folding, prompt and embedding caches, rehydration after compaction.</td></tr>
+            <tr><td><code>utils/</code></td><td class="num">7,408</td><td class="num">27</td><td>Circuit breaker, rate limiters, subprocess pool and manager, atomic writes, caching, structured logging.</td></tr>
+            <tr><td><code>bridges/</code></td><td class="num">6,589</td><td class="num">32</td><td>A2A client/server and agent-card signing, direct LLM client, OpenAI-compatible streaming proxy, CrewAI and AutoGen adapters, OTel↔LangSmith bridge.</td></tr>
+            <tr><td><code>config/</code></td><td class="num">6,143</td><td class="num">18</td><td>Dataclass schema, TOML loader and merge, config-root discovery, model registry, provider/deployment allowlist, agent profiles.</td></tr>
+            <tr><td><code>style_guides/</code></td><td class="num">4,260</td><td class="num">13</td><td>TOML-sourced doctrine rendered into per-turn prompt artefacts; the behavioural single source of truth.</td></tr>
+            <tr><td><code>cli/</code></td><td class="num">3,610</td><td class="num">20</td><td>Typer command tree across ten command modules, formatters, graceful shutdown.</td></tr>
+            <tr><td><code>beacon/</code></td><td class="num">2,904</td><td class="num">12</td><td>Ephemeral multi-agent coordination: presence roster, file locks, peer channels, write-behind journal, archive flush.</td></tr>
+            <tr><td><code>security/</code></td><td class="num">2,507</td><td class="num">11</td><td>AST code validator, semantic firewall, secret scrubbing, output vigil, deserialization guard, shared injection patterns.</td></tr>
+            <tr><td><code>memory/</code></td><td class="num">2,267</td><td class="num">6</td><td>Hierarchical memory, memory index with token budget and prune strategy, autodream consolidation.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="prose">
+        <h3><span class="sub-no">2.4</span>The Standard Research Graph</h3>
+        <p>Every workflow reduces to a graph of typed phases. The built-in research graph is the reference shape and the fallback when a custom workflow cannot be loaded <span class="src">core/graph.py:548</span>:</p>
+      </div>
+
+      <div class="logic">hydration → planning → execution ⇥ verification ⇥ synthesis → END
+
+where:
+  ⇥                  conditional edge, resolved by a router function
+  hydration          present iff (include_hydration ∧ HYDRATION_AVAILABLE)
+  executor_router    execution → {verification, synthesis, END}
+  reviewer_router    verification → {synthesis, END}
+  error_router       any failed node → retry target, bounded by
+                     (operational.total_iterations, operational.error_count)</div>
+
+      <div class="prose">
+        <p>Each phase binds to a named agent skill with its own timeout budget: <code>research-planner</code> (180 s), <code>search-executor</code> (180 s), <code>fact-checker</code> (300 s), and <code>synthesis-writer</code> (300 s, dynamically scaled by upstream fan-out) <span class="src">core/nodes.py:641–757</span>. Synthesis is contractually required to emit both prose and a JSON findings block, which is what makes findings machine-persistable to the tracking database.</p>
+
+        <h3><span class="sub-no">2.5</span>Cross-Verification Collaboration Protocol</h3>
+        <p>CVCP is a LangGraph subgraph that treats the primary agent's output as an untrusted claim <span class="src">protocols/cvcp.py</span>. Two <code>fact-checker</code> agents run concurrently against the same execution context, each capped at half the verification budget so a slow attacker cannot starve its sibling. A single FAIL verdict fails the round.</p>
+        <p>A second, independent gate runs ground-truth validation over every file path the report cites, matched against a hallucination-pattern set that includes diff markers, temp paths, and known fabrication targets. Ground-truth failure takes priority over the adversarial verdict and always forces a retry. After <code>max_cvcp_attempts</code> (default 3) the run terminates and the surviving hallucinated citations are carried into the final report rather than silently dropped.</p>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════ 3 ═══════════════════════ -->
+    <section id="s3">
+      <h2><span class="sec-no">3</span><span>Data and State Management</span></h2>
+
+      <div class="prose">
+        <h3><span class="sub-no">3.1</span>The Workflow State Object</h3>
+        <p><code>BeagleState</code> is a Pydantic model and the single value threaded through every graph node <span class="src">core/state.py:62</span>. Nodes return partial dictionaries; LangGraph reduces them into the state. Operational counters are isolated in a nested <code>OperationalMetadata</code> model so routing logic cannot be confused with domain payload.</p>
+      </div>
+
+      <div class="tbl-wrap">
+        <table>
+          <caption>Table 3.1-A — <code>BeagleState</code>, principal fields</caption>
+          <thead><tr><th>Group</th><th>Fields</th><th>Purpose</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Operational</strong></td><td><code>iteration</code>, <code>error_count</code>, <code>total_iterations</code></td><td>Loop and retry bounds consumed by the routers and circuit breaker.</td></tr>
+            <tr><td><strong>Identity</strong></td><td><code>workflow_id</code>, <code>workflow_mode</code>, <code>status</code>, <code>start_time</code>, <code>state_hash</code></td><td>Run identity and integrity. Mode is one of <code>audit</code>, <code>develop</code>, <code>research</code>.</td></tr>
+            <tr><td><strong>Payload</strong></td><td><code>query</code>, <code>research_plan</code>, <code>raw_execution_context</code>, <code>verified_facts</code>, <code>final_report</code></td><td>The phase-to-phase carrier. Each node reads its predecessor's key and writes its own.</td></tr>
+            <tr><td><strong>Hydration</strong></td><td><code>hydrated_context</code>, <code>hydration_documentation</code>, <code>hydration_tokens</code>, <code>hydration_code_chunks</code>, <code>hydration_constraints</code></td><td>Retrieved code grounding, injected before planning so the planner does not search for what the docs already answer.</td></tr>
+            <tr><td><strong>Governance</strong></td><td><code>total_cost</code>, <code>total_tokens</code>, <code>current_model</code>, <code>context_usage</code>, <code>permission_level</code>, <code>approval_granted</code></td><td>Live spend, context pressure, and the human-in-the-loop gate.</td></tr>
+            <tr><td><strong>Audit</strong></td><td><code>errors</code>, <code>fact_ledger</code>, <code>completed_nodes</code>, <code>tool_failure_history</code>, <code>metadata</code></td><td>Append-only evidence trail for post-run diagnosis and replay.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <figure class="plate">
+        <div class="sheet">
+<pre class="mermaid">
+%%{init: {'theme':'neutral'}}%%
+sequenceDiagram
+    autonumber
+    participant U as Operator
+    participant C as beagle CLI
+    participant L as Workflow loader
+    participant H as Hydration node
+    participant R as Hybrid RAG
+    participant G as LangGraph runtime
+    participant S as Sandboxed sub-agent
+    participant M as LLM provider
+    participant V as CVCP subgraph
+    participant D as Tracking DB
+
+    U->>C: beagle run research "..." --budget 5.0
+    C->>C: Pre-flight estimate, budget confirmation
+    C->>L: Resolve workflow name
+    L->>L: Path containment check, DAG validation
+    L-->>G: StateGraph compiled, checkpointer attached
+    G->>D: INSERT workflow_runs
+    G->>H: hydration
+    H->>R: Hybrid query
+    R->>R: FAISS prefilter, LanceDB vectors, Kuzu traversal
+    R-->>H: Code chunks plus relation edges
+    H-->>G: hydrated_context, hydration_tokens
+    G->>S: planning (research-planner, 180s)
+    S->>M: Chat completion
+    M-->>S: Plan
+    S-->>G: research_plan, token usage
+    G->>G: Meter cost, compare against ceiling
+    G->>S: execution (search-executor, 180s)
+    S-->>G: raw_execution_context
+    G->>V: verification
+    par Adversarial fan-out
+        V->>S: attacker 1 (fact-checker)
+        V->>S: attacker 2 (fact-checker)
+    end
+    V->>V: Parse verdict, validate cited paths
+    alt FAIL and attempts remain
+        V-->>G: incorporate_feedback, re-execute
+    else PASS or attempts exhausted
+        V-->>G: verified_facts
+    end
+    G->>S: synthesis (synthesis-writer, 300s scaled)
+    S-->>G: final_report plus JSON findings
+    G->>D: UPDATE workflow_runs, INSERT node_runs, findings
+    G-->>U: Report plus cost receipt
+</pre>
+        </div>
+        <figcaption>Plate 3.2 — Control and data flow for a single governed run</figcaption>
+      </figure>
+
+      <div class="prose">
+        <h3><span class="sub-no">3.3</span>Persistence Layer</h3>
+        <p>Beagle holds no external database dependency. All state is embedded and file-backed, anchored on a writable data root resolved independently of the package install location — a deliberate separation that keeps state writable when the wheel is installed read-only.</p>
+      </div>
+
+      <div class="logic">data_root := $BEAGLE_DATA_ROOT
+             ∨ config.toml [paths].data_root
+             ∨ $XDG_DATA_HOME/beagle
+             ∨ ~/.beagle
+
+config_root := $BEAGLE_CONFIG_ROOT
+             ∨ ~/.config/beagle          (iff populated)
+             ∨ &lt;repo&gt;/config              (iff populated)
+             ∨ ~/.config/beagle          (unpopulated fallback)
+
+where:
+  ∨            first satisfied alternative wins, left to right
+  populated    the candidate contains beagle_core_config/config.toml
+  data_root    runtime state: tracking DBs, checkpoints, indices, replays
+  config_root  operator-editable config; the wheel ships no config</div>
+
+      <div class="tbl-wrap">
+        <table>
+          <caption>Table 3.3-A — Stores and their contents</caption>
+          <thead><tr><th>Store</th><th>Engine</th><th>Contents</th></tr></thead>
+          <tbody>
+            <tr><td>Run tracking</td><td>SQLite</td><td><code>workflow_runs</code>, <code>node_runs</code>, <code>findings</code>, <code>model_performance</code> <span class="src">tracking/models.py:73</span></td></tr>
+            <tr><td>SLO history</td><td>SQLite</td><td><code>slo_measurements</code>, <code>slo_compliance_snapshots</code> <span class="src">slo/tracker.py:33</span></td></tr>
+            <tr><td>Task queue</td><td>SQLite</td><td><code>tasks</code>, <code>audit_events</code>, <code>task_metrics</code> <span class="src">infrastructure/task_store.py:33</span></td></tr>
+            <tr><td>Fault recovery</td><td>SQLite</td><td><code>dlq_entries</code> (dead letters), <code>dag_node_state</code> (reconciliation) <span class="src">fault_recovery/dlq.py:40</span></td></tr>
+            <tr><td>Checkpoints</td><td>SQLite + JSON</td><td>LangGraph durable checkpoints for pause/resume; JSON snapshots per <code>workflow_id</code>.</td></tr>
+            <tr><td>Vector index</td><td>LanceDB</td><td>Table <code>ast_code_chunks</code>: embedding vector plus <code>ast_entity_id</code>, <code>chunk_id</code>, <code>filepath</code>, <code>language</code>, <code>node_type</code>, <code>node_name</code>, <code>start_line</code>, <code>end_line</code>, <code>text</code>, <code>token_count</code>.</td></tr>
+            <tr><td>Code graph</td><td>Kùzu</td><td>Node table <code>ASTNode</code>; relation tables <code>CALLS</code>, <code>INHERITS_FROM</code>, <code>IMPORTS</code>, <code>CONTAINS</code> <span class="src">infrastructure/cast_ingestion.py:1027</span></td></tr>
+            <tr><td>Quantised sidecar</td><td>Binary</td><td><code>rag_vectors_tq.bin</code> — TurboQuant compression of the LanceDB vectors for low-memory prefilter.</td></tr>
+            <tr><td>Event log</td><td>NDJSON</td><td>Rotating per-workflow event stream emitted from the in-process ring buffer.</td></tr>
+            <tr><td>Replay manifests</td><td>JSON</td><td>Recorded node inputs enabling deterministic replay; retention-capped.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="prose">
+        <h4>Relational schema — run tracking</h4>
+        <p>The tracking schema is the audit spine. <code>findings</code> constrains severity and status at the database level rather than in application code, so a malformed agent output cannot corrupt the register.</p>
+      </div>
+
+<pre class="code"><code><span class="c">-- tracking/models.py:73 (abridged; constraints and indices as shipped)</span>
+CREATE TABLE workflow_runs (
+    id TEXT PRIMARY KEY,
+    workflow_name TEXT NOT NULL,
+    query TEXT NOT NULL,
+    mode TEXT NOT NULL DEFAULT 'audit',
+    started_at REAL NOT NULL, completed_at REAL,
+    success INTEGER NOT NULL DEFAULT 0,
+    total_cost_usd REAL NOT NULL DEFAULT 0,
+    total_tokens INTEGER NOT NULL DEFAULT 0,
+    nodes_completed INTEGER, nodes_failed INTEGER,
+    budget_usd REAL NOT NULL DEFAULT 0,
+    config_snapshot TEXT, error_summary TEXT
+);
+
+CREATE TABLE node_runs (
+    id TEXT PRIMARY KEY,
+    workflow_run_id TEXT NOT NULL REFERENCES workflow_runs(id),
+    node_name TEXT NOT NULL, skill_name TEXT NOT NULL, model TEXT NOT NULL,
+    input_tokens INTEGER, output_tokens INTEGER, cost_usd REAL,
+    duration_seconds REAL, attempts INTEGER NOT NULL DEFAULT 1,
+    result_hash TEXT, error TEXT
+);
+
+CREATE TABLE findings (
+    id TEXT PRIMARY KEY,
+    workflow_run_id TEXT NOT NULL REFERENCES workflow_runs(id),
+    severity TEXT NOT NULL
+        CHECK(severity IN ('critical','high','medium','low','info')),
+    category TEXT NOT NULL,
+    file_path TEXT, line_number INTEGER,
+    title TEXT NOT NULL, description TEXT NOT NULL, suggested_fix TEXT,
+    first_seen_run_id TEXT, resolved_in_run_id TEXT,
+    status TEXT NOT NULL DEFAULT 'open'
+        CHECK(status IN ('open','resolved','wontfix','deferred'))
+);
+
+CREATE TABLE model_performance (  <span class="c">-- feeds learned routing</span>
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    model TEXT NOT NULL, provider TEXT NOT NULL DEFAULT '',
+    node_type TEXT NOT NULL DEFAULT '',
+    success INTEGER, failure INTEGER, total_executions INTEGER,
+    avg_latency_seconds REAL, avg_cost_usd REAL,
+    last_failure_reason TEXT, last_used_at REAL
+);</code></pre>
+
+      <div class="prose">
+        <p><code>model_performance</code> closes a feedback loop: the subprocess pool reorders its model fallback chain from accumulated success rate and latency, weighted 0.7 / 0.3, discarding rankings older than 168 hours <span class="src">config/schema.py:722</span>.</p>
+
+        <h3><span class="sub-no">3.4</span>Retrieval Tiers</h3>
+        <p>Two index tiers coexist under the data root — <code>instance_rag</code> (per-project, the default) and <code>main_rag</code> (shared) — selected by <code>BEAGLE_RAG_TIER</code> and overridable wholesale by <code>BEAGLE_KNOWLEDGE_DIR</code> <span class="src">infrastructure/rag_paths.py</span>. Ingestion parses source into AST entities, writes graph nodes and relations to Kùzu in bounded transactions, and streams embeddings into LanceDB in batches with periodic collection to hold resident memory flat. If the graph write fails, ingestion degrades to vector-only rather than aborting.</p>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════ 4 ═══════════════════════ -->
+    <section id="s4">
+      <h2><span class="sec-no">4</span><span>Interfaces and Integration</span></h2>
+
+      <div class="prose">
+        <h3><span class="sub-no">4.1</span>Command-Line Interface</h3>
+        <p>Two console scripts (<code>beagle</code>, <code>goose-workflow</code>) resolve to the same Typer application. Ten command modules are flattened into a single namespace, so group membership affects <code>--help</code> grouping only, not invocation <span class="src">cli/cli.py</span>.</p>
+      </div>
+
+      <div class="tbl-wrap">
+        <table>
+          <caption>Table 4.1-A — Command surface</caption>
+          <thead><tr><th>Group</th><th>Commands</th><th>Function</th></tr></thead>
+          <tbody>
+            <tr><td>Execution</td><td><code>run</code>, <code>interactive</code>, <code>goose-shell</code>, <code>cli</code>, <code>run-crewai</code>, <code>run-autogen</code></td><td>Run a workflow under budget; interactive shells; foreign-framework adapters.</td></tr>
+            <tr><td>Workflows</td><td><code>list</code>, <code>info</code>, <code>validate</code>, <code>visualize</code>, <code>new-workflow</code></td><td>Discover, inspect, statically validate, and scaffold workflow definitions.</td></tr>
+            <tr><td>Runs</td><td><code>stats</code>, <code>history</code>, <code>findings</code>, <code>diff</code>, <code>replay</code></td><td>Query the tracking database; diff two runs; deterministically replay one.</td></tr>
+            <tr><td>System</td><td><code>agents</code>, <code>health</code>, <code>doctor</code>, <code>daemon</code>, <code>dream</code>, <code>checkpoint</code></td><td>Roster, health snapshot, environment diagnosis, watch-mode daemon, memory consolidation.</td></tr>
+            <tr><td>Config</td><td><code>config show|validate|schema|cards|init</code></td><td>Inspect the merged configuration; seed the config root.</td></tr>
+            <tr><td>Checkpoint</td><td><code>checkpoint list|resume|cleanup</code></td><td>Manage durable run checkpoints.</td></tr>
+            <tr><td>SLO</td><td><code>slo status</code>, <code>slo report</code></td><td>Error-budget position and compliance report.</td></tr>
+            <tr><td>Coord</td><td><code>coord status</code>, <code>coord watch</code></td><td>Live multi-agent roster and journal health.</td></tr>
+            <tr><td>Render</td><td><code>render-prompts</code>, <code>render-prompts-all</code>, <code>render-hints</code></td><td>Regenerate prompt artefacts from the TOML doctrine source.</td></tr>
+            <tr><td>Frontends</td><td><code>pi</code> (default, no subcommand), <code>webui</code></td><td>Launch the vendored TUI or the web dashboard.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="prose">
+        <p>The governing command is <code>run</code>, whose flags constitute the operator's control surface over a single execution <span class="src">cli/commands/execution.py:104</span>:</p>
+      </div>
+
+<pre class="code"><code>beagle run <span class="p">&lt;workflow&gt;</span> <span class="p">&lt;query&gt;</span> [OPTIONS]
+
+  -b, --budget FLOAT        Hard USD ceiling                    [default: 10.0]
+  -m, --mode TEXT           audit | develop | research  (overrides the YAML)
+  -s, --steering TEXT       High-priority directive injected into all agents
+  -f, --output-format TEXT  markdown | json | sarif | github-issues
+      --output-path PATH    Write the report to a file
+      --resume ID           Resume from a checkpoint
+      --approve-all         Satisfy every human-in-the-loop approval gate
+      --dry-run             Plan only: no subprocess, no checkpoint, no mutation
+  -e, --estimate            Print the cost estimate and exit
+      --skip-preflight      Bypass the cost/time confirmation prompt
+      --tui                 Reactive dashboard    --headless   CI mode</code></pre>
+
+      <div class="note">
+        <span class="lbl">Contract</span>
+        <p><code>--dry-run</code> is a hard read-only guarantee, not a best-effort flag: it never spawns a sub-agent process, never writes a checkpoint, and never mutates config or state. Use it as the safe rehearsal before an expensive run.</p>
+      </div>
+
+      <div class="prose">
+        <h3><span class="sub-no">4.2</span>MCP Tool Surface</h3>
+        <p>Beagle's primary integration path is the Model Context Protocol. The unified server absorbs the RAG and utility groups into one stdio endpoint while each remains independently runnable, and mounts external plugins declared in a registry TOML — adding a plugin is a <code>tools.toml</code> edit plus one <code>plugin_reload</code>, with no restart <span class="src">infrastructure/mcp_beagle_server.py</span>.</p>
+      </div>
+
+      <div class="tbl-wrap">
+        <table>
+          <caption>Table 4.2-A — Registered tool groups</caption>
+          <thead><tr><th>Server</th><th class="num">Tools</th><th>Representative surface</th></tr></thead>
+          <tbody>
+            <tr><td><code>mcp_utility_server</code></td><td class="num">28</td><td><code>code_search</code>, <code>file_discovery</code>, <code>code_context</code>, <code>web_search</code>, <code>arxiv_search</code>, <code>web_research</code>, <code>run_beagle_workflow</code>, <code>route_query_to_workflow</code>, <code>estimate_workflow_cost</code>, <code>validate_workflow_file</code>, <code>list_agents</code>, <code>get_agent_recipe</code>, <code>submit_code</code>, <code>validate_security</code>, <code>meta_list</code>/<code>observe</code>/<code>tune</code>, plus eight session-continuity and context-folding tools.</td></tr>
+            <tr><td><code>mcp_rag_server</code></td><td class="num">13</td><td><code>rag_search</code> (hybrid), <code>rag_ingest</code>, <code>rag_hotswap_ingest</code>, <code>rag_hotswap_rollback</code>, <code>rag_get_job_status</code>, <code>rag_status</code>, and five graph traversals: <code>graph_callers</code>, <code>graph_callees</code>, <code>graph_imports</code>, <code>graph_dependents</code>, <code>graph_class_hierarchy</code>.</td></tr>
+            <tr><td><code>mcp_beagle_server</code></td><td class="num">2</td><td>Root server. <code>plugin_status</code>, <code>plugin_reload</code> — absorption and hot-swap control over everything above.</td></tr>
+            <tr><td><code>mcp_coord_server</code></td><td class="num">14</td><td>Beacon, a separate endpoint: <code>coord_attach</code>/<code>detach</code>/<code>heartbeat</code>, <code>coord_lock_file</code>/<code>unlock_file</code>, <code>coord_list_agents</code>, <code>coord_register_plan</code>, <code>coord_activity</code>, and four peer-channel tools. Every tool returns <code>{"status": "disabled"}</code> when <code>[coord].enabled = false</code>.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="prose">
+        <h3><span class="sub-no">4.3</span>Network Surface</h3>
+      </div>
+
+      <div class="tbl-wrap">
+        <table>
+          <caption>Table 4.3-A — Listening ports and protocols</caption>
+          <thead><tr><th>Port</th><th>Protocol</th><th>Service</th><th>Default exposure</th></tr></thead>
+          <tbody>
+            <tr><td class="num">8420</td><td>HTTP / JSON-RPC</td><td>A2A federation and MCP streamable-HTTP (<code>FASTMCP_PORT</code>)</td><td><span class="chip neutral">loopback</span> Published to <code>127.0.0.1</code> only.</td></tr>
+            <tr><td class="num">8080</td><td>HTTP</td><td>Web dashboard (<code>beagle webui</code>, aiohttp)</td><td><span class="chip neutral">loopback</span> Bind address and port via <code>BEAGLE_WEBUI_HOST/PORT</code>.</td></tr>
+            <tr><td class="num">8421</td><td>HTTP</td><td>RAG MCP in the reference compose stack</td><td><span class="chip ok">internal</span> Container network only; bearer token enforced.</td></tr>
+            <tr><td class="num">8791</td><td>HTTP</td><td>OpenClaw task-queue MCP plugin</td><td><span class="chip warn">internal</span> Network-isolated; no native HTTP auth yet.</td></tr>
+            <tr><td class="num">9999</td><td>HTTP / SSE</td><td>OpenAI-compatible streaming proxy</td><td><span class="chip neutral">loopback</span> Refuses non-loopback bind unless explicitly permitted.</td></tr>
+            <tr><td>—</td><td>Prometheus</td><td>Metrics exporter (<code>observability</code> extra)</td><td><span class="chip neutral">opt-in</span> Port from <code>BEAGLE_PROMETHEUS_PORT</code>.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="prose">
+        <p>The dashboard exposes eight JSON endpoints, each wired to the live subsystem that owns the data and degrading to a sensible default rather than a 500 when that subsystem is unavailable <span class="src">frontends/webui/server.py:389</span>:</p>
+        <ul>
+          <li><code>GET /api/workflows</code>, <code>GET /api/workflows/{id}</code>, <code>POST /api/workflows/{id}/execute</code></li>
+          <li><code>GET /api/runs</code>, <code>GET /api/system/status</code>, <code>GET /api/cost/summary</code></li>
+          <li><code>GET /api/agents/roster</code>, <code>GET /api/rag/search</code></li>
+        </ul>
+
+        <h3><span class="sub-no">4.4</span>External Dependencies</h3>
+        <ul>
+          <li><strong>LLM inference</strong> — any OpenAI-compatible chat-completions endpoint. No endpoint is preset; the operator names the provider in <code>config.toml</code>. Ollama, vLLM, LiteLLM, OpenAI, and llama.cpp server are all valid targets.</li>
+          <li><strong>Embeddings</strong> — Ollama's native <code>/api/*</code> protocol by default, or local <code>sentence-transformers</code> on CPU. Note that a llama.cpp swap is <em>not</em> a drop-in: it exposes OpenAI-style <code>/v1/embeddings</code> instead.</li>
+          <li><strong>Sub-agent runtime</strong> — the <code>goose</code> binary, resolved via <code>$GOOSE_BIN</code>, then <code>which goose</code>, then a symlink fallback.</li>
+          <li><strong>Web research</strong> — DuckDuckGo via <code>ddgs</code>, and the arXiv API.</li>
+          <li><strong>Node.js ≥ 20</strong> — required only for the vendored <code>pi</code> TUI frontend and its MCP bridge.</li>
+          <li><strong>Firecracker + KVM</strong> — optional; enables hardware-isolated microVM execution.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════ 5 ═══════════════════════ -->
+    <section id="s5">
+      <h2><span class="sec-no">5</span><span>Security and Access Control</span></h2>
+
+      <div class="prose">
+        <p>The security model is fail-closed at every seam: transport, authentication, execution, and output. Defaults deny; capability is granted explicitly.</p>
+
+        <h3><span class="sub-no">5.1</span>Transport Enforcement</h3>
+        <p>MCP servers accept <strong>stdio only</strong> by default — <code>ALLOWED_TRANSPORTS</code> is the frozen single-element set <code>{"stdio"}</code>. HTTP, SSE, and streamable-HTTP are blocked unless explicitly enabled <em>and</em> accompanied by valid bearer tokens <span class="src">infrastructure/mcp_security.py:54</span>. There is no insecure fallback path.</p>
+      </div>
+
+      <div class="logic">http_transport_permitted ⟺ (transport ∈ HTTP_TRANSPORTS)
+                          ∧ mcp_auth.enabled
+                          ∧ (tokens ≠ ∅)
+                          ∧ (require_https ⇒ scheme = "https")
+
+where:
+  HTTP_TRANSPORTS  {http, sse, streamable-http}
+  tokens           mcp_auth.tokens, or $BEAGLE_MCP_TOKEN
+  bind_address     defaults to 127.0.0.1 (loopback)
+  CORS             allowed_origins defaults to ∅ — deny all, no wildcards</div>
+
+      <div class="prose">
+        <p>Token verification is constant-time, TTL-bounded, and supports rotation and revocation in place. Authentication failures are rate-limited to 10 per client per 300-second window, with the failure table capped at 10,000 entries so the rate limiter itself cannot be turned into a memory-exhaustion vector.</p>
+
+        <h3><span class="sub-no">5.2</span>Authentication and Authorisation</h3>
+        <ul>
+          <li><strong>Sessions</strong> — JWT, HS256, with <code>exp</code> and <code>iat</code> both required claims and expiry verification on. A token missing either claim is rejected, which closes replay and cross-environment reuse <span class="src">auth/jwt.py:10</span>.</li>
+          <li><strong>Roles</strong> — three tenant-scoped roles: <code>admin</code> (all verbs), <code>operator</code> (get, post, execute), <code>viewer</code> (get). Casbin backs policy evaluation when installed; a hard-coded matrix is the fallback so authorisation never silently disappears with a missing dependency <span class="src">auth/rbac.py:17</span>.</li>
+          <li><strong>Tenancy</strong> — frozen <code>Tenant</code> records carry an <code>enabled</code> flag and a per-tenant default budget; Kùzu schemas are provisioned per tenant, giving isolation at the knowledge-graph layer as well as the policy layer.</li>
+          <li><strong>Agent-to-agent</strong> — HMAC-signed tokens, optional Ed25519 agent-card signing via PyNaCl, and an OIDC verifier with JWKS retrieval and configurable clock skew. Strict mode (<code>require_signatures</code>) rejects unsigned messages outright.</li>
+          <li><strong>Human-in-the-loop</strong> — a phase may declare <code>require_approval</code>. Execution halts unless <code>approval_granted</code> is set in state or <code>--approve-all</code> was passed <span class="src">core/graph_builder.py:418</span>.</li>
+        </ul>
+
+        <h3><span class="sub-no">5.3</span>Secret Management</h3>
+        <p>Secrets are never baked into the image and never committed. A single loader replaces what were six duplicated implementations: environment variables are consulted first, then <code>~/.config/goose/secrets.yaml</code> — which is <strong>rejected outright if its POSIX mode is more permissive than 0600</strong>. Values are cached for a TTL (default 300 s, disable with <code>BEAGLE_SECRET_CACHE_TTL=0</code>) so rotation is picked up without a restart, and are never logged <span class="src">secrets_loader.py</span>.</p>
+        <p>Provider credentials in the model registry are referenced by <em>environment-variable name</em> only; an inline secret in <code>providers.toml</code> is not a supported shape. Outbound and inbound text passes a secret-scrubbing pass (<code>scrub_secrets</code>, <code>scrub_output</code>) before it reaches logs or reports.</p>
+
+        <h3><span class="sub-no">5.4</span>Input Validation and Output Vigil</h3>
+        <ul>
+          <li><strong>Query gate</strong> — length-capped at 50,000 characters against token bombing, then passed through a semantic firewall combining pattern matching with an LLM-based safety evaluation.</li>
+          <li><strong>Regex safety</strong> — <code>google-re2</code> is a runtime dependency specifically so untrusted input is matched without catastrophic backtracking.</li>
+          <li><strong>Code submission</strong> — an AST visitor validates submitted Python structurally, gating imports and dangerous constructs, rather than pattern-matching source text.</li>
+          <li><strong>Path containment</strong> — workflow paths are resolved and checked with <code>Path.relative_to</code> against two anchors (workspace root, config root). A dangerous-character screen for <code>..</code>, <code>~</code>, <code>$</code>, backtick, <code>;</code>, <code>|</code>, <code>&amp;</code>, and control characters runs <em>before</em> containment, so shell-metacharacter payloads are rejected independently of where they resolve <span class="src">core/workflow_loader.py:37</span>.</li>
+          <li><strong>Deserialization</strong> — LangChain <code>load</code>/<code>loads</code> are wrapped to force <code>allowed_objects="core"</code> and <code>secrets_from_env=False</code>, hardening against serialization-injection RCE and prompt-path traversal.</li>
+          <li><strong>Banned constructs</strong> — the build gate hard-fails on <code>yaml.load</code>, unguarded <code>pickle.load</code>, <code>datetime.utcnow()</code>, truncated UUIDs, and wall-clock timestamps used for elapsed duration.</li>
+        </ul>
+
+        <h3><span class="sub-no">5.5</span>Execution Isolation</h3>
+        <p>Sub-agent execution runs under a layered sandbox <span class="src">core/sandbox.py</span>. The subprocess tier applies POSIX resource limits and a scrubbed environment; the microVM tier adds hardware isolation.</p>
+      </div>
+
+      <div class="tbl-wrap">
+        <table>
+          <caption>Table 5.5-A — Isolation tiers</caption>
+          <thead><tr><th>Tier</th><th>Mechanism</th><th>Default bound</th></tr></thead>
+          <tbody>
+            <tr><td rowspan="5"><strong>Subprocess</strong><br><span class="chip ok">always on</span></td><td><code>RLIMIT_AS</code> — address space</td><td class="num">512 MB</td></tr>
+            <tr><td><code>RLIMIT_CPU</code> — CPU seconds</td><td class="num">60 s</td></tr>
+            <tr><td><code>RLIMIT_STACK</code></td><td class="num">8 MB</td></tr>
+            <tr><td><code>RLIMIT_NOFILE</code> — open descriptors</td><td class="num">64</td></tr>
+            <tr><td><code>RLIMIT_NPROC</code> — child processes</td><td class="num">8</td></tr>
+            <tr><td><strong>MicroVM</strong><br><span class="chip warn">opt-in</span></td><td>Firecracker, launched through <code>jailer</code> running as a non-root uid/gid, with an API-socket health check and graceful VM teardown</td><td>1 vCPU, 128 MiB, 60 s</td></tr>
+            <tr><td><strong>Container</strong><br><span class="chip ok">shipped</span></td><td><code>cap_drop: ALL</code>, <code>no-new-privileges</code>, read-only rootfs, <code>noexec,nosuid,nodev</code> tmpfs, non-root uid 1000</td><td>2 GB / 2.0 CPU</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="note warn">
+        <span class="lbl">Deny-by-default</span>
+        <p>MicroVM sandboxing ships with <code>enabled = false</code> <em>and</em> <code>allow_fallback = false</code>. When an operator enables it, a host missing Firecracker, the kernel image, the rootfs, or <code>/dev/kvm</code> causes the run to <strong>refuse</strong> rather than silently degrade to subprocess isolation. Set <code>allow_fallback = true</code> only as a deliberate, documented decision.</p>
+      </div>
+
+      <div class="prose">
+        <h3><span class="sub-no">5.6</span>Supply Chain</h3>
+        <p>Six of the seven CI workflows are wholly or partly supply-chain controls: CycloneDX SBOM generation in JSON and XML attached to releases; a daily Bandit / pip-audit / Semgrep / secret-scan / CodeQL sweep publishing SARIF to GitHub Security; OSV scanning and pip-audit against the tracked <code>uv.lock</code> as the single source of truth; dependency review on pull requests; and a license inventory for the vendored <code>pi</code> frontend verified against its lockfile on every change.</p>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════ 6 ═══════════════════════ -->
+    <section id="s6">
+      <h2><span class="sec-no">6</span><span>Observability and Telemetry</span></h2>
+
+      <div class="prose">
+        <h3><span class="sub-no">6.1</span>Logging</h3>
+        <p>Logging is <code>structlog</code> over the standard library, emitting JSON when <code>BEAGLE_LOG_JSON</code> is set. Every record carries the active OpenTelemetry trace and span ID through a correlation processor, and a correlation-failure counter is exposed so silent loss of trace context is itself observable rather than invisible <span class="src">observability/logging.py:41</span>. MCP tool invocations additionally carry a per-request correlation ID.</p>
+
+        <h3><span class="sub-no">6.2</span>Metrics and Tracing</h3>
+        <p>The collector subscribes to the internal event bus and records token usage, operation duration, cost, node completion and failure, and workflow completion. Spans follow the OpenTelemetry GenAI semantic conventions, so model, token counts, and cost land on the span rather than only in logs <span class="src">observability/genai.py:68</span>. Export is OTLP; a Prometheus HTTP exporter is available under the <code>observability</code> extra. A LangSmith bridge is available for teams already invested in that toolchain.</p>
+
+        <h3><span class="sub-no">6.3</span>Health and Self-Repair</h3>
+        <p>A periodic collector (default 60 s) snapshots resident memory, file-descriptor pressure, thread count, zombie children, circuit-breaker states, rate-limiter saturation, cache hit rate, subprocess-pool failure rate, event-bus depth, and database statistics, reducing them to a single health score.</p>
+      </div>
+
+      <div class="logic">score ∈ [0,1]
+
+state := critical  iff score &lt; 0.3
+       | degraded  iff score &lt; 0.6
+       | healthy   otherwise
+
+restart_permitted ⟺ (consecutive_critical ≥ 3)
+                  ∧ (now − last_restart ≥ 300 s)
+                  ∧ (restarts_so_far &lt; 5)
+
+where:
+  restart      checkpoint state → drain subprocesses (≤10 s)
+               → shut down subsystems (≤30 s) → re-exec
+  thresholds   rss_warn 1024 MB / critical 2048 MB;
+               fd 80% / 95% of limit; threads 100 / 200</div>
+
+      <div class="prose">
+        <p>The container health check invokes <code>python -m beagle.infrastructure.health_check</code>, a purpose-built module that exercises the subsystems. A <code>start_period</code> of 60 s absorbs embedding-model load so a slow cold start is not misread as unhealthy and restarted in a loop.</p>
+
+        <h3><span class="sub-no">6.4</span>Service Level Objectives</h3>
+        <p>Six SLIs are defined with explicit targets, error budgets, and a 28-day window; measurements and compliance snapshots persist to SQLite and are queryable through <code>beagle slo status</code> and <code>beagle slo report</code> <span class="src">slo/objectives.py:51</span>.</p>
+      </div>
+
+      <div class="tbl-wrap">
+        <table>
+          <caption>Table 6.4-A — Service level objectives, 28-day window</caption>
+          <thead><tr><th>Indicator</th><th class="num">Target</th><th class="num">Error budget</th><th>Class</th></tr></thead>
+          <tbody>
+            <tr><td>Workflow success rate</td><td class="num">99.0 %</td><td class="num">1.0 %</td><td><span class="chip crit">critical</span></td></tr>
+            <tr><td>Node latency, p95</td><td class="num">120 s</td><td class="num">5.0 %</td><td><span class="chip crit">critical</span></td></tr>
+            <tr><td>End-to-end latency, p95</td><td class="num">600 s</td><td class="num">5.0 %</td><td><span class="chip neutral">standard</span></td></tr>
+            <tr><td>Budget accuracy</td><td class="num">—</td><td class="num">—</td><td><span class="chip neutral">standard</span></td></tr>
+            <tr><td>MCP availability</td><td class="num">—</td><td class="num">—</td><td><span class="chip neutral">standard</span></td></tr>
+            <tr><td>Ground-truth pass rate</td><td class="num">—</td><td class="num">—</td><td><span class="chip neutral">standard</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="prose">
+        <h3><span class="sub-no">6.5</span>Cost Governance</h3>
+        <p>Cost is a first-class runtime signal, not a post-hoc report. The tracker meters input and output tokens per call against per-model pricing, maintains context-window utilisation, and warns at 80 % of both the budget and the context window, escalating at 95 % context. A prompt may occupy at most 70 % of the context window, which reserves headroom for the completion <span class="src">cost_tracker.py:27</span>. Budget defaults: 10.0 USD per workflow, warn at 0.8, hard system limit 50.0 USD.</p>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════ 7 ═══════════════════════ -->
+    <section id="s7">
+      <h2><span class="sec-no">7</span><span>Operational Runbook</span></h2>
+
+      <div class="prose">
+        <h3><span class="sub-no">7.1</span>Prerequisites</h3>
+        <ul>
+          <li><strong>Python 3.12 or later</strong> — 3.13 is the tested runtime for CI, the lint and type gates, and the container base.</li>
+          <li><strong><code>uv</code></strong> — the mandatory package manager. <code>uv.lock</code> is the reproducibility source of truth and is what the security scanners audit.</li>
+          <li><strong>An LLM provider</strong> — an OpenAI-compatible API key or a reachable local endpoint.</li>
+          <li><strong>Node.js ≥ 20</strong> — only for the default <code>pi</code> TUI frontend.</li>
+          <li><strong>Docker</strong> — optional, for container deployment. <strong>Firecracker + <code>/dev/kvm</code></strong> — optional, for microVM isolation.</li>
+        </ul>
+
+        <h3><span class="sub-no">7.2</span>Local Development Setup</h3>
+      </div>
+
+<pre class="code"><code><span class="c"># 1. Clone</span>
+git clone https://github.com/MattCreigh/beagle.git &amp;&amp; cd beagle
+
+<span class="c"># 2. Reproducible install straight from the lockfile (the SSOT)</span>
+uv sync --frozen --no-dev
+
+<span class="c"># 3. Dev extras, non-editable, from the CPU torch index.</span>
+<span class="c">#    The CPU index matters: a default PyPI resolve pulls a multi-GB CUDA stack.</span>
+uv pip install ".[dev]" \
+  --extra-index-url https://download.pytorch.org/whl/cpu --no-deps
+
+<span class="c"># 4. Seed the config root at ~/.config/beagle</span>
+uv run beagle config init
+
+<span class="c"># 5. Provide the provider credential</span>
+export OPENAI_API_KEY="..."
+
+<span class="c"># 6. Gate before running anything</span>
+make check          <span class="c"># ruff + vulture + mypy (zero-error gate)</span>
+make banned         <span class="c"># forbidden-construct scan</span>
+make test           <span class="c"># full suite, 120s per-test timeout</span>
+
+<span class="c"># 7. Rehearse, then run</span>
+uv run beagle run research "What does the auth module do?" --dry-run
+uv run beagle run research "What does the auth module do?" --budget 5.0</code></pre>
+
+      <div class="prose">
+        <p>Index the target repository before expecting retrieval to answer anything about it — call the <code>rag_ingest</code> MCP tool, or drive it from the CLI. Until ingestion completes, hydration returns empty and agents fall back to unaided search.</p>
+
+        <h3><span class="sub-no">7.3</span>Environment Configuration</h3>
+        <p>The source reads 139 distinct environment variables. Those below are the operationally significant set; the remainder are internal tuning knobs that should be left at their defaults unless a specific finding directs otherwise. Environment always wins over <code>config.toml</code>.</p>
+      </div>
+
+      <div class="tbl-wrap">
+        <table>
+          <caption>Table 7.3-A — Operator-facing environment variables</caption>
+          <thead><tr><th>Variable</th><th>Default</th><th>Effect</th></tr></thead>
+          <tbody>
+            <tr><td colspan="3" style="background:var(--surface-2);font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)">Governance</td></tr>
+            <tr><td><code>BEAGLE_BUDGET_USD</code></td><td><code>10.0</code></td><td>Hard per-workflow spend ceiling. Execution stops on breach.</td></tr>
+            <tr><td><code>BEAGLE_WORKFLOW_TIMEOUT</code></td><td>config</td><td>Wall-clock ceiling for a full workflow.</td></tr>
+            <tr><td><code>BEAGLE_EXECUTION_TIMEOUT</code></td><td><code>180</code></td><td>Per-execution-node budget, seconds.</td></tr>
+            <tr><td><code>BEAGLE_PLANNING_TIMEOUT</code></td><td><code>180</code></td><td>Per-planning-node budget, seconds.</td></tr>
+            <tr><td colspan="3" style="background:var(--surface-2);font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)">Paths and roots</td></tr>
+            <tr><td><code>BEAGLE_CONFIG_ROOT</code></td><td><code>~/.config/beagle</code></td><td>Operator-editable configuration root. Highest-precedence override.</td></tr>
+            <tr><td><code>BEAGLE_DATA_ROOT</code></td><td>XDG state root</td><td>Writable state: tracking DBs, checkpoints, indices, replays.</td></tr>
+            <tr><td><code>WORKSPACE_ROOT</code></td><td>package dir</td><td>Asset anchor: recipes, metaprompts, workflow definitions.</td></tr>
+            <tr><td><code>BEAGLE_KNOWLEDGE_DIR</code></td><td>tier-derived</td><td>Overrides the RAG database root wholesale.</td></tr>
+            <tr><td><code>BEAGLE_RAG_TIER</code></td><td><code>instance</code></td><td><code>instance</code> (per-project) or <code>main</code> (shared) index tier.</td></tr>
+            <tr><td><code>BEAGLE_CHECKPOINT_DIR</code></td><td><code>&lt;data_root&gt;/checkpoints</code></td><td>Durable checkpoint location.</td></tr>
+            <tr><td colspan="3" style="background:var(--surface-2);font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)">Security</td></tr>
+            <tr><td><code>BEAGLE_MCP_TOKEN</code></td><td><em>unset</em></td><td>Bearer token for HTTP MCP. Server refuses to serve HTTP without it.</td></tr>
+            <tr><td><code>BEAGLE_MCP_TRANSPORT</code></td><td><code>stdio</code></td><td>Transport selection. Anything else requires auth to be configured.</td></tr>
+            <tr><td><code>BEAGLE_MCP_BIND_ADDRESS</code></td><td><code>127.0.0.1</code></td><td>Listen address. Loopback by default.</td></tr>
+            <tr><td><code>BEAGLE_MCP_REQUIRE_HTTPS</code></td><td><code>true</code></td><td>Rejects plaintext HTTP transport.</td></tr>
+            <tr><td><code>BEAGLE_MCP_TOKEN_TTL</code></td><td>—</td><td>Token lifetime; expired tokens are evicted.</td></tr>
+            <tr><td><code>BEAGLE_STRICT_SECRETS</code></td><td><em>unset</em></td><td>Fails closed on any secret-resolution problem.</td></tr>
+            <tr><td><code>BEAGLE_SECRET_CACHE_TTL</code></td><td><code>300</code></td><td>Secret cache lifetime in seconds; <code>0</code> disables caching.</td></tr>
+            <tr><td><code>A2A_AUTH_SECRET</code></td><td>generated</td><td>HMAC secret for agent-to-agent token signing.</td></tr>
+            <tr><td><code>A2A_OIDC_ISSUER</code> / <code>_JWKS_URL</code> / <code>_AUDIENCE</code></td><td><em>unset</em></td><td>OIDC verification for federated agents.</td></tr>
+            <tr><td colspan="3" style="background:var(--surface-2);font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)">Providers</td></tr>
+            <tr><td><code>OPENAI_API_KEY</code></td><td><em>unset</em></td><td>Credential for the OpenAI-compatible endpoint.</td></tr>
+            <tr><td><code>OLLAMA_CLOUD_API_KEY</code> / <code>_BASE_URL</code></td><td><em>unset</em></td><td>Hosted-Ollama credential and endpoint.</td></tr>
+            <tr><td><code>OLLAMA_BASE_URL</code></td><td><em>unset</em></td><td>Local Ollama endpoint, used for embeddings.</td></tr>
+            <tr><td><code>OLLAMA_EMBED_MODEL</code></td><td><code>nomic-embed-code</code></td><td>Embedding model name.</td></tr>
+            <tr><td><code>GOOSE_BIN</code></td><td><code>which goose</code></td><td>Sub-agent runtime binary. Misresolution trips the subprocess breaker.</td></tr>
+            <tr><td><code>GOOSE_PROVIDER</code> / <code>GOOSE_MODEL</code></td><td>preset</td><td>Provider and model for the sub-agent runtime.</td></tr>
+            <tr><td colspan="3" style="background:var(--surface-2);font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)">Telemetry and interfaces</td></tr>
+            <tr><td><code>BEAGLE_LOG_LEVEL</code></td><td><code>INFO</code></td><td><code>DEBUG</code> · <code>INFO</code> · <code>WARNING</code> · <code>ERROR</code>.</td></tr>
+            <tr><td><code>BEAGLE_LOG_JSON</code></td><td><code>false</code></td><td>Structured JSON log output.</td></tr>
+            <tr><td><code>BEAGLE_OTEL_ENDPOINT</code></td><td><em>unset</em></td><td>OTLP collector endpoint.</td></tr>
+            <tr><td><code>BEAGLE_OTEL_TRACING</code> / <code>_METRICS</code></td><td><code>false</code></td><td>Enable trace and metric export.</td></tr>
+            <tr><td><code>BEAGLE_PROMETHEUS_PORT</code></td><td>—</td><td>Prometheus exporter port (requires the <code>observability</code> extra).</td></tr>
+            <tr><td><code>BEAGLE_WEBUI_HOST</code> / <code>_PORT</code></td><td><code>127.0.0.1</code> / <code>8080</code></td><td>Dashboard bind address and port.</td></tr>
+            <tr><td><code>BEAGLE_EXECUTION_ENV</code></td><td><em>unset</em></td><td><code>docker</code> selects container-appropriate transport and path defaults.</td></tr>
+            <tr><td colspan="3" style="background:var(--surface-2);font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)">Resource tuning</td></tr>
+            <tr><td><code>BEAGLE_KUZU_BUFFER_POOL_MB</code></td><td><code>64</code></td><td>Kùzu buffer pool. Raise for large corpora; too low causes allocation failure during ingest.</td></tr>
+            <tr><td><code>BEAGLE_KUZU_MAX_DB_SIZE_MB</code></td><td><code>512</code></td><td>Maximum graph database size.</td></tr>
+            <tr><td><code>BEAGLE_KUZU_CHECKPOINT_THRESHOLD_MB</code></td><td><code>100</code></td><td>WAL checkpoint threshold during ingest.</td></tr>
+            <tr><td><code>BEAGLE_POOL_WORKERS</code></td><td><code>8</code></td><td>Subprocess pool width.</td></tr>
+            <tr><td><code>BEAGLE_SANDBOX_JAILER_UID</code> / <code>_GID</code></td><td><code>1000</code></td><td>Non-root identity the Firecracker jailer runs as.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="prose">
+        <h3><span class="sub-no">7.4</span>Production Deployment</h3>
+        <p>The shippable artefact is a single multi-stage image built from the wheel. It contains no source tree and no credentials; all operator configuration is mounted at runtime.</p>
+      </div>
+
+<pre class="code"><code><span class="c"># Build the wheel, then the image (Makefile derives the tag from pyproject)</span>
+make build
+make image-build                         <span class="c"># docker/Dockerfile, python:3.13-slim</span>
+
+<span class="c"># Publish</span>
+make image-push REGISTRY=ghcr.io/&lt;owner&gt;
+
+<span class="c"># Run standalone (loopback-published, hardened, resource-bounded)</span>
+export BEAGLE_MCP_TOKEN=$(openssl rand -hex 32)
+make container-up                        <span class="c"># docker/docker-compose.yml</span>
+make container-down
+
+<span class="c"># Or integrate the full MCP mesh into an existing Compose stack</span>
+DEV_STACK_DIR=/path/to/stack make dev-stack-integrate</code></pre>
+
+      <div class="prose">
+        <p>The build sequence is deliberate and should not be reordered: the wheel is installed <code>--no-deps</code> first so the exact torch pin can be read back from its own metadata; that pin is then installed from the PyTorch CPU index <em>before</em> the full resolve, which makes it impossible for the resolver to substitute the multi-gigabyte CUDA build.</p>
+      </div>
+
+      <figure class="plate">
+        <div class="sheet">
+<pre class="mermaid">
+%%{init: {'theme':'neutral'}}%%
+flowchart TB
+  subgraph BUILD["Build pipeline"]
+    direction LR
+    SRC["Source tree"] --> WHEEL["uv build<br/>dist/beagle-1.4.1.whl"]
+    WHEEL --> S1["Stage 1: builder<br/>python:3.13-slim<br/>wheel --no-deps<br/>torch from CPU index<br/>full resolve"]
+    NODE["Stage 1b: node:22-slim<br/>runtime for pi frontend"]
+    S1 --> S2["Stage 2: runner<br/>non-root uid 1000<br/>HEALTHCHECK module"]
+    NODE --> S2
+    S2 --> IMG[("beagle:1.4.1<br/>GHCR")]
+  end
+
+  subgraph HOST["Container host"]
+    direction TB
+    subgraph NET["Internal compose network"]
+      direction LR
+      OLL["ollama<br/>embeddings :11434"]
+      BGL["beagle<br/>orchestrator<br/>A2A :8420"]
+      RAG["beagle-rag<br/>MCP streamable-http :8421<br/>BEAGLE_MCP_TOKEN required"]
+      OC["openclaw<br/>task queue MCP :8791"]
+      WUI["beagle-webui<br/>dashboard :8080"]
+    end
+    VOL1[("volume<br/>beagle-rag")]
+    VOL2[("volume<br/>beagle-state")]
+    VOL3[("volume<br/>ollama-models")]
+    CFG["bind mount, read-only<br/>~/.config/beagle"]
+  end
+
+  LOOP["127.0.0.1 published<br/>8420 · 8080"]
+  PROXY["Reverse proxy<br/>TLS termination"]
+
+  IMG --> BGL
+  IMG --> RAG
+  IMG --> WUI
+  IMG --> OC
+  BGL --> OLL
+  RAG --> OLL
+  WUI --> OLL
+  BGL <--> RAG
+  BGL <--> OC
+  RAG --- VOL1
+  BGL --- VOL2
+  WUI --- VOL2
+  OLL --- VOL3
+  CFG -.mounted ro.-> BGL
+  BGL --> LOOP
+  WUI --> LOOP
+  LOOP -.optional LAN exposure.-> PROXY
+</pre>
+        </div>
+        <figcaption>Plate 7.4 — Build pipeline and production deployment topology</figcaption>
+      </figure>
+
+      <div class="note warn">
+        <span class="lbl">Exposure policy</span>
+        <p>Every MCP surface in the reference stack is internal-network only. <code>beagle-rag</code> fails closed without <code>BEAGLE_MCP_TOKEN</code>; <code>openclaw</code> is protected by network isolation alone until the plugin ships native HTTP authentication — do not add a host port publish for it. Host ports are bound to <code>127.0.0.1</code>; put a reverse proxy in front of anything that needs LAN or internet reach.</p>
+      </div>
+
+      <div class="prose">
+        <h3><span class="sub-no">7.5</span>Daemon Mode</h3>
+        <p><code>beagle daemon</code> watches the workspace's git HEAD, computes a change set, matches it against trigger rules, and dispatches the corresponding workflow. Use it for continuous audit — a security workflow on every change to an auth path, for instance. Daemon lifecycle transitions are published to the event bus as first-class events, so daemon behaviour is observable through the same pipeline as workflow execution.</p>
+
+        <h3><span class="sub-no">7.6</span>Upgrade</h3>
+      </div>
+
+<pre class="code"><code><span class="c"># Build and install into the target venv.</span>
+<span class="c"># --no-deps is required: a default resolve pulls the GPU torch stack.</span>
+make build
+uv pip install --reinstall --no-deps dist/beagle-*.whl
+uv sync --frozen --no-dev --no-install-project
+
+<span class="c"># Restart daemon and MCP servers so stale in-memory modules are dropped</span>
+<span class="c"># Then confirm the running version and subsystem health</span>
+beagle --version
+beagle health
+beagle doctor</code></pre>
+
+      <div class="prose">
+        <p>Verify with <code>beagle doctor</code> before returning the system to service. The version-consistency CI gate asserts that the package <code>__version__</code>, <code>pyproject.toml</code>, the git tag, and the README badge all agree — a mismatch after upgrade indicates a partial install, not a cosmetic problem.</p>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════ 8 ═══════════════════════ -->
+    <section id="s8">
+      <h2><span class="sec-no">8</span><span>Verification Matrix</span></h2>
+
+      <div class="prose">
+        <p>Seven GitHub Actions workflows gate the repository. Each row names the control and the command that proves it, so a reviewer can reproduce the gate locally rather than trusting the badge.</p>
+      </div>
+
+      <div class="tbl-wrap">
+        <table>
+          <caption>Table 8-A — Continuous verification controls</caption>
+          <thead><tr><th>Workflow</th><th>Trigger</th><th>Controls enforced</th></tr></thead>
+          <tbody>
+            <tr><td><code>beagle-test.yml</code></td><td>push, PR</td><td>Ruff; Vulture dead-code; banned-pattern scan; MyPy zero-error gate; matrixed pytest with coverage; clean-room minimal install that builds the wheel, installs with no extras, no config root and no Ollama, and runs a workflow end to end.</td></tr>
+            <tr><td><code>beagle-doctrine-gates.yml</code></td><td>push, PR</td><td>Exception-debt hard fail; broad-except justification; no truncated UUIDs; TOML doctrine coherence; version consistency; config no-orphans; no hardcoded host paths; pytest under randomised ordering across seeds.</td></tr>
+            <tr><td><code>beagle-security-audit.yml</code></td><td>daily 09:00, PR</td><td>Bandit with SARIF; pip-audit against <code>uv.lock</code>; Semgrep; secret scan; CodeQL; OSV scan; dependency review. Opens an issue on findings.</td></tr>
+            <tr><td><code>beagle-sbom.yml</code></td><td>push, PR, release</td><td>CycloneDX SBOM in JSON and XML, validated non-empty and attached to the release.</td></tr>
+            <tr><td><code>beagle-pi-license.yml</code></td><td>push, PR, release</td><td>Vendored <code>pi</code> license inventory verified against its lockfile; attached to the release.</td></tr>
+            <tr><td><code>beagle-version-check.yml</code></td><td>push, PR</td><td>Package version vs. git tag vs. <code>pyproject.toml</code> vs. README badge; asserts no hardcoded version literals.</td></tr>
+            <tr><td><code>beagle-docker.yml</code></td><td>push</td><td>Wheel build, Buildx image build, GHCR publish.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="prose">
+        <p>The local equivalent is <code>make qa</code> (lint, banned-pattern, test) or <code>make check</code> (lint, vulture, typecheck). The <code>minimal-install</code> job is the one worth watching most closely on a release: it is the only gate that proves a clean install works with no operator configuration and no external services present.</p>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════ 9 ═══════════════════════ -->
+    <section id="s9">
+      <h2><span class="sec-no">9</span><span>Hazards and Known Limits</span></h2>
+
+      <div class="prose">
+        <p>The following are properties of the system as built, not defects. Each carries an operational consequence worth knowing before deployment.</p>
+      </div>
+
+      <div class="tbl-wrap">
+        <table>
+          <caption>Table 9-A — Operational hazards</caption>
+          <thead><tr><th>Condition</th><th>Consequence</th><th>Mitigation</th></tr></thead>
+          <tbody>
+            <tr><td><strong>RAG index not built</strong></td><td>Hydration returns empty; agents plan without code grounding and cost rises without a corresponding quality gain.</td><td>Run <code>rag_ingest</code> against the target repository before the first governed run. Check <code>rag_status</code>.</td></tr>
+            <tr><td><strong>Kùzu buffer pool too small for the corpus</strong></td><td>Ingest fails with an allocation error, or degrades to vector-only retrieval — graph traversals silently return nothing.</td><td>Raise <code>BEAGLE_KUZU_BUFFER_POOL_MB</code> and <code>BEAGLE_KUZU_MAX_DB_SIZE_MB</code>. Ingest logs the degrade explicitly; do not treat it as benign.</td></tr>
+            <tr><td><strong><code>goose</code> binary unresolved</strong></td><td>Every sub-agent subprocess call fails and trips the circuit breaker; the workflow reports errors with no obvious cause.</td><td>Set <code>GOOSE_BIN</code> explicitly. <code>beagle doctor</code> detects this.</td></tr>
+            <tr><td><strong>Default PyPI resolve for torch</strong></td><td>Pulls a multi-gigabyte CUDA stack onto a CPU-only host.</td><td>Always install the wheel <code>--no-deps</code>, or pin the CPU index. The container build already does both.</td></tr>
+            <tr><td><strong>MicroVM enabled on a host without KVM</strong></td><td>Runs refuse to start — by design, since <code>allow_fallback</code> is <code>false</code>.</td><td>Provision Firecracker, the kernel image and the rootfs, or leave <code>sandbox_microvm.enabled = false</code>.</td></tr>
+            <tr><td><strong>CVCP attempts exhausted</strong></td><td>The report is released with unresolved hallucinated citations attached rather than being withheld.</td><td>Treat a run carrying <code>hallucinated_files</code> as requiring human review before its findings are actioned.</td></tr>
+            <tr><td><strong>HTTP MCP without a token</strong></td><td>The server refuses to boot — intentional fail-closed behaviour, not a crash.</td><td><code>export BEAGLE_MCP_TOKEN=$(openssl rand -hex 32)</code></td></tr>
+            <tr><td><strong>Config root empty but present</strong></td><td>Discovery is gated on <em>populated</em>, not merely present, so an empty <code>~/.config/beagle</code> cannot shadow a valid fallback. Resolution proceeds down the chain.</td><td>Run <code>beagle config init</code> to seed it; confirm with <code>beagle config show</code>.</td></tr>
+            <tr><td><strong>Budget exhausted mid-run</strong></td><td>Execution stops at the ceiling. Partial state is checkpointed; the run is recorded as unsuccessful with a cost figure.</td><td>Resume with <code>--resume &lt;checkpoint-id&gt;</code>, or re-run at a higher <code>--budget</code>. Use <code>--estimate</code> first.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="note">
+        <span class="lbl">Method</span>
+        <p>Every factual claim in this manual was derived by direct reading of the source distribution at version 1.4.1. Structural counts are measurements taken against the working tree at issue date. Where a claim rests on a specific implementation detail, the source location is cited inline in monospace. Claims about runtime behaviour under load — throughput, latency at scale, retrieval precision — were <strong>not</strong> measured for this document and are not asserted anywhere in it.</p>
+      </div>
+    </section>
+
+    <footer>
+      Beagle System Specification and Operations Manual · Version 1.4.1 · Issued 2026-08-28<br>
+      Derived from source analysis of <code>src/beagle</code> (391 modules, 108,689 lines) · MIT licence<br>
+      Repository documentation: <code>docs/ARCHITECTURE.md</code> · <code>docs/SECURITY.md</code> · <code>docs/DEPLOYMENT.md</code> · <code>docs/API.md</code>
+    </footer>
+
+  </div>
+  </main>
+</div>
+
+<script>
+(function () {
+  var links = Array.prototype.slice.call(document.querySelectorAll('#toc a'));
+  var map = {};
+  links.forEach(function (a) { map[a.getAttribute('href').slice(1)] = a; });
+  var sections = Array.prototype.slice.call(document.querySelectorAll('main section'));
+  if (!('IntersectionObserver' in window) || !sections.length) return;
+
+  var visible = {};
+  var obs = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) { visible[e.target.id] = e.isIntersecting; });
+    var current = null;
+    for (var i = 0; i < sections.length; i++) {
+      if (visible[sections[i].id]) { current = sections[i].id; break; }
+    }
+    links.forEach(function (a) { a.classList.remove('on'); });
+    if (current && map[current]) map[current].classList.add('on');
+  }, { rootMargin: '-10% 0px -70% 0px', threshold: 0 });
+
+  sections.forEach(function (s) { obs.observe(s); });
+})();
+</script>

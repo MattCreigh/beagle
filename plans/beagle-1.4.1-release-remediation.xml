@@ -1,0 +1,599 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Prose standard:   ASD-STE100. Verify with vale, not by eye.
+  Diagram standard: ASCII render first, Mermaid source immediately below.
+  Logic standard:   conditional behaviour as a propositional block with a
+                    `where:` legend. One notation per block.
+  Measured:         2026-08-29 against HEAD 625a03f on branch
+                    feat/cpu-torch-index. Every <fact> below was executed in
+                    that session. Re-measure before you trust a stale number.
+  Source audit:     docs/audits/release_readiness_code_audit_2026-08-29.md
+                    (defect identifiers D-01 to D-20 are that report's).
+-->
+<recipe name="beagle-1.4.1-release-remediation" version="1.0.0">
+
+  <usage><![CDATA[
+    This recipe is executed by Claude Sonnet, not by goose.
+
+    Run it as the session task:
+      claude --model sonnet
+      > read plans/beagle-1.4.1-release-remediation.xml and execute WP-0
+
+    One work package per session. Do NOT start WP-N+1 in the session that
+    finished WP-N. Each package ends with a commit and a report.
+  ]]></usage>
+
+  <metadata>
+    <target_repo>/home/server/Projects/beagle</target_repo>
+    <target_branch>feat/cpu-torch-index</target_branch>
+    <baseline_commit>625a03f</baseline_commit>
+    <interpreter>/opt/beagle/beagle_venv/bin/python3</interpreter>
+    <new_repo_root_pi>/home/server/Projects/beagle-plugin-pi</new_repo_root_pi>
+    <new_repo_root_webui>/home/server/Projects/beagle-plugin-webui</new_repo_root_webui>
+    <plugin_contract>/home/server/Docs/plugin-pattern.md</plugin_contract>
+    <total_work_packages>8</total_work_packages>
+  </metadata>
+
+  <role>
+    <statement>You are the executing engineer for a release-blocking remediation. You do not design. Every design decision is already recorded in a &lt;decision&gt; block below.</statement>
+    <statement>You verify with commands and paste the real output. You never report a result you did not observe.</statement>
+    <statement>You stop at the first mismatch between an expected output and an actual output. You do not continue past a failure to "come back to it".</statement>
+  </role>
+
+  <mission>
+    <objective>Clear the two release blockers, D-01 and D-02, so Beagle 1.4.1 can ship.</objective>
+    <objective>Restore the test suite and the lint gate to a state where they execute the source tree, so later fixes are verifiable.</objective>
+    <objective>Repair or defer the fault-recovery package, which carries six defects and no tests.</objective>
+    <objective>Move the pi and webui frontends out of the Beagle package into two plugin repositories, each with its own root directory, its own wheel, and its own tests.</objective>
+    <prohibition>Do not disable a lint rule, delete a test, or add a `# noqa` to make a gate pass. A finding is a defect of the input.</prohibition>
+    <prohibition>Do not use `git reset --hard`, `git push --force` to a default branch, or `--no-verify`.</prohibition>
+    <prohibition>Do not combine work packages in one commit. One package, one commit.</prohibition>
+    <prohibition>Do not change the fault-recovery design beyond the edits named in WP-2. The package is untracked and unreleased; scope creep there is not free.</prohibition>
+  </mission>
+
+  <hard_constraints>
+
+    <constraint id="HC-1" severity="critical">
+      <rule>WP-0 runs first and completes before any other package starts.</rule>
+      <rationale>The test suite currently imports the installed wheel at /opt/beagle/beagle_venv, not the source tree. Until that is fixed, a passing test proves nothing about the code you edited.</rationale>
+      <required_action>Complete WP-0. Record the pass and fail counts. Every later package compares against those counts.</required_action>
+      <prohibited_phrase>tests pass so the fix is verified</prohibited_phrase>
+    </constraint>
+
+    <constraint id="HC-2" severity="critical">
+      <rule>Every defect fix carries a test that FAILS on the commit before the fix.</rule>
+      <rationale>D-01 is a repeat of the failure mode already documented in a comment at core/autonomous_orchestrator.py:200. A comment cannot fail a build. A test can.</rationale>
+      <required_action>Write the test. Run it on the parent commit with `git stash`. Paste the failure. Restore, apply the fix, paste the pass.</required_action>
+      <prohibited_phrase>the fix is obviously correct</prohibited_phrase>
+    </constraint>
+
+    <constraint id="HC-3" severity="high">
+      <rule>Use the full interpreter path /opt/beagle/beagle_venv/bin/python3. Never a bare `python3`.</rule>
+      <rationale>The host has several interpreters. A bare `python3` resolves to one without Beagle's dependencies and produces a ModuleNotFoundError that reads like a code defect.</rationale>
+      <required_action>Copy the commands from the &lt;commands&gt; blocks exactly.</required_action>
+      <prohibited_phrase>python3 -m pytest</prohibited_phrase>
+    </constraint>
+
+    <constraint id="HC-4" severity="high">
+      <rule>Never install with a bare `pip install`. Use `uv pip install` for wheels and `pipx install -e .` for editable tools.</rule>
+      <rationale>System Python here is PEP 668-marked and rejects bare pip. The Beagle wheel additionally needs --no-deps, because resolving from default PyPI pulls a multi-gigabyte GPU torch stack onto a CPU-only host.</rationale>
+      <required_action>Use the exact install commands given in each package.</required_action>
+      <prohibited_phrase>pip install .</prohibited_phrase>
+    </constraint>
+
+    <constraint id="HC-5" severity="high">
+      <rule>Never install a CUDA or GPU package. This host is CPU-only.</rule>
+      <rationale>pyproject.toml pins torch to an explicit CPU index for this reason. A plugin repository that resolves torch from default PyPI undoes that pin.</rationale>
+      <required_action>Neither plugin repository declares torch, or any Beagle runtime dependency, as its own dependency. The host environment provides them.</required_action>
+      <prohibited_phrase>nvidia-</prohibited_phrase>
+    </constraint>
+
+    <constraint id="HC-6" severity="high">
+      <rule>The frontend source tree is preserved, not deleted, until WP-6's acceptance passes.</rule>
+      <rationale>src/beagle/frontends carries 459 MB, of which 17 MB is tracked in git across 1401 files under vendor/pi. Deleting before the plugin repositories are proven leaves no reversion path.</rationale>
+      <required_action>WP-6 removes the tree with `git rm` only after both plugin wheels install and run. Report the removal with its commit SHA.</required_action>
+      <prohibited_phrase>rm -rf src/beagle/frontends</prohibited_phrase>
+    </constraint>
+
+  </hard_constraints>
+
+  <decisions>
+
+    <decision id="DEC-1" subject="Plugin discovery mechanism">
+      <chosen>Entry points. Each plugin declares a `beagle.frontends` entry point in its own pyproject.toml. Beagle discovers plugins by scanning that group, and never imports a plugin it did not find there.</chosen>
+      <reason>Beagle already uses this mechanism. src/beagle/mcp_plugins.py scans the `beagle.mcp_plugins` entry-point group, and pyproject.toml lines 74 to 81 document the same shape for runtimes and transports. Entry points also survive the pipx isolation the plugin contract recommends, which a filesystem scan of one shared namespace does not.</reason>
+      <rejected name="Namespace-package scan">The plugin contract at /home/server/Docs/plugin-pattern.md makes `pkgutil.iter_modules` over a shared namespace its critical rule. Rejected as the DISCOVERY mechanism only: beagle is a regular package with its own __init__.py, so making `beagle.plugins` a working namespace across separately-installed wheels needs `pkgutil.extend_path` plus every wheel agreeing on the layout. That is a second discovery system beside the entry-point one Beagle already runs. The contract's LAYOUT and its `app` plus hooks INTERFACE are adopted in full; only its discovery step is replaced.</rejected>
+      <rejected name="A TOML registry, as mcp_plugins uses for tool groups">Rejected because the MCP registry gates ACTIVATION of an already-installed server. A frontend plugin needs detection at CLI-build time, before any config is read, so `beagle --help` can list it.</rejected>
+    </decision>
+
+    <decision id="DEC-2" subject="Plugin naming">
+      <chosen>Distribution and import names use `beagle-plugin-pi` and `beagle_plugin_pi`. The product name shown in the interface stays `pi+beagle`.</chosen>
+      <reason>Measured 2026-08-29: `pi+beagle` is not a valid PEP 508 project name. In PEP 440 the `+` opens a local version segment, so `packaging` reads `1.0+beagle` as base 1.0 with local segment beagle. npm and GitHub also reject or rewrite `+` in a name. The wordmark has no downstream parser, so it keeps the `+`.</reason>
+      <rejected name="pi+beagle as the distribution name">Not installable. Verified with the PEP 508 name grammar.</rejected>
+      <rejected name="beagle-pi">Rejected because it does not say the package is a plugin, and the `beagle-plugin-` prefix groups the two new repositories in a `pip list`.</rejected>
+    </decision>
+
+    <decision id="DEC-3" subject="Fault recovery — repair or defer">
+      <chosen>Repair, in WP-2. Do not defer.</chosen>
+      <reason>The package is already installed at /opt/beagle/beagle_venv with the D-03 NameError in it, and utils/circuit_breaker.py line 592 already imports from it. It is therefore deployed, not unreleased, so deferring leaves a known NameError in a live artifact.</reason>
+      <rejected name="Defer the whole package to 1.5.0">This was the audit's cheaper option and is still defensible on scope. It is rejected on one fact the audit surfaced: the package is deployed. Removing it now would also need the circuit-breaker call site reverted, which is a larger change than the six edits in WP-2.</rejected>
+    </decision>
+
+    <decision id="DEC-4" subject="WebUI authentication">
+      <chosen>A bearer token read from BEAGLE_WEBUI_TOKEN, checked by one aiohttp middleware over every route. The server refuses to start when the bind address is not a loopback address and no token is set.</chosen>
+      <reason>It is the smallest change that closes D-02, needs no new dependency, and matches the fail-closed posture the semantic firewall already sets. The refuse-to-start rule is what stops the default from silently becoming unsafe again.</reason>
+      <rejected name="Loopback-only bind, with no authentication">Rejected because the container use case in the CLI help text is real, and a loopback-only server cannot serve it. Authentication is needed either way.</rejected>
+      <rejected name="OAuth or JWT through the existing beagle.auth.jwt module">Rejected as too large for a release blocker. Record it as a follow-up, not as this fix.</rejected>
+    </decision>
+
+  </decisions>
+
+  <architecture>
+    <description>Target topology after WP-6. Three repositories, three wheels, one entry-point group.</description>
+
+    <ascii_render><![CDATA[
+   ┌───────────────────────────────────┐
+   │  beagle  (~/Projects/beagle)      │
+   │  wheel: beagle                    │
+   │  no frontends/ directory          │
+   │                                   │
+   │  cli/plugin_loader.py             │
+   │    scans group "beagle.frontends" │
+   └────────────────┬──────────────────┘
+                    │ entry-point group
+          ┌─────────┴──────────┐
+          ▼                    ▼
+   ┌──────────────┐     ┌──────────────┐
+   │ beagle-      │     │ beagle-      │
+   │ plugin-pi    │     │ plugin-webui │
+   │              │     │              │
+   │ ~/Projects/  │     │ ~/Projects/  │
+   │ beagle-      │     │ beagle-      │
+   │ plugin-pi    │     │ plugin-webui │
+   │              │     │              │
+   │ exports: app │     │ exports: app │
+   │ ships: pi    │     │ ships: SPA   │
+   │ bundle +     │     │ dist bundle  │
+   │ mcp-extension│     │              │
+   └──────────────┘     └──────────────┘
+    ]]></ascii_render>
+
+    <mermaid><![CDATA[
+```mermaid
+graph TD
+    B["beagle wheel<br/>~/Projects/beagle<br/>no frontends/"]
+    L["cli/plugin_loader.py<br/>scans group beagle.frontends"]
+    P["beagle-plugin-pi<br/>~/Projects/beagle-plugin-pi<br/>exports app"]
+    W["beagle-plugin-webui<br/>~/Projects/beagle-plugin-webui<br/>exports app"]
+    B --> L
+    L -->|entry point| P
+    L -->|entry point| W
+```
+    ]]></mermaid>
+
+    <logic_block><![CDATA[
+      plugin_mounted(N) := installed(N) ∧ declares_entry_point(N) ∧ exports_app(N)
+
+      webui_starts := token_set ∨ loopback_bind
+
+      where:
+        installed(N)             = the distribution providing N is importable
+        declares_entry_point(N)  = N registers in group "beagle.frontends"
+        exports_app(N)           = the module N resolves to has an `app` attribute
+        token_set                = os.environ["BEAGLE_WEBUI_TOKEN"] is non-empty
+        loopback_bind            = the resolved host is 127.0.0.1 or ::1
+    ]]></logic_block>
+  </architecture>
+
+  <work_package id="WP-0" title="Restore the gates" covers="D-04, D-05, D-18-interim" order="1">
+
+    <fact>tests/conftest.py lines 17 to 19 insert PROJECT_ROOT into sys.path. The package is at src/beagle. There is no beagle/ directory at the repository root, so the insertion does nothing for `import beagle`.</fact>
+    <fact>Measured: `import beagle; beagle.__file__` resolves to /opt/beagle/beagle_venv/lib/python3.13/site-packages/beagle/__init__.py. All 3368 tests import the installed wheel.</fact>
+    <fact>The comment at lines 21 and 22 says "Ensure source takes precedence over installed package". No code follows it.</fact>
+    <fact>Measured: with PYTHONPATH=src the suite is killed by the kernel OOM killer. Two runs, both killed. The blocking thread is beagle-rag-reingest-default at context/rag_staleness.py line 540, inside a real hotswap ingest that builds a Kuzu graph.</fact>
+    <fact>The ingest walks 2101 vendored TypeScript and JavaScript files under src/beagle/frontends, against 391 Beagle Python files. node_modules and dist are already excluded at cast_ingestion.py lines 1655 to 1664; the vendored source is not.</fact>
+
+    <instruction>Change the sys.path insertion in tests/conftest.py to PROJECT_ROOT / "src". Delete the two comment lines that describe behaviour the code did not implement, because they now describe what the code does and the duplication will drift.</instruction>
+    <instruction>Add an autouse, session-scoped fixture to tests/conftest.py that disables the RAG staleness reingest for the whole run. Disable it at its own enablement flag. Do not rely on a timeout, and do not delete the daemon.</instruction>
+    <instruction>Add "vendor" to the excluded_dirs set at cast_ingestion.py line 1655. This is the interim measure; WP-6 removes the tree.</instruction>
+    <instruction>Run the suite. Record the pass count, the fail count, and the error count. This is the baseline for every later package.</instruction>
+
+    <commands><![CDATA[
+cd /home/server/Projects/beagle
+
+# 1. Prove the defect before the fix.
+/opt/beagle/beagle_venv/bin/python3 -c "import beagle; print(beagle.__file__)"
+# EXPECT (before): /opt/beagle/beagle_venv/lib/python3.13/site-packages/beagle/__init__.py
+
+# 2. Apply the three edits. Then prove the fix.
+/opt/beagle/beagle_venv/bin/python3 -c "
+import sys; sys.path.insert(0, 'tests')
+import conftest, beagle
+print(beagle.__file__)"
+# EXPECT (after): /home/server/Projects/beagle/src/beagle/__init__.py
+
+# 3. Baseline the suite. This must complete.
+/opt/beagle/beagle_venv/bin/python3 -m pytest tests/ -q \
+  --timeout=120 -p no:cacheprovider --continue-on-collection-errors \
+  > /tmp/wp0-baseline.txt 2>&1
+tail -20 /tmp/wp0-baseline.txt
+
+# 4. Prove no OOM occurred.
+journalctl -k --since '-15 min' --no-pager | grep -c 'oom-kill' || true
+# EXPECT: 0
+
+# 5. Gate the changed file.
+qup check tests/conftest.py src/beagle/infrastructure/cast_ingestion.py
+    ]]></commands>
+
+    <stop_condition>STOP and report if the suite does not complete, if the OOM count is not 0, or if `beagle.__file__` does not resolve under src/ after the edit. Do not attempt WP-1 with a suite that cannot run. A hang here is a defect, never a flake.</stop_condition>
+
+    <commit_message>fix(tests): point conftest at src/ and stop the reingest daemon during tests (D-04, D-05)</commit_message>
+  </work_package>
+
+  <work_package id="WP-1" title="Clear the two release blockers" covers="D-01, D-02, D-14" order="2">
+
+    <fact>core/autonomous_orchestrator.py line 960 calls `await self._get_outbox()`. `_get_outbox` is defined only at module scope, line 170. It is not a coroutine and it is never assigned to the instance.</fact>
+    <fact>Measured: `hasattr(DAGOrchestrator, "_get_outbox")` is False, and the call raises AttributeError.</fact>
+    <fact>Line 960 sits between the `except` clause that ends at line 954 and the `try` that opens at line 962. Nothing catches it. run() wraps _run_inner() in try/finally with no except, so the error leaves the public entry point. Every workflow aborts at its first node.</fact>
+    <fact>_get_outbox sets its cache to False on ImportError, then its entry guard `if _outbox_client is not None` returns that False. The three sibling loaders in the same file all end with `return X if X is not False else None`. Measured: the second call returns False.</fact>
+    <fact>frontends/webui/server.py build_app(), lines 385 to 399, registers eight routes and no authentication middleware. POST /api/workflows/{id}/execute reaches run_workflow() with a caller-supplied goal and budget.</fact>
+    <fact>The default bind is 0.0.0.0 at cli/commands/webui.py line 25 and frontends/webui/server.py line 405. core/a2a_protocol.py line 63 states the project's own opposite rule: "Localhost only — never bind to 0.0.0.0".</fact>
+    <fact>`budget = float(body.get("budgetLimitUsd", 10.0))` at server.py line 328 is unvalidated. float("inf") is accepted.</fact>
+
+    <instruction>In autonomous_orchestrator.py, change line 960 to call the module function without await: `_outbox = _get_outbox()`. Move that call inside the try that opens at line 962, so a loader fault degrades instead of aborting the workflow. The module's own docstring calls the outbox best-effort; the code must match.</instruction>
+    <instruction>In the same file, change the _get_outbox entry guard to match its three siblings: return None when the cache holds False.</instruction>
+    <instruction>In webui, change the default bind to 127.0.0.1 in both cli/commands/webui.py and frontends/webui/server.py. Update the CLI help text, which currently recommends 0.0.0.0.</instruction>
+    <instruction>Add an aiohttp middleware to build_app() that requires the bearer token in BEAGLE_WEBUI_TOKEN on every route. Return 401 when it is absent or wrong. Compare the token with hmac.compare_digest, not with ==, matching webhooks.py line 108.</instruction>
+    <instruction>In main(), refuse to start when the resolved host is not a loopback address and BEAGLE_WEBUI_TOKEN is empty. Print the reason and return 1.</instruction>
+    <instruction>Reject a non-finite or negative budget in _handle_api_execute, and clamp it to a ceiling. Return 400 for a bad value, not 500.</instruction>
+
+    <commands><![CDATA[
+cd /home/server/Projects/beagle
+
+# 1. Write the tests FIRST. Prove they fail on the parent commit.
+#    tests/test_orchestrator_outbox.py  — asserts a DAG run reaches a
+#      terminal state, and that _get_outbox() returns None (not False)
+#      after a simulated ImportError.
+#    tests/test_webui_auth.py           — asserts 401 without a token,
+#      200 with one, refuse-to-start on a non-loopback bind with no token,
+#      and 400 for budgetLimitUsd = "inf".
+git stash push -- src/
+/opt/beagle/beagle_venv/bin/python3 -m pytest \
+  tests/test_orchestrator_outbox.py tests/test_webui_auth.py -q
+# EXPECT: failures. Paste them. This is the HC-2 evidence.
+git stash pop
+
+# 2. Apply the fixes, then re-run.
+/opt/beagle/beagle_venv/bin/python3 -m pytest \
+  tests/test_orchestrator_outbox.py tests/test_webui_auth.py -q
+# EXPECT: all pass.
+
+# 3. Prove D-01 directly.
+/opt/beagle/beagle_venv/bin/python3 -c "
+import sys; sys.path.insert(0,'src')
+from beagle.core.autonomous_orchestrator import _get_outbox
+import beagle.core.autonomous_orchestrator as ao
+ao._outbox_client = False
+print('sentinel returns:', repr(_get_outbox()))"
+# EXPECT: sentinel returns: None
+
+# 4. Prove D-02 at the socket.
+BEAGLE_WEBUI_HOST=0.0.0.0 /opt/beagle/beagle_venv/bin/python3 \
+  -m beagle.cli.cli webui ; echo "exit=$?"
+# EXPECT: refusal, exit 1, no listener opened.
+
+# 5. Full suite against the WP-0 baseline.
+/opt/beagle/beagle_venv/bin/python3 -m pytest tests/ -q --timeout=120 \
+  -p no:cacheprovider | tail -5
+# EXPECT: pass count >= the WP-0 baseline. No new failures.
+
+qup check src/beagle/core/autonomous_orchestrator.py \
+  src/beagle/frontends/webui/server.py src/beagle/cli/commands/webui.py
+    ]]></commands>
+
+    <stop_condition>STOP and report if the two new tests do not fail on the parent commit. A test that passes before the fix does not test the defect, and HC-2 is not satisfied. STOP if the full suite count drops below the WP-0 baseline.</stop_condition>
+
+    <commit_message>fix: unbind the orchestrator outbox call and authenticate the webui (D-01, D-02, D-14)</commit_message>
+  </work_package>
+
+  <work_package id="WP-2" title="Repair the fault-recovery package" covers="D-03, D-06, D-07, D-08, D-09, D-10, D-19" order="3">
+
+    <fact>fault_recovery/dlq.py calls json.loads at line 256 and json.dumps at line 275. The module never imports json. Ruff reports two F821. Measured: enqueue with a payload raises NameError. The same broken file is installed at /opt/beagle/beagle_venv.</fact>
+    <fact>reconciliation.py line 308 ends its `except Exception` handler with `await self.run()`. That is recursion, not retry. Each error consumes a stack frame, and replay_on_start is still True on re-entry, so each recursion re-reads the whole stream with count=100_000.</fact>
+    <fact>outbox.py line 113 calls aioredis.from_url without socket_timeout or socket_connect_timeout. Both default to unlimited, so a hung Redis blocks the workflow even though the module documents itself as best-effort.</fact>
+    <fact>outbox.py line 170 calls xadd with no maxlen and no minid. Nothing trims the stream. Entries read by XREADGROUP but never acked stay in the pending-entries list; there is no XAUTOCLAIM path.</fact>
+    <fact>Every OutboxClient takes the default consumer name "outbox-client". Two daemons in one group therefore share a consumer name, and partitioned delivery gives no ordering guarantee. upsert is last-writer-wins on (workflow_id, node_name), so a node can be recorded pending after it completed.</fact>
+    <fact>sandbox.py lines 122 to 129 set wasm_passed = ast_passed and verdict = "pass" when wasmtime imports, without executing anything in WebAssembly. The honest branch, verdict = "fallback_native", already exists two branches above.</fact>
+    <fact>sandbox.py line 41 reads cfg.sandbox_mode. Grep for sandbox_mode and for [sandbox] across src/beagle/config/ returns nothing, so get_sandbox_mode always returns "native".</fact>
+    <fact>close() in dlq.py line 259, reconciliation.py line 196 and task_store.py line 98 closes only the calling thread's connection. Connections opened on other threads leak their descriptors.</fact>
+    <fact>circuit_breaker.py lines 592 to 595 build a fresh DeadLetterQueue on every trip, inside an async method, doing blocking SQLite I/O on the event loop, and never close it.</fact>
+    <fact>Zero of the 278 test files reference fault_recovery, outbox, reconciliation or dlq.</fact>
+
+    <instruction>Add `import json` to dlq.py.</instruction>
+    <instruction>Replace the recursive restart at reconciliation.py line 308 with a bounded exponential backoff inside the existing while loop. Set self.replay_on_start to False after the first successful replay, so a restart does not re-read the whole stream.</instruction>
+    <instruction>Pass socket_timeout and socket_connect_timeout to from_url in outbox.py. Use 5.0 seconds for both. Take the value from a module constant, not a literal at the call site.</instruction>
+    <instruction>Add maxlen with approximate trimming to the xadd call. Add an XAUTOCLAIM pass to the daemon loop so entries orphaned by a dead consumer are reclaimed. Derive the consumer name from the hostname and the process id, so two daemons are distinct group members.</instruction>
+    <instruction>In sandbox.py, return verdict "fallback_native" with wasm_passed left as None from the wasmtime-present branch, until real WebAssembly execution exists. The function must not report a verdict it did not compute.</instruction>
+    <instruction>Add sandbox_mode to the config schema so the documented flag reaches get_sandbox_mode. If the flag is not wanted, delete it from sandbox.py and from the module docstring instead. Do not leave a configurable flag that no configuration can set.</instruction>
+    <instruction>Extract the duplicated thread-local SQLite scaffold into one shared base class. Register every connection it opens, and close all of them in close(). Apply the base to dlq.py, reconciliation.py and task_store.py.</instruction>
+    <instruction>In circuit_breaker.py, build the DeadLetterQueue once and reuse it, and move the blocking call off the event loop with asyncio.to_thread. Raise the failure log from debug to warning: a silent DLQ is how D-03 survived.</instruction>
+    <instruction>Write tests/test_fault_recovery.py covering every defect above. The package currently has none.</instruction>
+
+    <commands><![CDATA[
+cd /home/server/Projects/beagle
+
+# 1. Prove D-03 before the fix.
+ruff check --no-cache --select F821 src/beagle/fault_recovery/
+# EXPECT (before): 2 errors, dlq.py:256 and dlq.py:275
+
+# 2. Apply the edits, then prove each fix.
+ruff check --no-cache --select F821 src/beagle/fault_recovery/
+# EXPECT (after): All checks passed!
+
+/opt/beagle/beagle_venv/bin/python3 -m pytest tests/test_fault_recovery.py -q
+# Required cases, each named for its defect:
+#   test_dlq_roundtrip_with_payload            (D-03)
+#   test_daemon_survives_50_consecutive_errors (D-06) stack depth constant
+#   test_daemon_replays_only_once              (D-06)
+#   test_xadd_returns_within_timeout           (D-07) hung-redis stub
+#   test_stream_bounded_after_10k_appends      (D-08)
+#   test_consumer_names_are_distinct           (D-08)
+#   test_wasm_mode_never_claims_uncomputed_pass(D-09)
+#   test_sandbox_mode_reaches_config           (D-10)
+#   test_close_closes_every_thread_connection  (D-19)
+
+# 3. Full suite against the WP-0 baseline.
+/opt/beagle/beagle_venv/bin/python3 -m pytest tests/ -q --timeout=120 \
+  -p no:cacheprovider | tail -5
+
+qup check src/beagle/fault_recovery/ src/beagle/utils/circuit_breaker.py \
+  src/beagle/infrastructure/task_store.py
+    ]]></commands>
+
+    <stop_condition>STOP and report if any of the nine named tests cannot be made to fail on the pre-fix code. STOP if the shared SQLite base class changes any TaskStore behaviour that an existing test asserts; report the conflict rather than editing that test.</stop_condition>
+
+    <commit_message>fix(fault-recovery): repair the DLQ, daemon, outbox and sandbox defects (D-03, D-06 to D-10, D-19)</commit_message>
+  </work_package>
+
+  <work_package id="WP-3" title="Build the frontend plugin substrate in Beagle" covers="plugin loader" order="4">
+
+    <fact>src/beagle/mcp_plugins.py scans the entry-point group "beagle.mcp_plugins" and reports each plugin with its state. It never starts a plugin server. That is the shape to copy.</fact>
+    <fact>pyproject.toml lines 74 to 81 already declare entry-point groups for runtimes and transports, with the comment "Detection is automatic once installed; ACTIVATION requires explicit config".</fact>
+    <fact>cli/cli.py lines 24 to 33 import ten command modules by name and call add_typer for each. Nothing is discovered.</fact>
+    <fact>The plugin contract is at /home/server/Docs/plugin-pattern.md. Its interface is: a module exporting `app`, plus the optional hooks register_services(container), register_routes(api_app), get_env_vars(config) and shutdown().</fact>
+
+    <instruction>Create src/beagle/cli/plugin_loader.py. It scans the entry-point group "beagle.frontends", imports each target module, and returns one record per plugin: name, the app object, importable, and any error string. Model it on mcp_plugins.py, including the dataclass shape.</instruction>
+    <instruction>Give each import a per-plugin timeout, as the plugin contract section 5 requires, so a hung plugin __init__ cannot stall `beagle --help`.</instruction>
+    <instruction>A plugin that does not export `app` is skipped with a warning, never raised. A plugin that raises on import is skipped with its error recorded. The Beagle CLI must start with a broken plugin installed.</instruction>
+    <instruction>In cli/cli.py, after the ten existing add_typer calls, mount every discovered plugin app under its entry-point name. Discovery runs after the built-in commands, so a plugin can never shadow a built-in.</instruction>
+    <instruction>Add the group to pyproject.toml as a documented comment beside the existing runtimes and transports groups. Beagle itself registers nothing in it.</instruction>
+    <instruction>Write tests/test_plugin_loader.py. It must cover the plugin contract's section 7 test, plus the three failure paths: missing app, raising import, and hanging import.</instruction>
+
+    <commands><![CDATA[
+cd /home/server/Projects/beagle
+
+/opt/beagle/beagle_venv/bin/python3 -m pytest tests/test_plugin_loader.py -q
+# Required cases:
+#   test_discovers_registered_plugin
+#   test_plugin_without_app_is_skipped_not_raised
+#   test_plugin_raising_on_import_is_skipped
+#   test_plugin_hanging_on_import_hits_timeout
+#   test_plugin_cannot_shadow_a_builtin_command
+
+# The CLI must start with zero plugins installed.
+/opt/beagle/beagle_venv/bin/python3 -m beagle.cli.cli --help | head -30
+# EXPECT: the ten built-in command groups, no error, no traceback.
+
+qup check src/beagle/cli/plugin_loader.py src/beagle/cli/cli.py
+    ]]></commands>
+
+    <stop_condition>STOP if `beagle --help` fails or slows measurably with a deliberately broken plugin installed. The loader's whole purpose is that it cannot break the host.</stop_condition>
+
+    <commit_message>feat(cli): discover frontend plugins through the beagle.frontends entry-point group</commit_message>
+  </work_package>
+
+  <work_package id="WP-4" title="Create the beagle-plugin-pi repository" covers="D-11, D-12, D-13" order="5">
+
+    <fact>cli/commands/pi.py defines pi_app but cli/cli.py never imports it. `beagle pi` does not exist today.</fact>
+    <fact>`args: list[str] = typer.Argument(None, ...)` yields None, and line 84 splats it. Measured with typer 0.26.7: TypeError, Value after * must be an iterable, not NoneType.</fact>
+    <fact>The source-checkout fallbacks at lines 36 and 52 walk five .parent levels to the repository root, then append "beagle", producing &lt;repo&gt;/beagle/frontends/... The package is at &lt;repo&gt;/src/beagle/. Measured: the path does not exist. Both fallback branches are unreachable.</fact>
+    <fact>subprocess.call is given the full parent environment, including any API keys. core/sandbox.py already carries a _sanitize_environment routine for this purpose.</fact>
+    <fact>vendor/UPSTREAM.txt records upstream earendil-works/pi, fork MattCreigh/pi, tag v0.84.3, commit 4e58f324fae8ebfa98a3d45181fb248072a2afac, license MIT, and 381 pinned npm packages. license-inventory.json carries the SPDX breakdown.</fact>
+    <fact>src/beagle/frontends/pi/vendor holds 459 MB total: 413 MB under vendor/pi and 46 MB under vendor/pi-prebuild. 1401 files under vendor/pi are tracked in git, totalling 17 MB.</fact>
+
+    <instruction>Create the repository at /home/server/Projects/beagle-plugin-pi. Use the layout in plugin-pattern.md section 1, with src/beagle_plugin_pi/ as the package. Do not use a namespace package; DEC-1 selected entry points for discovery.</instruction>
+    <instruction>Move the pi frontend into it with `git mv` inside the Beagle repository first, then `git filter-repo` or a fresh commit in the new repository, so the vendoring history is not lost. Preserve vendor/UPSTREAM.txt, license-inventory.json and the resync procedure in README.md unchanged.</instruction>
+    <instruction>Port cli/commands/pi.py into the new package as cli.py, and fix all three defects while porting. Change the Argument default from None to an empty list. Correct the two fallback paths, or delete them and resolve the bundle from importlib.resources, which is correct for both a wheel and an editable install.</instruction>
+    <instruction>Filter the environment passed to subprocess.call. Pass only what the pi bundle needs plus BEAGLE_MCP_SERVER. Do not forward the whole parent environment to a vendored third-party binary.</instruction>
+    <instruction>Ship the pi-mcp-extension in the wheel as standard. It is third-party MIT by irahardianto, version 1.5.0, and it is the whole reason the frontend can call Beagle.</instruction>
+    <instruction>Set the display name to "pi+beagle" in the banner and the README title. The distribution name is beagle-plugin-pi, per DEC-2.</instruction>
+    <instruction>Declare the entry point: [project.entry-points."beagle.frontends"] with pi pointing at beagle_plugin_pi.</instruction>
+    <instruction>Declare no Beagle runtime dependencies. Per HC-5 the host environment provides them.</instruction>
+
+    <commands><![CDATA[
+mkdir -p /home/server/Projects/beagle-plugin-pi
+cd /home/server/Projects/beagle-plugin-pi
+git init
+
+# ... port the tree, write pyproject.toml, cli.py, __init__.py, tests ...
+
+# 1. The plugin contract's own test, section 7.
+/opt/beagle/beagle_venv/bin/python3 -m pytest tests/ -q
+# Required cases:
+#   test_plugin_exports_app
+#   test_pi_with_no_arguments_does_not_raise    (D-12)
+#   test_bundle_resolves_in_editable_install    (D-13)
+#   test_bundle_resolves_in_wheel_install       (D-13)
+#   test_environment_is_filtered_not_forwarded
+
+# 2. Build and install the wheel.
+uv build
+uv pip install --reinstall dist/beagle_plugin_pi-*.whl
+
+# 3. Prove D-11 is closed: the command now exists.
+/opt/beagle/beagle_venv/bin/python3 -m beagle.cli.cli --help | grep pi
+/opt/beagle/beagle_venv/bin/python3 -m beagle.cli.cli pi --help
+# EXPECT: the pi command is listed and its help renders.
+
+# 4. Prove D-12 is closed: no-argument invocation.
+/opt/beagle/beagle_venv/bin/python3 -m beagle.cli.cli pi
+# EXPECT: pi starts, or reports a missing node binary. NOT a TypeError.
+
+qup check src/
+    ]]></commands>
+
+    <stop_condition>STOP if the wheel does not carry the pi bundle, or if the bundle resolves in an editable install but not in a wheel install. D-13 was exactly that class of defect and it must not survive the move.</stop_condition>
+
+    <commit_message>feat: beagle-plugin-pi — the pi+beagle frontend as a discovered plugin</commit_message>
+  </work_package>
+
+  <work_package id="WP-5" title="Create the beagle-plugin-webui repository" covers="webui extraction" order="6">
+
+    <fact>src/beagle/frontends/webui holds 27 tracked files and 536 KB of vendored SPA bundle. It is tracked in git but absent from the installed wheel at /opt/beagle/beagle_venv, which is what produced the collection error in test_webui_server.py.</fact>
+    <fact>server.py serves eight API routes plus an SPA catch-all. The path-traversal guard at lines 359 to 364 uses Path.resolve and relative_to, which is correct. Preserve it exactly.</fact>
+    <fact>The authentication middleware and the bind change land in WP-1, before this move. Port the fixed file, never the original.</fact>
+    <fact>_handle_api_execute at line 337 calls create_task without keeping the returned handle, so the event loop holds only a weak reference and the task can be collected mid-run (D-15).</fact>
+
+    <instruction>Create the repository at /home/server/Projects/beagle-plugin-webui, with the same layout and the same contract as WP-4.</instruction>
+    <instruction>Move the webui tree with history preserved. Port the WP-1 version of server.py, including the middleware, the loopback default and the budget validation.</instruction>
+    <instruction>Fix D-15 while porting: keep a reference to every created task in a module-level set, and discard it in a done callback.</instruction>
+    <instruction>Keep the path-traversal guard byte-identical. It is the one part of this file the audit found correct.</instruction>
+    <instruction>Declare the entry point: [project.entry-points."beagle.frontends"] with webui pointing at beagle_plugin_webui.</instruction>
+    <instruction>Move tests/test_webui_server.py from the Beagle repository into this one. Its collection error in Beagle is the symptom that revealed D-05, and it belongs with the code it tests.</instruction>
+
+    <commands><![CDATA[
+mkdir -p /home/server/Projects/beagle-plugin-webui
+cd /home/server/Projects/beagle-plugin-webui
+git init
+
+# ... port the tree, write pyproject.toml, tests ...
+
+/opt/beagle/beagle_venv/bin/python3 -m pytest tests/ -q
+# Required cases:
+#   test_plugin_exports_app
+#   test_unauthenticated_request_is_401         (D-02)
+#   test_non_loopback_bind_without_token_refuses(D-02)
+#   test_path_traversal_is_blocked
+#   test_execute_task_reference_is_retained     (D-15)
+#   test_infinite_budget_is_rejected_400
+
+uv build
+uv pip install --reinstall dist/beagle_plugin_webui-*.whl
+/opt/beagle/beagle_venv/bin/python3 -m beagle.cli.cli webui --help
+
+qup check src/
+    ]]></commands>
+
+    <stop_condition>STOP if the path-traversal test does not pass, or if any authentication test from WP-1 regresses during the move. A security fix that survives only in the repository it was written in is not a fix.</stop_condition>
+
+    <commit_message>feat: beagle-plugin-webui — the dashboard as a discovered plugin</commit_message>
+  </work_package>
+
+  <work_package id="WP-6" title="Remove the frontends tree from Beagle" covers="D-18" order="7">
+
+    <fact>Measured 2026-08-29: `qup check --no-cache src/` took over 55 minutes and returned 27504 findings. It walks 23994 files, of which 391 are Beagle Python and 15442 are vendored JS, TS, JSON and MD.</fact>
+    <fact>Restricted to Beagle's own Python with the vendor tree excluded, ruff returns 23 findings.</fact>
+    <fact>src/beagle is 466 MB. src/beagle/frontends is 459 MB of it.</fact>
+    <fact>pyproject.toml package-data lists seven frontends globs, including frontends/pi/vendor/pi-prebuild/node_modules/**.</fact>
+
+    <instruction>Do not start this package until both plugin wheels install and both plugin CLIs run, per HC-6.</instruction>
+    <instruction>Remove src/beagle/frontends with `git rm -r`, so the removal is one reviewable commit and the tree stays recoverable from history.</instruction>
+    <instruction>Delete the seven frontends globs from the package-data block in pyproject.toml.</instruction>
+    <instruction>Remove cli/commands/pi.py and cli/commands/webui.py, and their imports and add_typer calls in cli/cli.py. Both commands now arrive through the plugin loader.</instruction>
+    <instruction>Revert the interim "vendor" exclusion added to cast_ingestion.py in WP-0. It described a tree that no longer exists, and a stale exclusion is a silent blind spot.</instruction>
+    <instruction>Record the removal in the report: the original path, the new repository, the reason, and the commit SHA that still holds the content.</instruction>
+
+    <commands><![CDATA[
+cd /home/server/Projects/beagle
+
+# Gate HC-6: both plugins must work before anything is removed.
+/opt/beagle/beagle_venv/bin/python3 -m beagle.cli.cli pi --help
+/opt/beagle/beagle_venv/bin/python3 -m beagle.cli.cli webui --help
+# EXPECT: both render. If either fails, STOP.
+
+git rm -r --quiet src/beagle/frontends
+# ... edit pyproject.toml, cli/cli.py, cast_ingestion.py ...
+
+du -sh src/beagle
+# EXPECT: single-digit MB, from 466M.
+
+time qup check --no-cache src/
+# EXPECT: minutes, not an hour. Findings near 23, not 27504.
+
+/opt/beagle/beagle_venv/bin/python3 -m pytest tests/ -q --timeout=120 \
+  -p no:cacheprovider | tail -5
+# EXPECT: pass count >= the WP-0 baseline.
+
+# Clean-clone install proof.
+uv build
+uv pip install --reinstall --no-deps dist/beagle-*.whl
+/opt/beagle/beagle_venv/bin/python3 -m beagle.cli.cli --help
+    ]]></commands>
+
+    <stop_condition>STOP if either plugin CLI fails before the removal. STOP if qup still reports more than 100 findings after it: that means a vendored tree is still inside the package.</stop_condition>
+
+    <commit_message>refactor: move the pi and webui frontends to their own plugin repositories (D-18)</commit_message>
+  </work_package>
+
+  <work_package id="WP-7" title="Structural debt" covers="D-17, D-20" order="8">
+
+    <fact>An AST scan of imports across the 43 subpackages finds 10 mutual package dependencies, including core to infrastructure, context to core, and core to utils.</fact>
+    <fact>security/firewall.py line 19 imports beagle.runtime.goose_cli at module scope. A policy layer depends on an execution layer. It is why `import beagle.core` loads httpx and 734 modules in 0.56 seconds.</fact>
+    <fact>Ruff on Beagle's own Python reports 23 findings, 17 of them auto-fixable: B009 and B010 constant getattr and setattr in utils/rate_limiter/workflow.py, I001 import sorting, UP037 quoted annotations.</fact>
+    <fact>The doctrine floor reports 12 BLE001 blind-except findings. Project configuration cannot suppress that rule.</fact>
+    <fact>The tree carries 297 `type: ignore` comments. mypy now reports several as unused.</fact>
+
+    <instruction>Make the firewall import of beagle.runtime lazy, inside the function that needs it. Add a test that asserts the import direction, so the layering is enforced and not merely documented.</instruction>
+    <instruction>Apply the 17 auto-fixable ruff findings with `ruff check --fix`. Review the diff before committing; do not commit an unread automatic edit.</instruction>
+    <instruction>Resolve the 12 BLE001 findings by narrowing each except clause to the exceptions the block actually handles. Do not add a noqa. A blind catch in a fault-recovery path is how D-03 stayed hidden.</instruction>
+    <instruction>Remove the `type: ignore` comments mypy reports as unused.</instruction>
+
+    <commands><![CDATA[
+cd /home/server/Projects/beagle
+
+ruff check --no-cache --select BLE001 --output-format=concise src/beagle
+# EXPECT (after): All checks passed!
+
+ruff check --no-cache --output-format=concise src/beagle
+# EXPECT (after): All checks passed!
+
+/opt/beagle/beagle_venv/bin/python3 -m pytest tests/ -q --timeout=120 \
+  -p no:cacheprovider | tail -5
+
+qup check --no-cache src/
+    ]]></commands>
+
+    <stop_condition>STOP if narrowing an except clause makes a test fail. That failure is information: the blind catch was hiding a real error path. Report it; do not restore the blind catch.</stop_condition>
+
+    <commit_message>refactor: break the security-to-runtime import and clear the lint floor (D-17, D-20)</commit_message>
+  </work_package>
+
+  <acceptance>
+    <criterion id="AC-1" covers="D-04, D-05">`import beagle` inside the test session resolves under src/. The suite completes with no OOM kill in the kernel log.</criterion>
+    <criterion id="AC-2" covers="D-01">A two-node workflow runs end to end and reaches a terminal state, with its nodes recorded in the tracking database.</criterion>
+    <criterion id="AC-3" covers="D-02">An unauthenticated request to the execute endpoint returns 401. A non-loopback bind with no token refuses to start. `ss -ltnp` shows 127.0.0.1, not 0.0.0.0.</criterion>
+    <criterion id="AC-4" covers="D-03">`ruff check --select F821 src/beagle/fault_recovery/` passes, and a DLQ round trip with a payload succeeds.</criterion>
+    <criterion id="AC-5" covers="D-06, D-07, D-08">With a real Redis: kill the reconciliation daemon mid-stream, restart it, and the SQLite ledger converges with no duplicate and no lost node. Then SIGSTOP Redis, and the workflow still completes.</criterion>
+    <criterion id="AC-6" covers="D-09, D-10">route_payload never returns a verdict it did not compute, and the sandbox mode set in configuration reaches get_sandbox_mode.</criterion>
+    <criterion id="AC-7" covers="D-11, D-12, D-13">`beagle pi` and `beagle webui` both appear in `beagle --help` and both run, from a wheel install, with no argument supplied.</criterion>
+    <criterion id="AC-8" covers="D-18">src/beagle is single-digit MB. `qup check --no-cache src/` completes in minutes and reports near 23 findings.</criterion>
+    <criterion id="AC-9">A clean venv install of `beagle` alone starts and lists its built-in commands. Installing either plugin adds its command with no edit to Beagle.</criterion>
+    <criterion id="AC-10" covers="D-16">tests/test_fault_recovery.py exists and every case named in WP-2 passes.</criterion>
+  </acceptance>
+
+  <reporting>
+    <requirement>Report after each work package, never in one batch at the end.</requirement>
+    <requirement>Paste the real command output for every &lt;commands&gt; block. Do not summarise it. Do not say "as expected".</requirement>
+    <requirement>State the test pass and fail counts against the WP-0 baseline every time.</requirement>
+    <requirement>Name every file moved aside or removed: the original path, where it went, why, and the commit SHA that still holds it.</requirement>
+    <requirement>When a &lt;fact&gt; above turns out to be wrong, say so and give the measurement that disproves it. The facts were measured on 2026-08-29 and the tree moves.</requirement>
+  </reporting>
+
+  <closing_directive>
+    Work packages run in order. WP-0 is not optional and is not a formality: until it passes, no other result in this recipe can be trusted, because the suite is validating an installed wheel rather than the code you edit.
+
+    The audit found one process defect behind twenty code defects. Four subsystems entered this codebase with no test, no passing gate, and in two cases without ever being executed. Every work package here therefore ends with a test that failed before the fix. A package that ends any other way has not been done.
+  </closing_directive>
+
+</recipe>

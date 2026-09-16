@@ -1,0 +1,878 @@
+<title>Beagle Cost Model</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:ital,wght@0,400;0,600;1,400&display=swap">
+
+<style>
+/* ── tokens: light is the base, both dark scopes redefine only tokens ────── */
+:root {
+  color-scheme: light;
+  --plane:      #f4f6f8;
+  --surface:    #ffffff;
+  --surface-2:  #f9fafb;
+  --ink:        #0e1116;
+  --ink-2:      #4d545e;
+  --muted:      #858c96;
+  --rule:       #dfe3e8;
+  --rule-soft:  #edf0f3;
+  --accent:     #2a78d6;
+  --accent-ink: #1c5cab;
+  --s1: #2a78d6;  /* production  */
+  --s2: #eb6834;  /* tests       */
+  --s3: #1baf7a;  /* support     */
+  --pos: #d03b3b; /* effort up   */
+  --neg: #2a78d6; /* effort down */
+  --mid: #f0efec;
+  --chip-m-bg: rgba(42,120,214,.10);
+  --chip-m-fg: #1c5cab;
+  --chip-r-bg: rgba(133,140,150,.14);
+  --chip-r-fg: #4d545e;
+  --shadow: 0 1px 2px rgba(14,17,22,.05), 0 1px 12px rgba(14,17,22,.04);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --plane:      #0c0e11;
+    --surface:    #171a1e;
+    --surface-2:  #1d2126;
+    --ink:        #f2f4f6;
+    --ink-2:      #b6bcc4;
+    --muted:      #858c96;
+    --rule:       #2b3037;
+    --rule-soft:  #23272d;
+    --accent:     #3987e5;
+    --accent-ink: #86b6ef;
+    --s1: #3987e5;
+    --s2: #d95926;
+    --s3: #199e70;
+    --pos: #e66767;
+    --neg: #3987e5;
+    --mid: #383835;
+    --chip-m-bg: rgba(57,135,229,.16);
+    --chip-m-fg: #86b6ef;
+    --chip-r-bg: rgba(133,140,150,.16);
+    --chip-r-fg: #b6bcc4;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 1px 12px rgba(0,0,0,.3);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --plane:      #0c0e11;
+  --surface:    #171a1e;
+  --surface-2:  #1d2126;
+  --ink:        #f2f4f6;
+  --ink-2:      #b6bcc4;
+  --muted:      #858c96;
+  --rule:       #2b3037;
+  --rule-soft:  #23272d;
+  --accent:     #3987e5;
+  --accent-ink: #86b6ef;
+  --s1: #3987e5;
+  --s2: #d95926;
+  --s3: #199e70;
+  --pos: #e66767;
+  --neg: #3987e5;
+  --mid: #383835;
+  --chip-m-bg: rgba(57,135,229,.16);
+  --chip-m-fg: #86b6ef;
+  --chip-r-bg: rgba(133,140,150,.16);
+  --chip-r-fg: #b6bcc4;
+  --shadow: 0 1px 2px rgba(0,0,0,.4), 0 1px 12px rgba(0,0,0,.3);
+}
+
+/* ── base ────────────────────────────────────────────────────────────────── */
+* { box-sizing: border-box; }
+body {
+  background: var(--plane);
+  color: var(--ink);
+  font-family: "IBM Plex Serif", Georgia, "Times New Roman", serif;
+  font-size: 16px;
+  line-height: 1.62;
+  -webkit-font-smoothing: antialiased;
+}
+.sheet {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 0 24px 96px;
+}
+h1, h2, h3, .sans, th, .lbl, .chip, .num, .rail {
+  font-family: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+.mono, code, td.n, .eq, .val {
+  font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+p { margin: 0 0 1em; max-width: 68ch; }
+a { color: var(--accent-ink); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
+
+/* ── masthead ────────────────────────────────────────────────────────────── */
+.mast {
+  padding: 64px 0 28px;
+  border-bottom: 2px solid var(--ink);
+}
+.eyebrow {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 11.5px; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--muted); margin: 0 0 18px;
+  display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: baseline;
+}
+.eyebrow b { color: var(--accent-ink); font-weight: 500; }
+h1 {
+  font-size: clamp(34px, 5.6vw, 58px);
+  line-height: 1.03; letter-spacing: -.028em; font-weight: 600;
+  margin: 0 0 20px; text-wrap: balance; max-width: 20ch;
+}
+.standfirst {
+  font-size: 18.5px; line-height: 1.55; color: var(--ink-2);
+  max-width: 62ch; margin: 0;
+}
+.standfirst em { color: var(--ink); font-style: italic; }
+
+/* ── headline figures ────────────────────────────────────────────────────── */
+.figs {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 1px; background: var(--rule);
+  border-bottom: 1px solid var(--rule); margin-bottom: 8px;
+}
+.fig { background: var(--plane); padding: 26px 4px 24px; }
+.fig .val {
+  display: block; font-size: clamp(26px, 3.4vw, 38px); font-weight: 500;
+  letter-spacing: -.03em; line-height: 1; color: var(--ink);
+}
+.fig .val .u { font-size: .48em; color: var(--muted); letter-spacing: 0; margin-left: 3px; }
+.fig .lbl {
+  display: block; margin-top: 10px; font-size: 11px; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--muted); font-weight: 500;
+}
+.fig .sub { display:block; font-size: 12.5px; color: var(--ink-2); margin-top: 3px; font-family:"IBM Plex Sans",sans-serif;}
+@media (max-width: 720px) { .figs { grid-template-columns: repeat(2, 1fr); } }
+
+/* ── sections with numbered rail ─────────────────────────────────────────── */
+section { padding-top: 58px; }
+.sec-head {
+  display: grid; grid-template-columns: 56px 1fr; gap: 0 20px;
+  align-items: baseline; margin-bottom: 22px;
+  border-top: 1px solid var(--rule); padding-top: 20px;
+}
+.rail {
+  font-size: 12px; font-weight: 600; letter-spacing: .08em;
+  color: var(--accent); font-variant-numeric: tabular-nums;
+  padding-top: 6px;
+}
+h2 {
+  font-size: clamp(21px, 2.6vw, 27px); font-weight: 600; letter-spacing: -.018em;
+  margin: 0; line-height: 1.2; text-wrap: balance;
+}
+.sec-head .dek { grid-column: 2; color: var(--ink-2); font-size: 15.5px; margin: 7px 0 0; max-width: 64ch; }
+.body { display: grid; grid-template-columns: 56px 1fr; gap: 0 20px; }
+.body > * { grid-column: 2; }
+@media (max-width: 680px) {
+  .sec-head, .body { grid-template-columns: 1fr; }
+  .sec-head .dek, .body > * { grid-column: 1; }
+  .rail { padding-top: 0; margin-bottom: 4px; }
+}
+
+/* ── provenance chips ────────────────────────────────────────────────────── */
+.chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 10.5px; letter-spacing: .09em; text-transform: uppercase;
+  font-weight: 600; padding: 3px 8px 3px 6px; border-radius: 3px;
+  white-space: nowrap; vertical-align: 2px;
+}
+.chip::before { content: ""; width: 7px; height: 7px; flex: none; }
+.chip-m { background: var(--chip-m-bg); color: var(--chip-m-fg); }
+.chip-m::before { background: currentColor; }
+.chip-r { background: var(--chip-r-bg); color: var(--chip-r-fg); }
+.chip-r::before { border: 1.5px solid currentColor; transform: rotate(45deg); }
+
+/* ── tables ──────────────────────────────────────────────────────────────── */
+.tw { overflow-x: auto; margin: 0 0 26px; background: var(--surface);
+      border: 1px solid var(--rule); border-radius: 4px; box-shadow: var(--shadow); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; min-width: 520px; }
+caption {
+  text-align: left; font-family: "IBM Plex Sans", sans-serif; font-size: 12px;
+  letter-spacing: .07em; text-transform: uppercase; color: var(--muted);
+  font-weight: 600; padding: 14px 18px 0;
+}
+th {
+  text-align: left; font-size: 11px; letter-spacing: .07em; text-transform: uppercase;
+  color: var(--muted); font-weight: 600; padding: 14px 14px 9px;
+  border-bottom: 1px solid var(--rule); white-space: nowrap;
+}
+td { padding: 10px 14px; border-bottom: 1px solid var(--rule-soft); color: var(--ink-2);
+     font-family: "IBM Plex Sans", sans-serif; vertical-align: top; }
+tbody tr:last-child td { border-bottom: none; }
+th.r, td.r { text-align: right; }
+td.n { font-variant-numeric: tabular-nums; color: var(--ink); white-space: nowrap; }
+td.k { color: var(--ink); font-weight: 500; white-space: nowrap; }
+tr.tot td { border-top: 1.5px solid var(--rule); border-bottom: none;
+            font-weight: 600; color: var(--ink); background: var(--surface-2); }
+.ev { font-size: 12.5px; color: var(--muted); line-height: 1.5; font-family: "IBM Plex Sans", sans-serif; }
+.rate {
+  display: inline-block; min-width: 26px; text-align: center;
+  font-family: "IBM Plex Mono", monospace; font-size: 11.5px; font-weight: 600;
+  padding: 2px 6px; border-radius: 3px; background: var(--surface-2);
+  border: 1px solid var(--rule); color: var(--ink);
+}
+.rate.hi { border-color: var(--accent); color: var(--accent-ink); }
+
+/* ── charts ──────────────────────────────────────────────────────────────── */
+figure { margin: 0 0 30px; background: var(--surface); border: 1px solid var(--rule);
+         border-radius: 4px; padding: 20px 20px 16px; box-shadow: var(--shadow); }
+figcaption { font-family: "IBM Plex Sans", sans-serif; }
+.fc-t { font-size: 14.5px; font-weight: 600; color: var(--ink); margin-bottom: 2px; }
+.fc-s { font-size: 12.5px; color: var(--muted); margin-bottom: 18px; }
+.fc-n { font-size: 12px; color: var(--muted); margin-top: 14px; padding-top: 12px;
+        border-top: 1px solid var(--rule-soft); line-height: 1.5; }
+
+/* stacked composition bar */
+.stack { display: flex; gap: 2px; height: 46px; margin-bottom: 14px; }
+.seg { position: relative; border-radius: 2px; cursor: default; transition: opacity .12s; }
+.seg:hover { opacity: .82; }
+.stack .seg:first-child { border-radius: 4px 2px 2px 4px; }
+.stack .seg:last-child  { border-radius: 2px 4px 4px 2px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 22px; font-family: "IBM Plex Sans", sans-serif; }
+.lg { display: flex; align-items: baseline; gap: 8px; font-size: 13px; color: var(--ink-2); }
+.lg i { width: 10px; height: 10px; border-radius: 2px; flex: none; align-self: center; }
+.lg b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+.lg s { text-decoration: none; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+
+/* ranked horizontal bars */
+.bars { display: grid; gap: 7px; }
+.bar { display: grid; grid-template-columns: 132px 1fr 62px; gap: 12px; align-items: center;
+       font-family: "IBM Plex Sans", sans-serif; font-size: 13px; }
+.bar .nm { color: var(--ink-2); text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bar .tr { height: 15px; position: relative; }
+.bar .fl { height: 100%; border-radius: 0 3px 3px 0; transition: opacity .12s; }
+.bar:hover .fl { opacity: .82; }
+.bar .vv { color: var(--ink); font-variant-numeric: tabular-nums; font-size: 12.5px; font-weight: 500; }
+@media (max-width: 560px) { .bar { grid-template-columns: 96px 1fr 54px; font-size: 12px; } }
+
+/* tornado */
+.torn { display: grid; gap: 7px; position: relative; }
+.trow { display: grid; grid-template-columns: 1fr 300px 62px; gap: 12px; align-items: center;
+        font-family: "IBM Plex Sans", sans-serif; font-size: 13px; }
+.trow .nm { color: var(--ink-2); text-align: right; line-height: 1.35; }
+.trow.base .nm { color: var(--ink); font-weight: 600; }
+.tplot { height: 17px; position: relative; }
+.tplot::before {
+  content: ""; position: absolute; left: 50%; top: -3px; bottom: -3px;
+  width: 1px; background: var(--rule); transform: translateX(-.5px);
+}
+.tbar { position: absolute; top: 0; height: 100%; transition: opacity .12s; }
+.trow:hover .tbar { opacity: .82; }
+.tbar.up { left: 50%; border-radius: 0 3px 3px 0; background: var(--pos); }
+.tbar.dn { right: 50%; border-radius: 3px 0 0 3px; background: var(--neg); }
+.trow .vv { font-variant-numeric: tabular-nums; font-size: 12.5px; font-weight: 500; color: var(--ink); }
+.tscale { display: grid; grid-template-columns: 1fr 300px 62px; gap: 12px;
+          font-family: "IBM Plex Sans", sans-serif; font-size: 11px; color: var(--muted);
+          margin-top: 9px; }
+.tscale .ax { display: flex; justify-content: space-between; font-variant-numeric: tabular-nums; }
+@media (max-width: 620px) {
+  .trow, .tscale { grid-template-columns: 1fr 150px 52px; gap: 8px; font-size: 12px; }
+}
+
+/* ── equation block ──────────────────────────────────────────────────────── */
+.eqbox {
+  background: var(--surface); border: 1px solid var(--rule); border-left: 3px solid var(--accent);
+  border-radius: 4px; padding: 22px 24px; margin: 0 0 26px; overflow-x: auto;
+  box-shadow: var(--shadow);
+}
+.eq { font-size: 14px; line-height: 2.05; color: var(--ink-2); white-space: nowrap;
+      font-variant-numeric: tabular-nums; }
+.eq .lhs { color: var(--ink); font-weight: 600; display: inline-block; min-width: 62px; }
+.eq .res { color: var(--accent-ink); font-weight: 600; }
+.eq .cm  { color: var(--muted); }
+.eq hr { border: 0; border-top: 1px solid var(--rule-soft); margin: 14px 0; }
+
+/* ── callout ─────────────────────────────────────────────────────────────── */
+.note {
+  background: var(--surface-2); border: 1px solid var(--rule); border-radius: 4px;
+  padding: 18px 22px; margin: 0 0 26px;
+}
+.note p:last-child { margin-bottom: 0; }
+.note .h {
+  font-family: "IBM Plex Sans", sans-serif; font-size: 11px; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--accent-ink); font-weight: 600; margin-bottom: 8px;
+}
+ul.pts { margin: 0 0 26px; padding-left: 0; list-style: none; max-width: 68ch; }
+ul.pts li { position: relative; padding-left: 22px; margin-bottom: 11px; }
+ul.pts li::before {
+  content: ""; position: absolute; left: 3px; top: .62em; width: 6px; height: 6px;
+  background: var(--accent); border-radius: 1px;
+}
+ul.pts b { color: var(--ink); font-weight: 600; }
+.kv { font-family: "IBM Plex Mono", monospace; font-size: .89em; color: var(--ink);
+      background: var(--surface-2); border: 1px solid var(--rule); border-radius: 3px;
+      padding: 1px 5px; white-space: nowrap; }
+
+/* ── tooltip ─────────────────────────────────────────────────────────────── */
+#tip {
+  position: fixed; z-index: 50; pointer-events: none; opacity: 0;
+  transition: opacity .1s; background: var(--ink); color: var(--plane);
+  font-family: "IBM Plex Sans", sans-serif; font-size: 12.5px; line-height: 1.45;
+  padding: 8px 11px; border-radius: 4px; max-width: 260px;
+  box-shadow: 0 4px 16px rgba(0,0,0,.28);
+}
+#tip b { font-variant-numeric: tabular-nums; }
+
+footer {
+  margin-top: 68px; padding-top: 22px; border-top: 2px solid var(--ink);
+  font-family: "IBM Plex Sans", sans-serif; font-size: 12.5px; color: var(--muted);
+  display: flex; flex-wrap: wrap; gap: 8px 28px; justify-content: space-between;
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="sheet">
+
+<header class="mast">
+  <p class="eyebrow">
+    <span>COCOMO&nbsp;II.2000 · Post-Architecture</span>
+    <span>·</span>
+    <span>Subject: <b>beagle</b> @ ffd9418</span>
+    <span>·</span>
+    <span>28 Aug 2026</span>
+  </p>
+  <h1>What Beagle would have cost</h1>
+  <p class="standfirst">
+    A constructive cost estimate over 65,202 lines of authored production Python.
+    The model says roughly seven and a half person-years and a team of six. The
+    repository says one person and about seventeen months — and <em>that gap is the
+    actual finding.</em>
+  </p>
+</header>
+
+<div class="figs">
+  <div class="fig">
+    <span class="val">90.5<span class="u">PM</span></span>
+    <span class="lbl">Nominal effort</span>
+    <span class="sub">7.5 person-years</span>
+  </div>
+  <div class="fig">
+    <span class="val">14.7<span class="u">mo</span></span>
+    <span class="lbl">Schedule</span>
+    <span class="sub">6.2 average FTE</span>
+  </div>
+  <div class="fig">
+    <span class="val">65.2<span class="u">KSLOC</span></span>
+    <span class="lbl">Sized input</span>
+    <span class="sub">106.0 incl. tests</span>
+  </div>
+  <div class="fig">
+    <span class="val">$1.36<span class="u">M</span></span>
+    <span class="lbl">At $15k/PM</span>
+    <span class="sub">$1.09M – $1.81M</span>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════ -->
+<section>
+  <div class="sec-head">
+    <span class="rail">01</span>
+    <h2>Size census <span class="chip chip-m">measured</span></h2>
+    <p class="dek">
+      Logical SLOC — blank lines, comments and standalone docstrings removed by a
+      tokenizing counter, not a line count. Every figure below came out of the repository.
+    </p>
+  </div>
+  <div class="body">
+
+    <div class="note">
+      <div class="h">Exclusion that dominates the census</div>
+      <p>
+        The repository tracks <b>3,879 TypeScript and JavaScript files</b> — every one of
+        them under <span class="kv">src/beagle/frontends/pi/vendor/</span>, being a vendored
+        <span class="kv">pi</span> prebuild plus its committed <span class="kv">node_modules</span>.
+        That is acquired code, not developed code, so all <b>5,735</b> vendored files are
+        excluded from the sizing. Counting them would have roughly quadrupled the estimate
+        and made it meaningless.
+      </p>
+    </div>
+
+    <div class="tw">
+      <table>
+        <caption>Tracked source by language, vendored trees excluded</caption>
+        <thead>
+          <tr>
+            <th>Language</th><th class="r">Files</th><th class="r">Logical SLOC</th>
+            <th class="r">Physical</th><th>Counts toward model</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="k">Python</td><td class="n r">698</td><td class="n r">105,825</td><td class="n r">170,019</td><td class="ev">Yes</td></tr>
+          <tr><td class="k">Markdown</td><td class="n r">44</td><td class="n r">8,786</td><td class="n r">11,436</td><td class="ev">No — documentation</td></tr>
+          <tr><td class="k">YAML</td><td class="n r">13</td><td class="n r">1,268</td><td class="n r">1,716</td><td class="ev">No — configuration</td></tr>
+          <tr><td class="k">TOML</td><td class="n r">16</td><td class="n r">892</td><td class="n r">1,215</td><td class="ev">No — configuration</td></tr>
+          <tr><td class="k">XML</td><td class="n r">15</td><td class="n r">499</td><td class="n r">584</td><td class="ev">No — prompts / recipes</td></tr>
+          <tr><td class="k">JSON</td><td class="n r">4</td><td class="n r">469</td><td class="n r">469</td><td class="ev">No — data</td></tr>
+          <tr><td class="k">Shell</td><td class="n r">3</td><td class="n r">139</td><td class="n r">219</td><td class="ev">Yes</td></tr>
+          <tr class="tot"><td class="k">Executable total</td><td class="n r">701</td><td class="n r">105,964</td><td class="n r">—</td><td class="ev">Sized</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <figure>
+      <figcaption>
+        <div class="fc-t">Where the 105,964 authored lines sit</div>
+        <div class="fc-s">Production source is the model's primary input; test code is sized separately.</div>
+      </figcaption>
+      <div class="stack" id="stack"></div>
+      <div class="legend" id="stack-legend"></div>
+      <div class="fc-n">
+        Test code is <b>35.3%</b> of everything authored — 3,368 test functions across 291 files.
+        COCOMO II's counting rules exclude test drivers from delivered size, because the effort to
+        write them already lives inside the model's multipliers. Sizing it separately (§5) shows
+        what happens if you disagree.
+      </div>
+    </figure>
+
+    <figure>
+      <figcaption>
+        <div class="fc-t">Production source by package</div>
+        <div class="fc-s">Top 12 of 40 subpackages under <span class="kv">src/beagle/</span> · logical SLOC</div>
+      </figcaption>
+      <div class="bars" id="mod-bars"></div>
+      <div class="fc-n">
+        The top three packages — infrastructure, core, context — carry <b>45.6%</b> of production
+        source between them. That concentration is what pushes the complexity rating in §3.
+      </div>
+    </figure>
+
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════════ -->
+<section>
+  <div class="sec-head">
+    <span class="rail">02</span>
+    <h2>Scale factors <span class="chip chip-r">rated</span></h2>
+    <p class="dek">
+      Five factors set the exponent, and the exponent decides whether the project
+      shows economies or diseconomies of scale. Each rating below is a judgment,
+      justified against something checkable in the repository.
+    </p>
+  </div>
+  <div class="body">
+
+    <div class="tw">
+      <table>
+        <caption>Scale factors — COCOMO II.2000 values</caption>
+        <thead>
+          <tr><th>Factor</th><th>Rating</th><th class="r">Value</th><th>Basis</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="k">PREC <span class="ev">precedentedness</span></td>
+            <td><span class="rate">Low</span></td><td class="n r">4.96</td>
+            <td class="ev">Agentic workflow engine with RAG, graph traversal, MCP servers, sandboxed execution and a coordination store. Largely unprecedented product class.</td>
+          </tr>
+          <tr>
+            <td class="k">FLEX <span class="ev">development flexibility</span></td>
+            <td><span class="rate">High</span></td><td class="n r">2.03</td>
+            <td class="ev">No external client contract. Constrained instead by a self-imposed doctrine enforced in CI (<span class="kv">beagle-doctrine-gates.yml</span>), which is a real conformance cost.</td>
+          </tr>
+          <tr>
+            <td class="k">RESL <span class="ev">risk / architecture resolution</span></td>
+            <td><span class="rate">High</span></td><td class="n r">2.83</td>
+            <td class="ev"><span class="kv">docs/ADR.md</span>, <span class="kv">docs/decisions/</span>, <span class="kv">docs/spec/</span>, <span class="kv">threat-model.md</span> and a security whitepaper — architecture and risk are resolved in writing before code.</td>
+          </tr>
+          <tr>
+            <td class="k">TEAM <span class="ev">team cohesion</span></td>
+            <td><span class="rate hi">Very High</span></td><td class="n r">1.10</td>
+            <td class="ev">Single author across all 77 commits. No stakeholder negotiation cost of any kind.</td>
+          </tr>
+          <tr>
+            <td class="k">PMAT <span class="ev">process maturity</span></td>
+            <td><span class="rate">High</span></td><td class="n r">3.12</td>
+            <td class="ev">Seven CI workflows (test, security audit, SBOM, doctrine gates, version check, Docker, licence), pre-commit hooks, a strict mypy ratchet, and a project-wide QA gate in <span class="kv">qup.toml</span>.</td>
+          </tr>
+          <tr class="tot"><td class="k">Σ SF</td><td></td><td class="n r">14.04</td><td class="ev">→ E = 0.91 + 0.01 × 14.04 = <b>1.0504</b></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>
+      An exponent above 1.0 means <b>diseconomy of scale</b> — each additional thousand lines
+      costs slightly more than the last. At 1.0504 the penalty is mild: doubling the codebase
+      would cost 2.07× rather than 2×. The unprecedented problem domain is what keeps it above
+      one; the mature process and single-author cohesion are what keep it from going higher.
+    </p>
+
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════════ -->
+<section>
+  <div class="sec-head">
+    <span class="rail">03</span>
+    <h2>Effort multipliers <span class="chip chip-r">rated</span></h2>
+    <p class="dek">
+      Seventeen cost drivers, multiplied together. Their product is 0.3823 — the model
+      believes this project is being built under conditions about 2.6× more favourable
+      than nominal.
+    </p>
+  </div>
+  <div class="body">
+
+    <div class="tw">
+      <table>
+        <caption>Post-architecture cost drivers</caption>
+        <thead>
+          <tr><th>Driver</th><th>Rating</th><th class="r">EM</th><th>Basis</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="k">RELY <span class="ev">required reliability</span></td><td><span class="rate">High</span></td><td class="n r">1.10</td>
+              <td class="ev">Dedicated <span class="kv">resilience/</span>, <span class="kv">guardian/</span>, <span class="kv">health/</span>, <span class="kv">slo/</span> packages plus circuit breakers. Failure loses work, but is not life-critical.</td></tr>
+          <tr><td class="k">DATA <span class="ev">database size</span></td><td><span class="rate">Nominal</span></td><td class="n r">1.00</td>
+              <td class="ev">Vector and graph stores are present, but test-data volume relative to program size is unremarkable.</td></tr>
+          <tr><td class="k">CPLX <span class="ev">product complexity</span></td><td><span class="rate hi">Very High</span></td><td class="n r">1.34</td>
+              <td class="ev">511 <span class="kv">async def</span>, 73 asyncio modules, 62 with threading or locks, 75 touching subprocess, 40 touching crypto. 614 classes, 3,371 functions. Distributed coordination, protocol servers and state-machine orchestration.</td></tr>
+          <tr><td class="k">RUSE <span class="ev">developed for reuse</span></td><td><span class="rate">High</span></td><td class="n r">1.07</td>
+              <td class="ev">Entry-point plugin registries (<span class="kv">beagle.runtimes</span>, <span class="kv">beagle.transports</span>), a shipped <span class="kv">py.typed</span>, and an MCP tool surface consumed by external clients.</td></tr>
+          <tr><td class="k">DOCU <span class="ev">documentation</span></td><td><span class="rate hi">Very High</span></td><td class="n r">1.23</td>
+              <td class="ev">30 documents totalling 8,786 lines — ADRs, threat model, security whitepaper, operations manual, style guides. Well beyond lifecycle need.</td></tr>
+          <tr><td class="k">TIME <span class="ev">execution constraint</span></td><td><span class="rate">Nominal</span></td><td class="n r">1.00</td>
+              <td class="ev">No hard real-time budget.</td></tr>
+          <tr><td class="k">STOR <span class="ev">storage constraint</span></td><td><span class="rate">Nominal</span></td><td class="n r">1.00</td>
+              <td class="ev">Conservative. A CPU-only host with a deliberate torch pin is a real constraint; rating it High would add 5%.</td></tr>
+          <tr><td class="k">PVOL <span class="ev">platform volatility</span></td><td><span class="rate">High</span></td><td class="n r">1.15</td>
+              <td class="ev">Hard pins on <span class="kv">langgraph==1.2.4</span>, <span class="kv">langchain==1.3.9</span>, <span class="kv">mcp==1.28.1</span>, <span class="kv">fastmcp==3.4.7</span> — a fast-churning ecosystem, with a CI workflow existing purely to police version drift.</td></tr>
+          <tr><td class="k">ACAP <span class="ev">analyst capability</span></td><td><span class="rate hi">Very High</span></td><td class="n r">0.71</td>
+              <td class="ev">Judgment call — see §7. The weakest input in the model.</td></tr>
+          <tr><td class="k">PCAP <span class="ev">programmer capability</span></td><td><span class="rate hi">Very High</span></td><td class="n r">0.76</td>
+              <td class="ev">Judgment call — see §7.</td></tr>
+          <tr><td class="k">PCON <span class="ev">personnel continuity</span></td><td><span class="rate hi">Very High</span></td><td class="n r">0.81</td>
+              <td class="ev">Zero turnover; one author throughout.</td></tr>
+          <tr><td class="k">APEX <span class="ev">application experience</span></td><td><span class="rate">High</span></td><td class="n r">0.88</td>
+              <td class="ev">Deep familiarity with the domain, but the domain itself is young.</td></tr>
+          <tr><td class="k">PLEX <span class="ev">platform experience</span></td><td><span class="rate hi">Very High</span></td><td class="n r">0.85</td>
+              <td class="ev">Target host is the author's own, documented to the hardware level in a separate version-controlled record.</td></tr>
+          <tr><td class="k">LTEX <span class="ev">language &amp; tool experience</span></td><td><span class="rate hi">Very High</span></td><td class="n r">0.84</td>
+              <td class="ev">Single language throughout; the surrounding toolchain was written by the same author.</td></tr>
+          <tr><td class="k">TOOL <span class="ev">software tools</span></td><td><span class="rate hi">Very High</span></td><td class="n r">0.78</td>
+              <td class="ev">A purpose-built QA gate, strict typing, pre-commit, SBOM and security scanning, plus a RAG index over the codebase itself.</td></tr>
+          <tr><td class="k">SITE <span class="ev">multisite development</span></td><td><span class="rate hi">Extra High</span></td><td class="n r">0.80</td>
+              <td class="ev">Fully collocated — one developer, one machine.</td></tr>
+          <tr><td class="k">SCED <span class="ev">schedule constraint</span></td><td><span class="rate">Nominal</span></td><td class="n r">1.00</td>
+              <td class="ev">No externally imposed deadline.</td></tr>
+          <tr class="tot"><td class="k">Π EM</td><td></td><td class="n r">0.3823</td><td class="ev">Product of all seventeen</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════════ -->
+<section>
+  <div class="sec-head">
+    <span class="rail">04</span>
+    <h2>The calculation</h2>
+    <p class="dek">Both equations worked with the values above, for the production-source input.</p>
+  </div>
+  <div class="body">
+
+    <div class="eqbox">
+      <div class="eq">
+<span class="lhs">E</span>= 0.91 + 0.01 × ΣSF  = 0.91 + 0.01 × 14.04              = <span class="res">1.0504</span><br>
+<span class="lhs">PM</span>= 2.94 × Size<sup>E</sup> × ΠEM = 2.94 × 65.202<sup>1.0504</sup> × 0.3823  = <span class="res">90.5</span> <span class="cm">person-months</span>
+<hr>
+<span class="lhs">F</span>= 0.28 + 0.2 × (E − 0.91)                          = <span class="res">0.3081</span><br>
+<span class="lhs">TDEV</span>= 3.67 × PM<sup>F</sup>       = 3.67 × 90.5<sup>0.3081</sup>            = <span class="res">14.7</span> <span class="cm">calendar months</span>
+<hr>
+<span class="lhs">Staff</span>= PM ÷ TDEV        = 90.5 ÷ 14.7                        = <span class="res">6.2</span> <span class="cm">average FTE</span>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════════ -->
+<section>
+  <div class="sec-head">
+    <span class="rail">05</span>
+    <h2>Results</h2>
+    <p class="dek">Three sizing choices, because the honest answer depends on whether you count tests.</p>
+  </div>
+  <div class="body">
+
+    <div class="tw">
+      <table>
+        <caption>Effort and schedule by sizing scenario</caption>
+        <thead>
+          <tr><th>Scenario</th><th class="r">KSLOC</th><th class="r">Effort</th><th class="r">Schedule</th><th class="r">Avg FTE</th><th class="r">Person-years</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="k">Production source only</td><td class="n r">65.2</td><td class="n r">90.5 PM</td><td class="n r">14.7 mo</td><td class="n r">6.2</td><td class="n r">7.5</td></tr>
+          <tr><td class="k">Production + scripts &amp; benchmarks</td><td class="n r">68.5</td><td class="n r">95.3 PM</td><td class="n r">14.9 mo</td><td class="n r">6.4</td><td class="n r">7.9</td></tr>
+          <tr><td class="k">All authored code, tests included</td><td class="n r">106.0</td><td class="n r">150.7 PM</td><td class="n r">17.2 mo</td><td class="n r">8.8</td><td class="n r">12.6</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="tw">
+      <table>
+        <caption>Phase distribution — 90.5 PM baseline, MBASE/waterfall split</caption>
+        <thead>
+          <tr><th>Phase</th><th class="r">Share</th><th class="r">Effort</th><th>Distribution</th></tr>
+        </thead>
+        <tbody id="phase-rows"></tbody>
+      </table>
+    </div>
+
+    <div class="tw">
+      <table>
+        <caption>Replacement cost at fully-loaded labour rates</caption>
+        <thead><tr><th>Loaded rate</th><th class="r">Production only</th><th class="r">All authored code</th></tr></thead>
+        <tbody>
+          <tr><td class="k">$12,000 / person-month</td><td class="n r">$1,085,513</td><td class="n r">$1,808,400</td></tr>
+          <tr><td class="k">$15,000 / person-month</td><td class="n r">$1,356,891</td><td class="n r">$2,260,500</td></tr>
+          <tr><td class="k">$20,000 / person-month</td><td class="n r">$1,809,188</td><td class="n r">$3,014,000</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════════ -->
+<section>
+  <div class="sec-head">
+    <span class="rail">06</span>
+    <h2>Sensitivity</h2>
+    <p class="dek">
+      What moves the answer. Every bar is a single-driver change against the 90.5 PM baseline,
+      holding everything else fixed.
+    </p>
+  </div>
+  <div class="body">
+
+    <figure>
+      <figcaption>
+        <div class="fc-t">Effort response to single-driver changes</div>
+        <div class="fc-s">Percentage change from the 90.5 PM production-source baseline</div>
+      </figcaption>
+      <div class="torn" id="tornado"></div>
+      <div class="tscale">
+        <span></span>
+        <span class="ax"><span>−40%</span><span>0</span><span>+90%</span></span>
+        <span></span>
+      </div>
+      <div class="fc-n">
+        Personnel capability dominates everything else combined. Rating the team as merely
+        average rather than top-decile adds <b>85%</b> to the estimate — more than complexity,
+        tooling and documentation moved together. This is the model telling you where its own
+        uncertainty lives.
+      </div>
+    </figure>
+
+    <div class="tw">
+      <table>
+        <caption>Estimate band under coherent rating sets</caption>
+        <thead><tr><th>Case</th><th class="r">Effort</th><th class="r">Person-years</th><th>Rating changes</th></tr></thead>
+        <tbody>
+          <tr><td class="k">Optimistic</td><td class="n r">57.6 PM</td><td class="n r">4.8</td>
+              <td class="ev">PREC→Nominal, PMAT→Very High, CPLX→High, DOCU→High, RELY→Nominal</td></tr>
+          <tr class="tot"><td class="k">Nominal</td><td class="n r">90.5 PM</td><td class="n r">7.5</td><td class="ev">As rated in §2–§3</td></tr>
+          <tr><td class="k">Pessimistic</td><td class="n r">219.1 PM</td><td class="n r">18.3</td>
+              <td class="ev">PREC→Very Low, RESL→Nominal, PMAT→Nominal, CPLX→Extra High, ACAP/PCAP→High, RUSE→Very High, STOR→High</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>
+      A <b>4.8 to 18.3 person-year</b> band on the same 65,202 lines. COCOMO II's published
+      accuracy is within 30% of actuals about 75% of the time when the drivers are calibrated
+      against an organisation's own history. Nothing here is calibrated against anything, so
+      treat the band as the estimate and the point value as its midpoint.
+    </p>
+
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════════ -->
+<section>
+  <div class="sec-head">
+    <span class="rail">07</span>
+    <h2>What actually happened</h2>
+    <p class="dek">The model's output against the repository's own record — and where the model breaks.</p>
+  </div>
+  <div class="body">
+
+    <div class="note">
+      <div class="h">A caveat on dating the project</div>
+      <p>
+        Git history cannot date this work. The first commit is
+        <span class="kv">2026-08-24 · "initial tracked state — beagle v1.3.0"</span> — history
+        was squashed at v1.3.0, so all 77 commits fall inside four days. The
+        <span class="kv">CHANGELOG.md</span> is the only surviving timeline: 24 releases with
+        dated entries running <b>2025-03-28 → 2026-08-28</b>, about <b>17 months</b>. That is
+        the figure used below, and it is softer evidence than the SLOC census.
+      </p>
+    </div>
+
+    <ul class="pts">
+      <li>
+        <b>Schedule: the model is close.</b> Predicted 14.7 calendar months against roughly 17
+        actual. For an uncalibrated estimate that is well inside the model's own error band —
+        COCOMO's schedule equation is the part that survives here.
+      </li>
+      <li>
+        <b>Staffing: the model is wrong by 6×.</b> It predicts 6.2 average FTE. The repository
+        shows one author on every commit. The work got done in about the predicted time with
+        roughly one-sixth of the predicted people.
+      </li>
+      <li>
+        <b>Implied productivity.</b> The model expects <b>720 SLOC per person-month</b>. The
+        actual rate is about <b>3,835</b> — <b>5.3×</b> the model's expectation on production
+        source, and <b>8.9×</b> if test code is counted as delivered.
+      </li>
+      <li>
+        <b>Where that factor comes from.</b> COCOMO II has no term for it. Its most favourable
+        productivity lever, ACAP and PCAP at Very High, caps out at a combined 0.54× — it
+        cannot express a 5× effect, because in 2000 no such effect existed to calibrate against.
+        The model's residual <i>is</i> the measurement.
+      </li>
+      <li>
+        <b>What the residual is not.</b> It is not free. The 8,786 lines of documentation, seven
+        CI gates, strict typing and 3,368 tests are precisely the scaffolding that makes a
+        productivity rate like this survivable, and the model charges for all of it — DOCU and
+        RELY together add 35% to the estimate. Removing that scaffolding would cut the modelled
+        cost and destroy the actual result.
+      </li>
+    </ul>
+
+    <div class="note">
+      <div class="h">Bottom line</div>
+      <p>
+        Beagle's production source represents roughly <b>7.5 person-years</b> and
+        <b>$1.1M–$1.8M</b> of conventionally-organised engineering, delivered on approximately
+        the schedule COCOMO II predicts, by about one-sixth of the staff it predicts. Use the
+        cost figure for insurance, valuation or replacement-planning arguments. Do not use the
+        staffing figure to plan anything — the model has no vocabulary for how this was built.
+      </p>
+    </div>
+
+  </div>
+</section>
+
+<footer>
+  <span>COCOMO II.2000 Post-Architecture · Boehm et al., <i>Software Cost Estimation with COCOMO II</i></span>
+  <span>beagle @ ffd9418 · 28 Aug 2026</span>
+</footer>
+
+</div>
+
+<div id="tip" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+  "use strict";
+  var fmt = function (n) { return n.toLocaleString("en-US"); };
+
+  /* ── tooltip ──────────────────────────────────────────────────────────── */
+  var tip = document.getElementById("tip");
+  function bindTip(el, html) {
+    el.addEventListener("pointerenter", function () {
+      tip.innerHTML = html; tip.style.opacity = "1";
+    });
+    el.addEventListener("pointermove", function (e) {
+      var r = tip.getBoundingClientRect();
+      var x = Math.min(e.clientX + 14, window.innerWidth - r.width - 8);
+      var y = Math.max(e.clientY - r.height - 12, 8);
+      tip.style.left = x + "px"; tip.style.top = y + "px";
+    });
+    el.addEventListener("pointerleave", function () { tip.style.opacity = "0"; });
+  }
+
+  /* ── 1. composition stack ─────────────────────────────────────────────── */
+  var comp = [
+    { k: "Production source", v: 65202, c: "var(--s1)", d: "src/beagle/ — 385 files, 40 subpackages" },
+    { k: "Test code",         v: 37439, c: "var(--s2)", d: "tests/ — 291 files, 3,368 test functions" },
+    { k: "Scripts & benchmarks", v: 3323, c: "var(--s3)", d: "scripts/, benchmarks/, examples/" }
+  ];
+  var compTot = comp.reduce(function (a, b) { return a + b.v; }, 0);
+  var stack = document.getElementById("stack"), lg = document.getElementById("stack-legend");
+  comp.forEach(function (d) {
+    var pct = d.v / compTot * 100;
+    var seg = document.createElement("div");
+    seg.className = "seg";
+    seg.style.flex = pct + " 1 0";
+    seg.style.background = d.c;
+    bindTip(seg, "<b>" + d.k + "</b><br>" + fmt(d.v) + " SLOC · " + pct.toFixed(1) + "%<br>" + d.d);
+    stack.appendChild(seg);
+
+    var l = document.createElement("div");
+    l.className = "lg";
+    l.innerHTML = '<i style="background:' + d.c + '"></i><span>' + d.k +
+                  ' <b>' + fmt(d.v) + '</b> <s>' + pct.toFixed(1) + '%</s></span>';
+    lg.appendChild(l);
+  });
+
+  /* ── 2. module bars ───────────────────────────────────────────────────── */
+  var mods = [
+    ["infrastructure", 12736], ["core", 10319], ["context", 6646], ["utils", 4352],
+    ["bridges", 4093], ["config", 3419], ["(package root)", 3182], ["cli", 2488],
+    ["style_guides", 2340], ["beacon", 1556], ["security", 1324], ["memory", 1319]
+  ];
+  var mMax = mods[0][1], mBox = document.getElementById("mod-bars"), srcTot = 65202;
+  mods.forEach(function (m) {
+    var row = document.createElement("div");
+    row.className = "bar";
+    row.innerHTML = '<span class="nm">' + m[0] + '</span>' +
+      '<span class="tr"><span class="fl" style="width:' + (m[1] / mMax * 100) +
+      '%;background:var(--s1)"></span></span>' +
+      '<span class="vv">' + fmt(m[1]) + '</span>';
+    bindTip(row, "<b>src/beagle/" + m[0] + "</b><br>" + fmt(m[1]) + " SLOC · " +
+                 (m[1] / srcTot * 100).toFixed(1) + "% of production source");
+    mBox.appendChild(row);
+  });
+
+  /* ── 3. phase rows ────────────────────────────────────────────────────── */
+  var phases = [
+    ["Inception — requirements & plans", 6, 5.4],
+    ["Elaboration — architecture & design", 24, 21.7],
+    ["Construction — code & test", 56, 50.7],
+    ["Transition — deployment & handover", 14, 12.7]
+  ];
+  var pBox = document.getElementById("phase-rows");
+  phases.forEach(function (p) {
+    var tr = document.createElement("tr");
+    tr.innerHTML = '<td class="k">' + p[0] + '</td>' +
+      '<td class="n r">' + p[1] + '%</td>' +
+      '<td class="n r">' + p[2].toFixed(1) + ' PM</td>' +
+      '<td style="width:38%"><span style="display:block;height:12px;border-radius:0 3px 3px 0;' +
+      'background:var(--s1);width:' + (p[1] / 56 * 100) + '%"></span></td>';
+    pBox.appendChild(tr);
+  });
+
+  /* ── 4. tornado ───────────────────────────────────────────────────────── */
+  var sens = [
+    ["ACAP + PCAP → Nominal", "average team rather than top-decile", 167.6, 85.3],
+    ["SCED → Very Low", "75% compressed schedule", 129.4, 43.0],
+    ["ACAP + PCAP → High", "strong team, not top-decile", 125.4, 38.6],
+    ["CPLX → Extra High", "sandbox & coordination as extra-high", 117.5, 29.9],
+    ["TOOL → Nominal", "no purpose-built QA toolchain", 116.0, 28.2],
+    ["RUSE → Very High", "reuse across programs", 97.2, 7.5],
+    ["DOCU → Nominal", "ordinary documentation", 73.5, -18.7]
+  ];
+  /* axis: −40 … +90, zero at the 50% mark of the plot */
+  var NEG_SPAN = 40, POS_SPAN = 90;
+  var tBox = document.getElementById("tornado");
+  sens.forEach(function (s) {
+    var pct = s[3], up = pct >= 0;
+    var w = up ? (pct / POS_SPAN) * 50 : (Math.abs(pct) / NEG_SPAN) * 50;
+    var row = document.createElement("div");
+    row.className = "trow";
+    row.innerHTML = '<span class="nm">' + s[0] + '</span>' +
+      '<span class="tplot"><span class="tbar ' + (up ? "up" : "dn") +
+      '" style="width:' + w + '%"></span></span>' +
+      '<span class="vv">' + (up ? "+" : "−") + Math.abs(pct).toFixed(1) + '%</span>';
+    bindTip(row, "<b>" + s[0] + "</b><br>" + s[1] + "<br>" +
+                 s[2].toFixed(1) + " PM · " + (up ? "+" : "−") +
+                 Math.abs(pct).toFixed(1) + "% vs 90.5 PM baseline");
+    tBox.appendChild(row);
+  });
+})();
+</script>

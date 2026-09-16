@@ -1,0 +1,365 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<remediation-directive id="RD-2026-08-29-001" version="1.0.0">
+
+  <metadata>
+    <title>Correct the import-time data root in Beagle and the fixed trusted root in gitUpper</title>
+    <author>Claude Opus 5</author>
+    <date>2026-08-29</date>
+    <executor>Claude Sonnet</executor>
+    <repositories>
+      <repository name="beagle" path="/home/server/Projects/beagle" remote="github.com/MattCreigh/beagle"/>
+      <repository name="gitUpper" path="/home/server/Projects/gitUpper" remote="github.com/MattCreigh/gitUpper"/>
+    </repositories>
+    <status>live</status>
+  </metadata>
+
+  <language-rules>
+    <rule>Write all prose in ASD-STE100 Simplified Technical English.</rule>
+    <rule>Use the imperative mood for each instruction.</rule>
+    <rule>Write one instruction in one sentence.</rule>
+    <rule>Keep procedural sentences to 20 words or fewer.</rule>
+    <rule>Use the active voice.</rule>
+    <rule>Use one word for one meaning.</rule>
+    <rule>Do not use an abbreviation before you define it.</rule>
+    <rule>Verify the prose with vale. Do not verify the prose by eye.</rule>
+  </language-rules>
+
+  <notation>
+    <description>
+      This directive states each behaviour as a propositional expression.
+      Each expression has a legend. The legend defines every identifier.
+      Use one notation in one block. Do not mix the symbols.
+    </description>
+    <symbols>
+      <symbol glyph="⇔" meaning="if and only if"/>
+      <symbol glyph="⇒" meaning="implies"/>
+      <symbol glyph="∧" meaning="and"/>
+      <symbol glyph="∨" meaning="or"/>
+      <symbol glyph="¬" meaning="not"/>
+      <symbol glyph="∀" meaning="for all"/>
+      <symbol glyph="∃" meaning="there exists"/>
+      <symbol glyph="∈" meaning="is a member of"/>
+      <symbol glyph="∅" meaning="the empty set"/>
+    </symbols>
+  </notation>
+
+  <!-- ==================================================================== -->
+  <defect id="BGL-RAG-001" severity="high">
+
+    <title>The instance RAG root binds at import time and defeats test isolation</title>
+
+    <location file="src/beagle/infrastructure/rag_paths.py" line="18" repository="beagle"/>
+    <related file="src/beagle/config/paths.py" line="58" symbol="get_data_root"/>
+
+    <evidence>
+      <observation>
+        The module computes the root when Python imports the module.
+        The statement is `_INSTANCE_RAG_ROOT = str(get_data_root() / "instance_rag")`.
+      </observation>
+      <observation>
+        `get_data_root()` reads the `BEAGLE_DATA_ROOT` environment variable.
+        A test that sets this variable after the import gets the live root.
+      </observation>
+      <observation>
+        The production store held 2 chunks on 2026-08-29.
+        Both chunks came from `/tmp/pytest-of-server/`.
+        No real repository was present in the store.
+      </observation>
+      <observation>
+        `rag_search` returned a unit-test fixture for the query "fan control PWM curve".
+        The distance was 0.545. The result was confident and wrong.
+      </observation>
+      <observation>
+        The docstring of `db_root()` promises call-time resolution.
+        The module-level constants do not keep this promise.
+      </observation>
+    </evidence>
+
+    <current-behaviour>
+      <logic><![CDATA[
+R(t_c) = g(E(t_i))
+
+where:
+  t_i    = the time when Python imports rag_paths
+  t_c    = the time when a caller reads the root
+  E(t)   = the value of BEAGLE_DATA_ROOT at time t
+  g(e)   = the root that get_data_root() derives from e
+  R(t_c) = the instance RAG root that the caller receives
+      ]]></logic>
+      <consequence>
+        A change of the environment variable after `t_i` has no effect.
+        The test writes to the production store.
+      </consequence>
+    </current-behaviour>
+
+    <required-behaviour>
+      <logic><![CDATA[
+∀ t_c : t_c ≥ t_i ⇒ R(t_c) = g(E(t_c))
+
+where:
+  t_i    = the time when Python imports rag_paths
+  t_c    = the time when a caller reads the root
+  E(t)   = the value of BEAGLE_DATA_ROOT at time t
+  g(e)   = the root that get_data_root() derives from e
+  R(t_c) = the instance RAG root that the caller receives
+      ]]></logic>
+      <logic><![CDATA[
+isolated(T) ⇔ ∀ w ∈ W(T) : within(w, D(T))
+
+where:
+  T          = one test
+  W(T)       = the set of file writes that T makes
+  D(T)       = the directory that BEAGLE_DATA_ROOT names while T runs
+  within(w,d)= w resolves inside d
+  isolated(T)= T writes no data outside its own directory
+      ]]></logic>
+      <constraint>
+        Compute `within` with real path resolution.
+        Use `Path.relative_to` on resolved paths.
+        Do not compare string prefixes, because a symbolic link defeats a prefix test.
+      </constraint>
+    </required-behaviour>
+
+    <instructions>
+      <step n="1">Replace the module-level constants with functions that resolve at call time.</step>
+      <step n="2">Keep the names `get_instance_rag_root` and `get_main_rag_root`.</step>
+      <step n="3">Return the same type as before, which is `str`.</step>
+      <step n="4">Find every reader of the old constants. Use `graph_callers` from Beagle.</step>
+      <step n="5">Repoint each reader at the function.</step>
+      <step n="6">Add a test that sets BEAGLE_DATA_ROOT after the import and asserts the new root.</step>
+      <step n="7">Add a test that asserts no write goes to the home directory store.</step>
+    </instructions>
+
+    <prohibitions>
+      <prohibition>Do not delete the production store to make a test pass.</prohibition>
+      <prohibition>Do not add a cache that restores the import-time behaviour.</prohibition>
+      <prohibition>Do not mark the failing test as expected, skipped, or extra-slow.</prohibition>
+    </prohibitions>
+
+    <acceptance-criteria>
+      <criterion id="BGL-RAG-001-A">
+        A test sets BEAGLE_DATA_ROOT after the import. The root changes.
+      </criterion>
+      <criterion id="BGL-RAG-001-B">
+        A full test run does not change `~/.beagle/instance_rag`.
+        Record the chunk count before the run and after the run.
+        The two counts are equal.
+      </criterion>
+      <criterion id="BGL-RAG-001-C">
+        `rag_status` reports the same `indexed_chunks` before and after the test run.
+      </criterion>
+    </acceptance-criteria>
+
+  </defect>
+
+  <!-- ==================================================================== -->
+  <defect id="GUP-CONTAIN-001" severity="medium">
+
+    <title>The gitUpper MCP surface cannot reach a repository outside its own project root</title>
+
+    <location file="src/gup_pkg/mcp/security.py" line="202" symbol="_default_trusted_root" repository="gitUpper"/>
+    <related file="src/gup_pkg/mcp/security.py" line="171" symbol="assert_path_contained"/>
+    <related file="src/gup_pkg/mcp/tools.py" line="66" symbol="_sanitized_containment_error"/>
+
+    <evidence>
+      <observation>
+        `_default_trusted_root()` walks up from the current directory of the server process.
+        It looks for a project marker.
+      </observation>
+      <observation>
+        The server takes its current directory from the client at start.
+        The trusted root therefore depends on where the client started.
+      </observation>
+      <observation>
+        `get_status` refused `/home/server/.config/beagle` on 2026-08-29.
+        `get_status` also refused `/home/server/.claude`.
+        The error was "path is outside the allowed project workspace".
+      </observation>
+      <observation>
+        The `project_root` parameter did not change the result.
+        Both parameters reach the same containment test.
+      </observation>
+      <observation>
+        The configuration has no key for a trusted root.
+        An operator cannot correct this without a change to the code.
+      </observation>
+    </evidence>
+
+    <current-behaviour>
+      <logic><![CDATA[
+allowed(p) ⇔ contained(p, d(c))
+
+where:
+  p           = the path that the caller supplies
+  c           = the current directory of the MCP server process
+  d(c)        = the nearest ancestor of c that holds a project marker
+  contained(x,r) = x resolves inside r
+  allowed(p)  = the server accepts p
+      ]]></logic>
+      <consequence>
+        The set of reachable repositories has exactly one member.
+        An operator cannot extend the set.
+      </consequence>
+    </current-behaviour>
+
+    <required-behaviour>
+      <logic><![CDATA[
+allowed(p) ⇔ ∃ r ∈ T : contained(p, r)
+
+T = C ∪ { d(c) }
+
+where:
+  p           = the path that the caller supplies
+  T           = the set of trusted roots
+  C           = the roots that config.toml declares, after expansion
+  c           = the current directory of the MCP server process
+  d(c)        = the nearest ancestor of c that holds a project marker
+  contained(x,r) = x resolves inside r
+  allowed(p)  = the server accepts p
+      ]]></logic>
+      <logic><![CDATA[
+valid(r) ⇔ absolute(r) ∧ directory(r) ∧ ¬broad(r)
+
+broad(r) ⇔ r ∈ { /, /home, /usr, /etc, /var, /opt } ∨ depth(r) < 2
+
+where:
+  r          = one candidate trusted root
+  absolute(r)= r starts at the file system root
+  directory(r) = r exists and is a directory
+  depth(r)   = the count of path components in r
+  broad(r)   = r gives access to too much of the file system
+  valid(r)   = the server accepts r as a trusted root
+      ]]></logic>
+      <logic><![CDATA[
+C = ∅ ⇒ ( allowed(p) ⇔ contained(p, d(c)) )
+
+where:
+  C          = the roots that config.toml declares
+  ∅          = the empty set
+  p          = the path that the caller supplies
+  c          = the current directory of the MCP server process
+  d(c)       = the nearest ancestor of c that holds a project marker
+  contained(x,r) = x resolves inside r
+  allowed(p) = the server accepts p
+      ]]></logic>
+      <constraint>
+        The last expression states the compatibility rule.
+        An operator who declares no root keeps the present behaviour.
+        The change is therefore fail-closed by default.
+      </constraint>
+      <constraint>
+        Reject an invalid root at the time the server reads the configuration.
+        Write a warning to the log. Do not stop the server.
+      </constraint>
+      <constraint>
+        Keep the error message for the caller unchanged.
+        The message must not show a trusted root, because that leaks the layout.
+      </constraint>
+    </required-behaviour>
+
+    <instructions>
+      <step n="1">Add a `trusted_roots` key to the security section of the configuration schema.</step>
+      <step n="2">Give the key an empty list as its default value.</step>
+      <step n="3">Expand `~` and environment variables in each entry.</step>
+      <step n="4">Test each entry against `valid(r)`. Discard an entry that fails. Log the reason.</step>
+      <step n="5">Pass the accepted roots to `assert_path_contained` as `trusted_roots`.</step>
+      <step n="6">Keep the derived root in the set, so present callers continue to work.</step>
+      <step n="7">Add a test for a path inside a declared root. The server accepts the path.</step>
+      <step n="8">Add a test for a path outside every root. The server refuses the path.</step>
+      <step n="9">Add a test for a symbolic link that points outside every root. The server refuses the path.</step>
+      <step n="10">Add a test for an empty configuration. The behaviour equals the present behaviour.</step>
+    </instructions>
+
+    <prohibitions>
+      <prohibition>Do not remove the containment test.</prohibition>
+      <prohibition>Do not use a string prefix to test containment.</prohibition>
+      <prohibition>Do not make the default configuration accept the home directory.</prohibition>
+      <prohibition>Do not show a trusted root in an error that a caller receives.</prohibition>
+    </prohibitions>
+
+    <acceptance-criteria>
+      <criterion id="GUP-CONTAIN-001-A">
+        A declared root permits `get_status` on a repository inside that root.
+      </criterion>
+      <criterion id="GUP-CONTAIN-001-B">
+        A path outside every root gets the unchanged error message.
+      </criterion>
+      <criterion id="GUP-CONTAIN-001-C">
+        A symbolic link that leaves a trusted root does not pass the test.
+      </criterion>
+      <criterion id="GUP-CONTAIN-001-D">
+        An empty `trusted_roots` list gives the behaviour of the present release.
+      </criterion>
+    </acceptance-criteria>
+
+  </defect>
+
+  <!-- ==================================================================== -->
+  <global-constraints>
+    <constraint id="G1">
+      Correct the cause. Do not hide the symptom.
+      A broken feature is a defect to correct, not a feature to disable.
+    </constraint>
+    <constraint id="G2">
+      Do not disable a lint rule. A lint result shows a defect in the input.
+    </constraint>
+    <constraint id="G3">
+      Change only the files that these two defects name.
+      Do not change the format of other code.
+    </constraint>
+    <constraint id="G4">
+      Give each public function a Google-style docstring.
+      Include the `Args:`, `Returns:` and `Raises:` sections.
+    </constraint>
+    <constraint id="G5">
+      Mark each rule that must not change with an `&lt;invariant&gt;` comment.
+    </constraint>
+    <constraint id="G6">
+      Cite a file and a line for each claim about the code.
+      Read the line before you cite it.
+    </constraint>
+    <constraint id="G7">
+      Each of the two repositories takes its own commit.
+      Do not put both corrections in one commit.
+    </constraint>
+  </global-constraints>
+
+  <verification>
+    <description>
+      Run the gate through routeUpper. Do not start a sibling tool from the shell.
+      Report the output of the gate. A statement that the code "should work" is not a verification.
+    </description>
+    <command tool="qualityUpper" via="routeUpper">
+      rup_call(tool="qup", tool_name="run_gate", arguments={"paths": [...], "no_cache": true})
+    </command>
+    <command tool="testUpper" via="routeUpper">
+      rup_call(tool="tup", tool_name="run_tests", arguments={...})
+    </command>
+    <gate-condition><![CDATA[
+complete ⇔ L ∧ T ∧ A ∧ ¬S
+
+where:
+  L = the quality gate reports zero violations
+  T = every test passes
+  A = every acceptance criterion has evidence
+  S = a test was skipped, deselected, or marked as expected to fail
+  complete = the work is ready for a commit
+    ]]></gate-condition>
+  </verification>
+
+  <output-contract>
+    <item n="1">A unified diff for each repository.</item>
+    <item n="2">The output of the quality gate for each repository.</item>
+    <item n="3">The output of the test run for each repository.</item>
+    <item n="4">One line for each acceptance criterion, with the command that proves it.</item>
+    <item n="5">A list of every file that you changed, with the reason.</item>
+    <item n="6">A statement of any criterion that you could not meet, with the reason.</item>
+  </output-contract>
+
+  <escalation>
+    <rule>Retry a failed tool call one time. Report the error after the second failure.</rule>
+    <rule>Stop after three review cycles. Report the disagreement to the user.</rule>
+    <rule>Ask the user before you change the default security behaviour of gitUpper.</rule>
+  </escalation>
+
+</remediation-directive>
