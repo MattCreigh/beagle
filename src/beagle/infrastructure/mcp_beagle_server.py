@@ -351,6 +351,16 @@ def _resolve_plugin_mcp(obj: Any) -> FastMCP:
 
     Accepts: a FastMCP instance, any object exposing ``mcp``, or a callable
     factory returning either of the former.
+
+    Cross-package note (2026-09-16): the core server imports the MCP SDK's
+    ``mcp.server.fastmcp.FastMCP``, while a plugin may legitimately use the
+    standalone ``fastmcp`` package (its own dependency, e.g.
+    beagle-plugin-configrender). The two ``FastMCP`` classes are distinct
+    types, so ``isinstance`` rejects a working plugin instance and the
+    mount fails with "does not expose a FastMCP 'mcp'". A structural check
+    (``is_server`` marker + tool-registration surface) accepts either
+    package; a bare module exposing ``mcp`` still resolves through the
+    ``getattr`` fallback.
     """
     target = obj
     if isinstance(target, FastMCP):
@@ -358,7 +368,19 @@ def _resolve_plugin_mcp(obj: Any) -> FastMCP:
     if callable(target) and not hasattr(target, "mcp"):
         target = target()
     candidate = getattr(target, "mcp", target)
-    if isinstance(candidate, FastMCP):
+
+    def _is_fastmcp_like(instance: Any) -> bool:
+        """Structural FastMCP recognition across the two packages."""
+        if isinstance(instance, FastMCP):
+            return True
+        if type(instance).__module__.startswith(("fastmcp.", "mcp.server.fastmcp")):
+            return bool(
+                callable(getattr(instance, "tool", None))
+                and callable(getattr(instance, "run", None))
+            )
+        return False
+
+    if _is_fastmcp_like(candidate):
         return candidate
     raise TypeError(f"plugin object {type(obj).__name__} does not expose a FastMCP 'mcp'")
 
