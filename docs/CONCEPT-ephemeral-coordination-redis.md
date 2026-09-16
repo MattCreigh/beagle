@@ -235,7 +235,7 @@ observer draws the same agent with the same colour across their own session.
  Coord (beagle) ─── 3 agents in <repo root> ──────────────
  agent 20260821_13   ● active   model=deepseek-v4-flash  phase=writing
    plan : beagle-master-sequence (in-flight)
-   head : b3ebcf7  "fix: suppress aeca-walltime-for-interval ..."
+   head : b3ebcf7  "fix: suppress walltime-for-interval ..."
    files: docs/CONCEPT-ephemeral-coordination-redis.md (held)
    work : concept-spec-beacon
  agent 20260821_11   ● active   model=glm-5.2             phase=qa

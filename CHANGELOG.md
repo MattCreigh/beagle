@@ -867,7 +867,7 @@ QA-gate findings resolved in the touched files.
 - **Pre-existing QA-gate findings fixed:**
   - `sandbox.py`: ASYNC230 blocking `open()` in `_run_in_microvm` →
     `_write_vm_config_atomic()` helper (asyncio.to_thread + tmp-file + fsync +
-    os.replace); semgrep aeca-nonatomic-write-to-config closed.
+    os.replace); semgrep nonatomic-write-to-config closed.
   - `a2a_protocol.py`: 5 BLE001 blind `except Exception` narrowed to concrete
     families; vulture kwargs/unused-import findings resolved.
 - **Full-suite remediation (tup run → 29 failures + 5 skips → 0 failures, 0 skips):**
@@ -961,8 +961,8 @@ imported as `beagle.security.validation`.
 
 ### Removed — the nested duplicate package
 
-`beagle/beagle/` (formerly `aeca/`) was a second name for the same
-project living inside itself, and that duplication is what broke
+`beagle/beagle/` (a former second name for the package) was itself
+inside itself, and that duplication is what broke
 packaging — two names meant two package roots, `beagle.beagle.*` import
 paths, and a dist-name lookup that resolved only because a stale
 `goose_agentic_workflow` distribution stayed installed alongside
