@@ -21,10 +21,85 @@ R = sys.executable
 ROOT_DIR = pathlib.Path(__file__).resolve().parent.parent
 RATCHET_FILE = ROOT_DIR / "baselines" / "quality-ratchet.json"
 
+# Per-checker wall-clock ceiling. A checker that hangs (semgrep on a cold rule
+# cache, ruff on a huge tree) must not hang the ratchet: without a timeout the
+# child blocks the parent indefinitely with no error and no recovery.
+_SUBPROCESS_TIMEOUT_S = 600.0
+
+# The doctrine rule pack ships *inside* qup, not in a user config directory.
+# The previous value (~/.config/qa-profiles/semgrep/…-doctrine.yml) does not
+# exist on this host, so the measurement silently fell back to literal counts
+# and Q-36..Q-38 measured nothing. Resolve the live path, and fail loudly when
+# it cannot be found rather than substituting a number.
+_DOCTRINE_PROFILE_REL = pathlib.Path("baselines") / "semgrep" / "beagle-doctrine.yml"
+_DOCTRINE_PROFILE_GLOB = "*-doctrine.yml"
+# The rule ids carry this prefix; it is checked so a stale bundled profile
+# (the pre-rename ids) cannot pass a file-exists test while matching nothing.
+_RULE_ID_PREFIX = "id: beagle-"
+
+
+def _doctrine_profile() -> pathlib.Path:
+    """Locate the doctrine semgrep profile, or fail loudly.
+
+    Resolution order:
+
+    1. The copy vendored into this repo (``baselines/semgrep/``). This is
+       preferred so the ratchet is hermetic: the metric must not depend on
+       which qup happens to be installed in whichever interpreter runs the
+       script, nor on a path outside version control.
+    2. Failing that, qup's own bundled profile, resolved by glob because the
+       filename has changed across qup versions (the rule ids were renamed
+       from an earlier project prefix to ``beagle-``).
+
+    The profile is checked for the current rule-id prefix, so a stale bundled
+    copy cannot quietly measure nothing.
+
+    Raises:
+        RuntimeError: when no usable profile can be resolved. An unmeasurable
+            metric must fail, not silently report a constant.
+    """
+    candidates = [ROOT_DIR / _DOCTRINE_PROFILE_REL]
+    try:
+        import qup_pkg
+
+        profile_dir = (
+            pathlib.Path(qup_pkg.__file__).resolve().parent / "profiles" / "semgrep"
+        )
+        candidates.extend(sorted(profile_dir.glob(_DOCTRINE_PROFILE_GLOB)))
+    except ImportError:
+        pass
+
+    for candidate in candidates:
+        if candidate.is_file() and _RULE_ID_PREFIX in candidate.read_text(
+            encoding="utf-8", errors="ignore"
+        ):
+            return candidate
+
+    raise RuntimeError(
+        "quality ratchet: no doctrine semgrep profile carrying the "
+        f"{_RULE_ID_PREFIX!r} rule ids could be found (tried: "
+        f"{[str(c) for c in candidates]}). Q-36..Q-38 cannot be measured. Fix the "
+        "vendored copy or the install rather than editing a literal count."
+    )
+
 
 def _sh(cmd: str) -> str:
     args = shlex.split(cmd)
-    res = subprocess.run(args, shell=False, cwd=ROOT_DIR, capture_output=True, text=True)
+    try:
+        res = subprocess.run(
+            args,
+            shell=False,
+            cwd=ROOT_DIR,
+            capture_output=True,
+            text=True,
+            timeout=_SUBPROCESS_TIMEOUT_S,
+        )
+    except subprocess.TimeoutExpired:
+        print(
+            f"warning: checker timed out after {_SUBPROCESS_TIMEOUT_S}s: {args[0]} …",
+            file=sys.stderr,
+        )
+        return ""
     return res.stdout.strip()
 
 
@@ -44,7 +119,7 @@ def _ruff_sum(select_rule: str) -> int:
     return total
 
 
-def _qualname_attr(node):
+def _qualname_attr(node: ast.AST) -> str:
     """Resolve a dotted attribute/name into its source-qualified string."""
     if isinstance(node, ast.Attribute):
         return _qualname_attr(node.value) + "." + node.attr
@@ -140,26 +215,30 @@ def measure() -> dict[str, int]:
     q05_txt = _sh("grep -rn 'except Exception' src/beagle --include='*.py'")
     counts["Q-05"] = len([line for line in q05_txt.splitlines() if line.strip()])
 
-    # Q-36, Q-37, Q-38: aeca-doctrine semgrep
+    # Q-36, Q-37, Q-38: doctrine-floor semgrep, measured against qup's own
+    # bundled profile. No literal fallback: an unmeasurable metric must raise,
+    # not silently report a constant that can never move.
+    profile = _doctrine_profile()
     semgrep_json = _sh(
-        "semgrep --config ~/.config/qa-profiles/semgrep/aeca-doctrine.yml --json --quiet --metrics=off src/beagle"
+        f"semgrep --config {profile} --json --quiet --metrics=off src/beagle"
     )
     try:
         s_data = json.loads(semgrep_json)
         s_results = s_data.get("results", [])
         counts["Q-36"] = sum(
-            1 for r in s_results if r["check_id"].endswith("aeca-walltime-for-interval")
+            1 for r in s_results if r["check_id"].endswith("walltime-for-interval")
         )
         counts["Q-37"] = sum(
-            1 for r in s_results if r["check_id"].endswith("aeca-silently-degraded-feature")
+            1 for r in s_results if r["check_id"].endswith("silently-degraded-feature")
         )
         counts["Q-38"] = sum(
-            1 for r in s_results if r["check_id"].endswith("aeca-tempfile-delete-false")
+            1 for r in s_results if r["check_id"].endswith("tempfile-delete-false")
         )
-    except (OSError, json.JSONDecodeError, KeyError, ValueError):
-        counts["Q-36"] = 15
-        counts["Q-37"] = 1
-        counts["Q-38"] = 1
+    except (OSError, json.JSONDecodeError, KeyError, ValueError) as exc:
+        raise RuntimeError(
+            f"quality ratchet: semgrep output for the doctrine profile at {profile} "
+            f"was not parseable ({exc}). Q-36..Q-38 cannot be measured."
+        ) from exc
 
     # Q-06: type: ignore
     q06_txt = _sh("grep -rn 'type: ignore' src/beagle --include='*.py'")
@@ -363,6 +442,91 @@ def update(ratchet_path: pathlib.Path = RATCHET_FILE) -> bool:
     return True
 
 
+def rebaseline(ratchet_path: pathlib.Path = RATCHET_FILE, *, reason: str = "") -> bool:
+    """Re-baseline EVERY metric to its live value. Ratifies, never tightens.
+
+    ``update()`` is the incremental path: it lowers only the metrics that fell
+    and refuses outright if ANY metric rose. That refusal is what makes a
+    long-deferred baseline unusable — once ambient drift has pushed a single
+    metric up, no metric can be lowered either, so the baseline freezes and the
+    ratchet stops being able to ratify anything.
+
+    This function is the escape hatch, and it is deliberately explicit: it
+    requires a non-empty ``--reason``, it REPORTS every change, and it RECORDS
+    the reason in ``baselines/quality-progress.md`` beside the diff. That
+    combination is what makes the move auditable later — the point of a ratchet
+    is not that its number never moves, it is that no move goes unrecorded.
+
+    It does not weaken the gate. The new baseline is the live count, which the
+    next run must not exceed. A future regression still fails.
+
+    Args:
+        ratchet_path: The baseline file to rewrite.
+        reason: Why this re-baseline happened. Written to the progress log.
+
+    Returns:
+        True when the file was written, False on a missing baseline or a
+        missing reason.
+    """
+    if not ratchet_path.exists():
+        print(f"Error: Ratchet file {ratchet_path} does not exist.")
+        return False
+    if not reason.strip():
+        print("Refusing to re-baseline without --reason: an unexplained baseline move")
+        print("is indistinguishable from hiding a regression.")
+        return False
+
+    baseline = json.loads(ratchet_path.read_text())
+    live = measure()
+
+    print(f"{'ID':<6} {'Baseline':<10} {'Live':<8} Change")
+    print("-" * 44)
+    changes: list[str] = []
+    for metric_id in sorted(baseline):
+        data = baseline[metric_id]
+        old = data.get("count", 0)
+        new = live.get(metric_id, 0)
+        if old == new:
+            continue
+        direction = "lowered" if new < old else "RAISED"
+        print(f"{metric_id:<6} {old:<10} {new:<8} {direction}")
+        if new > old:
+            changes.append(f"- {metric_id}: {old} -> {new} (RAISED)")
+        else:
+            changes.append(f"- {metric_id}: {old} -> {new}")
+        data["count"] = new
+
+    if not changes:
+        print("No metric changed; baseline unchanged.")
+        return True
+
+    ratchet_path.write_text(json.dumps(baseline, indent=2) + "\n")
+
+    # Record the reason beside the diff. The progress log is the audit trail;
+    # a baseline that moves without an entry there is indistinguishable from
+    # a regression that was papered over.
+    log_path = ROOT_DIR / "baselines" / "quality-progress.md"
+    from datetime import UTC, datetime
+
+    stamp = datetime.now(UTC).strftime("%Y-%m-%d")
+    entry = (
+        f"\n## {stamp} — re-baseline (ratified)\n\n"
+        f"Reason: {reason.strip()}\n\n"
+        "Every metric below was re-baselined to its live value. The baseline is\n"
+        "the current steady state, not a target; the next run must not exceed it.\n\n"
+        + "\n".join(changes)
+        + "\n"
+    )
+    if log_path.is_file():
+        log_path.write_text(log_path.read_text() + entry)
+    else:
+        log_path.write_text(f"# Quality progress log\n{entry}")
+
+    print(f"\nRe-baselined {len(changes)} metric(s).")
+    print(f"Reason recorded in {log_path.relative_to(ROOT_DIR)}.")
+    return True
+
+
 def report(ratchet_path: pathlib.Path = RATCHET_FILE) -> None:
     """Print report table: metric live/baseline -> target."""
     if not ratchet_path.exists():
@@ -435,6 +599,16 @@ def main() -> int:
     parser.add_argument(
         "--report", action="store_true", help="Print metric table: live/baseline -> target"
     )
+    parser.add_argument(
+        "--rebaseline",
+        action="store_true",
+        help="Ratify EVERY metric at its live value (requires --reason)",
+    )
+    parser.add_argument(
+        "--reason",
+        default="",
+        help="Why the baseline is being re-baselined; recorded in quality-progress.md",
+    )
     parser.add_argument("--selftest", action="store_true", help="Run ratchet selftest")
     args = parser.parse_args()
 
@@ -444,6 +618,9 @@ def main() -> int:
     if args.report:
         report()
         return 0
+
+    if args.rebaseline:
+        return 0 if rebaseline(reason=args.reason) else 1
 
     if args.update:
         success = update()

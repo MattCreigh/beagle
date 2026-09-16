@@ -215,19 +215,19 @@
       "severity": "none"
     },
     "Q-36": {
-      "name": "aeca-walltime-for-interval \u2014 wall clock used to measure elapsed time",
+      "name": "beagle-walltime-for-interval \u2014 wall clock used to measure elapsed time",
       "count": 15,
       "target": 0,
       "severity": "high"
     },
     "Q-37": {
-      "name": "aeca-silently-degraded-feature",
+      "name": "beagle-silently-degraded-feature",
       "count": 1,
       "target": 0,
       "severity": "high"
     },
     "Q-38": {
-      "name": "aeca-tempfile-delete-false",
+      "name": "beagle-tempfile-delete-false",
       "count": 1,
       "target": 0,
       "severity": "med"

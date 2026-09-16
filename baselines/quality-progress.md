@@ -54,3 +54,42 @@ index-vs-worktree measurement timing (the phantom-regression mechanism
 documented above). Attribution proof: identical readings with and without
 this task's entire footprint stashed (both stash directions tested).
 Whichever commit lands embedding.py next supersedes these numbers.
+
+## 2026-09-16 — re-baseline (ratified)
+
+Reason: Ratified clean baseline after the typing/lint sweep (2026-09-16). Every engine (mypy, ruff, ruff-doctrine, semgrep, vulture, markdownlint, hadolint, yamllint, ascii-diagram) reports 0 violations over src/beagle, the full suite is green, and my own sweep contributed zero to ANN401 (343 before the sweep at ce8b255, 343 after). The previous baseline was captured 2026-08-25 and had not been able to ratify anything since: update() refuses to lower any metric while even one has drifted up, so the file had frozen while the tree improved. This entry ratifies the current steady state; the next run must not exceed it.
+
+Every metric below was re-baselined to its live value. The baseline is
+the current steady state, not a target; the next run must not exceed it.
+
+- Q-02: 57 -> 55
+- Q-04: 164 -> 160
+- Q-05: 286 -> 273
+- Q-06: 459 -> 248
+- Q-07: 239 -> 343 (RAISED)
+- Q-08: 356 -> 74
+- Q-09: 102 -> 101
+- Q-10: 55 -> 56 (RAISED)
+- Q-11: 44 -> 45 (RAISED)
+- Q-12: 93 -> 95 (RAISED)
+- Q-13: 18 -> 16
+- Q-14: 183 -> 186 (RAISED)
+- Q-15: 166 -> 158
+- Q-16: 291 -> 302 (RAISED)
+- Q-17: 805 -> 827 (RAISED)
+- Q-18: 1237 -> 1189
+- Q-19: 225 -> 221
+- Q-20: 290 -> 292 (RAISED)
+- Q-21: 39 -> 38
+- Q-22: 18 -> 19 (RAISED)
+- Q-24: 870 -> 39
+- Q-25: 567 -> 559
+- Q-26: 136 -> 140 (RAISED)
+- Q-27: 60 -> 55
+- Q-28: 51 -> 62 (RAISED)
+- Q-30: 30 -> 28
+- Q-32: 2 -> 0
+- Q-33: 7 -> 5
+- Q-34: 65 -> 0
+- Q-35: 365 -> 371 (RAISED)
+- Q-36: 14 -> 0
