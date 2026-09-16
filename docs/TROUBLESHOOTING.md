@@ -4,7 +4,7 @@ Common issues, their causes, and how to fix them.
 
 ## Installation
 
-### `pip install -e .` fails with "Microsoft Visual C++ 14.0 is required"
+### `pip install --only-binary` fails with "Microsoft Visual C++ 14.0 is required"
 
 You're on Windows. Beagle's `sentence-transformers` dependency
 needs a C++ compiler to build `numpy`-derived wheels.
@@ -12,7 +12,7 @@ needs a C++ compiler to build `numpy`-derived wheels.
 **Fix:** Install the prebuilt wheel instead:
 
 ```bash
-pip install --only-binary=numpy,sentence-transformers -e .
+pip install --only-binary=numpy,sentence-transformers beagle
 ```
 
 Or use `uv pip install` which prefers prebuilt wheels.
@@ -48,7 +48,7 @@ python3 -c "import kuzu; print(kuzu.__version__)"
 If either fails, install via:
 
 ```bash
-pip install -e ".[dev]"  # dev extras include lancedb & kuzu
+uv pip install --reinstall --no-deps ".[dev]"  # dev extras include lancedb & kuzu
 ```
 
 ### `rag_search` returns an empty result with no error

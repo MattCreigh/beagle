@@ -614,7 +614,7 @@ def format_startup_report(results: list[StartupCheckResult]) -> str:
     fail_count = sum(1 for r in results if r.is_fail)
 
     for r in results:
-        icon = {"ok": "✓", "warn": "⚠", "fail": "✗"}[r.status]
+        icon = {"ok": "✓", "warn": "⚠", "fail": "✗", "skip": "○"}[r.status]
         lines.append(f"  [{icon}] {r.name}: {r.message}")
         if r.fix_hint and r.status != "ok":
             lines.append(f"      → {r.fix_hint}")

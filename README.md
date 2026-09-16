@@ -117,9 +117,9 @@ Install all of this software before installation step 1.
   curl -LsSf https://astral.sh/uv/install.sh | sh
   ```
 
-- **Node.js 22.19.0 or later.** The bundled `pi` frontend is JavaScript. Its
-  `vendor/pi-prebuild/package.json` declares `"node": ">=22.19.0"`. The `beagle`
-  command with no subcommand starts `pi`.
+- **Node.js 22.19.0 or later.** The `pi` frontend is JavaScript. Its
+  `vendor/pi/package.json` declares `"node": ">=22.19.0"`. Node is needed only
+  for `pi`; the core engine and the `webui` frontend do not require it.
 - **The Goose CLI.** The wheel does not contain the Goose binary. The default
   sub-agent runtime is `goose_cli`, which starts a local `goose` process. Put
   `goose` on your `PATH`, or set `GOOSE_BIN` to the path of the binary. The
@@ -147,7 +147,11 @@ uv run beagle config init
 # 4. Set your LLM provider API key
 export OPENAI_API_KEY="your-api-key-here"
 
-# 5. Launch the interactive frontend (bundled in the wheel)
+# 5. Install the frontends you want (optional; each is a separate wheel)
+#    Both are discovered automatically once installed.
+uv pip install beagle-plugin-pi beagle-plugin-webui
+
+# 6. Launch the interactive frontend (starts `pi` when it is installed)
 uv run beagle
 ```
 
@@ -175,11 +179,21 @@ The CUDA packages add several gigabytes to the install.
 > beagle config init
 > ```
 
-**Default frontend.** The wheel contains a vendored, prebuilt copy of the
-[`pi`](https://github.com/earendil-works/pi) TUI coding agent. The wheel also
-contains a bridge that connects `pi` to Beagle's MCP server over stdio. The
-`beagle` command with no subcommand starts `pi`. The bridge calls Beagle's
-agents over MCP without more setup. See `src/beagle/frontends/pi/README.md`.
+**Frontends are plugins.** The core `beagle` wheel contains no frontend tree.
+Each frontend is a separate distribution that registers a `beagle.frontends`
+entry point, which `beagle.cli.plugin_loader` discovers at CLI start:
+
+- [`beagle-plugin-pi`](https://github.com/MattCreigh/beagle-plugin-pi) — the
+  [`pi`](https://github.com/earendil-works/pi) TUI coding agent, plus a bridge
+  that connects it to Beagle's MCP server over stdio. This is the default
+  frontend: `beagle` with no subcommand starts `pi`.
+- [`beagle-plugin-webui`](https://github.com/MattCreigh/beagle-plugin-webui) —
+  the Beagle web dashboard, reached with `beagle webui`.
+
+A plugin is mounted under its entry-point name, after the built-in commands.
+A plugin that is missing, raises on import, or hangs on import is skipped with
+a warning: it can never break `beagle --help` and can never shadow a built-in
+command. Installed plugins appear in `beagle --help`.
 
 ---
 
@@ -429,9 +443,12 @@ active transport.
 ## Licence
 
 The Beagle core is MIT-licensed. The [`LICENSE`](LICENSE) file gives the full
-terms. The MIT licence covers the Beagle source code, the documentation, and
-the vendored `pi` frontend fork. The `license` field in `pyproject.toml`
-declares the same licence.
+terms. The MIT licence covers the Beagle source code and the documentation. The
+`license` field in `pyproject.toml` declares the same licence.
+
+The frontends are separate distributions with their own terms. The
+`beagle-plugin-pi` wheel vendors a fork of `pi` and carries that project's
+`UPSTREAM.txt` and `LICENSE`; read them before you redistribute it.
 
 Optional add-ons have a different licence. The `beagle-orpheus` transport wheel
 is separately licensed proprietary software. Beagle does not install it. Read

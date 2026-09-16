@@ -59,14 +59,6 @@ Domain: **universal**
 - **sanitization**: LINEAR_RE2_PRE_INGEST
 - **permissions**: secret files 0600 or 0400
 - **no_plaintext**: never persist unencrypted secrets
-- **loader**: load via secrets_loader.py — env vars first, then ~/.config/goose/secrets.yaml; open secret files with os.open() and explicit mode 0o600
-- **log_scrubbing**: scrub secrets from logs via _SECRET_PATTERNS (20+ char minimum); use Path.name, not the full path, for binaries in log messages
-
-### crypto
-
-- **signing**: Ed25519 for A2A agent signing — raise RuntimeError if the key is missing
-- **hashing**: hashlib.sha256().hexdigest()[:48] for guardian hashes
-- **no_downgrade**: never downgrade crypto — no MD5, no SHA1 for security purposes
 
 ### sandbox
 
@@ -163,7 +155,7 @@ Universal behavioural directives for the Goose Beagle Orchestrator. Auto-injecte
 - Never disable a lint rule to clear a lint gate. A lint finding is a defect of the input, not the rule; disabling the rule (project-local select/ignore config, removing a rule from .markdownlint.jsonc/ruff.toml, adding a `# noqa:` line) suppresses findings without fixing their cause and leaves a silent blind spot for the next contributor. Fix the input; raise the rule to the user if it is genuinely wrong for the project. The 2026-07-28 ghost_secrets_vault consolidation is the reference case: MD060 was disabled in .markdownlint.jsonc to make PLAN.md lint-clean rather than reformatting the table separator rows. Canonical statement: beagle_environment.toml [environment.qa_toolchain].doctrine_floor_symmetric_rule.
 - Never assume local GPU compute is available — heavy inference is remote-API only (Ollama Cloud)
 - Never run pip install --force-reinstall <wheel> without --no-deps for the Beagle wheel — resolving deps from default PyPI pulls the GPU torch stack (~3.5GB)
-- PIPX FOR EDITABLE, UV FOR FINAL. pipx installs editable/development trees (`pipx install -e .`) and every standalone CLI tool (ruff, mypy, semgrep …), each in its own venv so their pins cannot collide. uv builds and installs release wheels (`uv build`, then `uv pip install --force-reinstall --no-deps <wheel> --python <target-venv>/bin/python3`). Never bare `pip install` — system Python is PEP 668-marked and rejects it. Never `pipx` a release wheel into a shared deployed venv; pipx owns its own venv and will not install into that one. Full policy: beagle_environment.toml [environment.python_install_policy].
+- WHEELS ONLY, FOR EVERY INSTALL. Never `pip install -e .` and never `pipx install -e .` — an editable install puts a source tree on `sys.path`, so the type checker resolves the package as a LIBRARY and silently suppresses errors in followed modules, and the running system stops agreeing with the built artefact. Build a wheel and install it: `uv build --wheel`, then `uv pip install --force-reinstall --no-deps <wheel> --python <target-venv>/bin/python3`. Standalone CLI tools (ruff, mypy, semgrep …) are installed into their own venvs so their pins cannot collide — non-editable, like everything else. Never bare `pip install` — system Python is PEP 668-marked and rejects it. Never `pipx` a release wheel into a shared deployed venv; pipx owns its own venv and will not install into that one. Enforced by `scripts/check_no_editable_installs.py` on every `make lint`. Full policy: beagle_environment.toml [environment.python_install_policy].
 - Never hand-edit a deployed venv's site-packages to fix config or code. site-packages is a BUILD ARTIFACT, not a source tree: the next wheel install silently reverts every edit, and until it does, the repo and the running system disagree with no diff to reveal it. Edit the repo (the SSOT), rebuild, reinstall. The 2026-07-28 incident is the reference case — model routing (config.toml, config/agents.toml, config/models.py) was iterated directly in site-packages across six .bak-2026-07-27-* snapshots and never back-ported, so the deployment ran a 34-model allowlist containing 5 models Ollama Cloud had already retired while the repo carried a different, incomplete one. A `.bak` file inside site-packages is the diagnostic signature of this anti-pattern.
 - Never expose every tool to every agent — curate per-domain toolsets to bound context
 - Never response without closing </final_answer> when the response is part of a workflow that expects structured parsing
@@ -348,3 +340,35 @@ Universal behavioural directives for the Goose Beagle Orchestrator. Auto-injecte
 - beagle --help | head
 
 - **notes**: Chosen to create dedicated run_to_completion.toml rather than overwriting beagle_core_directives.toml unread, per locate→validate→apply discipline and sandbox read failure. Both are ingested by render-prompts. If consolidation is preferred, merge this file into beagle_core_directives.toml and delete this file.
+
+## Security Baseline
+
+### validation
+
+#### rules
+
+- Validate all external input at system boundaries
+- Use parameterized queries — never string interpolation for SQL/Cypher
+- Strip injection tags BEFORE html.escape(), not after
+- Use allowlists (frozenset) for dynamic identifiers like relation types
+- Check Path.relative_to() for path traversal, not str.startswith()
+- Use os.open() with explicit mode (0o600) for secret files
+
+
+### secrets
+
+#### rules
+
+- Load via secrets_loader.py — env vars first, then ~/.config/goose/secrets.yaml
+- Secrets file must be 0600 or 0400 permissions
+- Scrub secrets from logs using _SECRET_PATTERNS with 20+ char minimum
+- Use Path.name not full path in log messages for binaries
+
+
+### crypto
+
+#### rules
+
+- Ed25519 for A2A agent signing — raise RuntimeError if key missing
+- Use hashlib.sha256 with hexdigest()[:48] for guardian hashes
+- Never downgrade crypto — no MD5, no SHA1 for security purposes

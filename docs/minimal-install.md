@@ -28,7 +28,7 @@ workflow. No config-root override, no external services required.
 python3 -m venv .venv
 source .venv/bin/activate
 
-# 2. Install the built wheel (or `pip install -e .` for a source checkout)
+# 2. Install the built wheel (never `pip install -e .` — see below)
 pip install beagle
 
 # 3. Confirm the core imports work with no external service
@@ -55,3 +55,13 @@ The base install is deliberately lean. Add extras only when you need them:
 - The install is fully configless — in-code defaults work out of the box;
   run `beagle config init` when you want editable files under
   `~/.config/beagle`.
+- **Install the wheel, never editable.** An editable install puts `src/` on
+  `sys.path`, which makes the type checker treat the package as a library and
+  silently suppress errors in followed modules — and it makes the running
+  system disagree with the built artefact. Build and install the wheel
+  instead:
+  ```bash
+  uv build --wheel
+  uv pip install --force-reinstall --no-deps dist/beagle-*.whl --python .venv/bin/python3
+  ```
+  `scripts/check_no_editable_installs.py` enforces this on every `make lint`.
