@@ -1,0 +1,5 @@
+{
+  "name": "beagle-context-management",
+  "version": "1.1.1",
+  "description": "Goose event wiring for the CORE Beagle context-management controller. This plugin carries NO logic and NO config — it only wires PostToolUse/Stop to the Python entrypoints in beagle/scripts/hooks/, which invoke beagle.context.compaction_controller (whose policy lives in the canonical config root, resolved by find_context_management_toml()). Context management is a core function, not a plugin."
+}

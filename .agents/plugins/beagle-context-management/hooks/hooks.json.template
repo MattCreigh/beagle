@@ -1,0 +1,37 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "{repo_root}/scripts/hooks/auto_compact.py",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "{repo_root}/scripts/hooks/beagle_bootstrap.py",
+            "timeout": 120
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "{repo_root}/scripts/hooks/post_final_fold.py",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}

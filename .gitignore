@@ -66,3 +66,8 @@ scripts/sync-to-opt-venv.sh
 
 # Ephemeral pip-format exports (generated from uv.lock on demand)
 /requirements-frozen.txt
+
+# Rendered goose hook wiring — a build artefact of scripts/install_hooks.py.
+# The tracked source of truth is the sibling *.template, which carries the
+# literal {repo_root} placeholder; the rendered file names an absolute path.
+.agents/plugins/*/hooks/hooks.json

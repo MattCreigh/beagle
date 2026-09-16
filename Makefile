@@ -1,4 +1,4 @@
-.PHONY: help lint test clean build install dev-deps check vulture typecheck banned qa image-build image-push container-up container-down dev-stack-integrate
+.PHONY: help lint test clean build install dev-deps check vulture typecheck banned qa image-build image-push container-up container-down dev-stack-integrate no-editable
 
 # The project venv, not the system interpreter. `python3` here resolved to
 # /usr/bin/python3, which carries none of the dev tooling, so `make vulture`
@@ -21,6 +21,11 @@ lint: ## Run ruff linter
 	$(PY) scripts/check_hook_health.py
 	$(PY) scripts/check_plan_commands.py
 	$(PY) scripts/check_quality_ratchet.py
+	$(PY) scripts/check_no_editable_installs.py --venv $(VENV) $(if $(wildcard .venv),--venv $(CURDIR)/.venv,)
+
+no-editable: ## Fail if an environment resolves into a source tree (editable install)
+	$(PY) scripts/check_no_editable_installs.py --selftest
+	$(PY) scripts/check_no_editable_installs.py --venv $(VENV) $(if $(wildcard .venv),--venv $(CURDIR)/.venv,)
 
 lint-fix: ## Run ruff linter with auto-fix
 	$(PY) -m ruff check --fix src/beagle/ tests/
