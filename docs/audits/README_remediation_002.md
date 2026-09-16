@@ -17,7 +17,7 @@ This report follows that convention.
 
 | # | Fact in the brief | What the repository says | Evidence | What the README now says |
 |---|---|---|---|---|
-| 1 | "Add Node.js 20 or later (required by the Pi frontend)." | Three different floors exist, and none is 20. The shipped bundle declares `">=22.19.0"`. The launcher message says `>=18`. The old README said `>= 20`. | `src/beagle/frontends/pi/vendor/pi-prebuild/package.json:103-104`; `src/beagle/cli/commands/pi.py:9,67` | Node.js 22.19.0 or later — the floor the shipped bundle itself declares. |
+| 1 | "Add Node.js 20 or later (required by the Pi frontend)." | Three floors exist and they disagree. The shipped bundle declares `">=22.19.0"`. The launcher tells the user `>= 20`. The `pi` command says `>=18`. No code enforces any of them: both entry points only test that `node` is on `PATH`. | `src/beagle/frontends/pi/vendor/pi-prebuild/package.json:103-104`; `src/beagle/frontends/pi/launcher.py:102-108`; `src/beagle/cli/commands/pi.py:9,64-67` | Node.js 22.19.0 or later — the floor the shipped bundle declares for itself. |
 | 2 | "add Goose with minimum version to prerequisites" | No minimum Goose version is declared anywhere. Two incidental version mentions exist, and they disagree: 1.29.1 and 1.44.0. | `src/beagle/bridges/goose_launcher.py:9`; `src/beagle/context/session_usage.py:7` | Goose is required, resolved through `PATH` or `GOOSE_BIN`, and "the repository does not declare a minimum Goose version". |
 | 3 | T3 implies Docker has a part in isolation. | Docker is in no microVM condition. The four conditions are the `firecracker` binary, `/dev/kvm`, a kernel image, and a rootfs image. | `src/beagle/core/sandbox.py:571-597` | Docker packages and runs the image. A separate subsection states that Docker is not an isolation mode. |
 | 4 | T5: the firewall "starts by default" — stated without qualification. | True for the pattern pass. The Goose subprocess pass runs only when the sub-agent runtime is `goose_cli`; for a remote runtime the pattern verdict stands. | `src/beagle/security/firewall.py:236-243` | Both passes are documented, with the runtime condition on the second. |
@@ -123,15 +123,116 @@ container at `ecd548f`, the last documentation commit.
 | Prerequisite check | `Python 3.13.15` present. `node` absent. `goose` absent. Both absences match the new prerequisites list. |
 | Step 1 — `git clone` | Pass. `clone OK -> HEAD ecd548f` |
 | Prerequisite — `curl -LsSf https://astral.sh/uv/install.sh \| sh` | Pass. `uv 0.12.7` installed, exactly as the README command states. |
-| Step 2 — `uv sync --frozen --no-dev` | Runs, and downloads the CUDA packages named in finding 4 above. This step is the one that needs the missing index guidance. |
+| Step 2 — `uv sync --frozen --no-dev` | Pass, in 8m 07s. `Installed 177 packages`. Most of the time is the CUDA download of finding 4. |
+| Step 3 — `beagle config init` | Pass. Printed `Created config at /root/.config/beagle/beagle_core_config/config.toml`, which is the path the README now documents. |
+| Step 5 — `beagle` with no Node.js | Fails as designed: `The pi frontend requires Node.js (>= 20). Install Node or add it to PATH.` Exit 1. |
 
 The first attempt of this run failed at step 1 with `fatal: detected dubious ownership in
 repository at '/src/.git'`. That is a property of cloning a bind-mounted host repository
 as root inside a container, not a defect in the README. The re-run adds
 `git config --global --add safe.directory` and proceeds.
 
-## 6. Status of this report
+Step 2 downloaded these GPU-only packages, which is the measurement behind finding 4:
 
-Every finding above is verified. The clean-container walk of step 2 was still downloading
-when this report was written; the CUDA finding it produced is already conclusive, and the
-remaining rows (steps 3 and 5, with and without Node.js) are appended when the run ends.
+```text
+torch 506.1 MiB (CUDA-linked build) + triton 179.6 MiB
+nvidia-cublas       403.5 MiB     nvidia-cusparse      139.2 MiB
+nvidia-cudnn-cu13   349.1 MiB     nvidia-cuda-nvrtc     86.0 MiB
+nvidia-cufft        204.2 MiB     nvidia-nvshmem-cu13   57.6 MiB
+nvidia-cusolver     191.6 MiB     nvidia-curand         56.8 MiB
+nvidia-nccl-cu13    187.4 MiB     nvidia-nvjitlink      38.8 MiB
+nvidia-cusparselt   162.0 MiB     + 4 smaller nvidia / cuda packages
+
+GPU-only payload: ~2.0 GiB
+```
+
+Step 5 gives the third Node.js floor recorded in item 1 of section 1. The message a user
+actually sees says 20, the `pi` command says 18, and the bundle declares 22.19.0.
+
+## 6. Remediation of finding 4 — the CUDA download
+
+Finding 4 is fixed on branch `feat/cpu-torch-index` (commit `2a24d46`). The fix declares
+the PyTorch CPU index in `pyproject.toml` with `explicit = true`, so only the packages
+named in `[tool.uv.sources]` resolve from it and every other dependency still comes from
+PyPI:
+
+```toml
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
+```
+
+`uv lock` then removed 19 GPU packages and `triton`:
+
+```text
+Resolved 190 packages in 4.34s
+Removed cuda-bindings, cuda-pathfinder, cuda-toolkit, nvidia-cublas,
+        nvidia-cuda-cupti, nvidia-cuda-nvrtc, nvidia-cuda-runtime,
+        nvidia-cudnn-cu13, nvidia-cufft, nvidia-cufile, nvidia-curand,
+        nvidia-cusolver, nvidia-cusparse, nvidia-cusparselt-cu13,
+        nvidia-nccl-cu13, nvidia-nvjitlink, nvidia-nvshmem-cu13,
+        nvidia-nvtx, triton
+Updated torch v2.11.0 -> v2.11.0, v2.11.0+cpu
+```
+
+`uv.lock` now contains 0 `nvidia-` entries, against 36 before. `torch` resolves to
+`2.11.0+cpu` on every platform except macOS, which takes the plain `2.11.0` wheel from the
+same index. The README Installation section carries the "CPU and GPU builds" note that
+`pyproject.toml:37` had promised since the pin was added, and the comment now points at a
+section that exists.
+
+The same clean-container walk was repeated against the new lock:
+
+| Measurement | Before | After |
+|---|---|---|
+| Step 2 wall time | 8m 07s | 1m 26s |
+| Packages installed | 177 | 158 |
+| `nvidia-*` directories in the venv | 19 | 0 |
+| `triton` in the venv | yes | no |
+| `torch.__version__` | `2.11.0` (CUDA build) | `2.11.0+cpu` |
+| `torch.cuda.is_available()` | n/a | `False` |
+| Step 3 `beagle config init` | Pass | Pass |
+
+The resulting virtual environment is 1.6 GB.
+
+## 7. Open finding — the default frontend fails on a clean install
+
+Quick Start step 5 was run again in the container with Node.js v22.23.2 present. The
+frontend does not start:
+
+```text
+$ uv run beagle
+Failed to update agents.toml: [Errno 2] No such file or directory:
+  '/root/.config/beagle/coding_agent_config/agents.toml'
+agents.toml not found at /work/beagle/src/beagle/config/agents.toml — using global defaults
+Error: Unknown option: --extension
+exit 1
+```
+
+`launcher.py` prepends `--extension=<path>` before handing off to the pi bundle. The
+vendored bundle at version 0.84.3 does accept that option: run directly on the
+development host, both `--extension=<path>` and `--extension <path>` parse and reach
+model selection. The container therefore executes a different bundle or a different
+argument vector than the source tree does, and the cause is not yet established.
+
+This is a `src/` defect, not a documentation defect, so nothing was changed for it. It
+does contradict a README sentence, which the next remediation should either fix or
+qualify: "The `beagle` command with no subcommand starts `pi`. The bridge calls Beagle's
+agents over MCP without more setup."
+
+## 8. Status of this report
+
+Every finding is verified against the repository or against a live run. Two of them are
+fixed on branch `feat/cpu-torch-index`:
+
+| Finding | Status |
+|---|---|
+| Section 4, item 4 — the CUDA download | Fixed, `2a24d46`. Measured before and after. |
+| Section 1, item 1 — the Node.js floor drift | Fixed, `625a03f`. `launcher.py` now reads `engines.node` from the vendored manifest instead of restating it. `cli/commands/pi.py` still says `>=18`; that file is untracked work in progress, so it was left alone. |
+| Section 4, items 1 and 2 — two setup scripts that do not exist | Open. Both are named in log messages and `fix_hint` fields only; nothing executes them, so a stub script would not be reached by the code that names it. |
+| Section 4, item 3 — `--headless` exits 0 after a node fails | Open. |
+| Section 7 — the default frontend fails on a clean install | Open, cause not yet established. |

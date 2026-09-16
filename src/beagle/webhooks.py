@@ -113,7 +113,7 @@ class WebhookManager:
 
     MAX_DELIVERY_HISTORY = 10000
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize webhook manager."""
         self._webhooks: dict[str, WebhookConfig] = {}
         self._deliveries: list[WebhookDelivery] = []
@@ -488,7 +488,7 @@ async def emit_event(
 
 if __name__ == "__main__":
 
-    async def demo():
+    async def demo() -> None:
         """Demo webhook functionality."""
         manager = WebhookManager()
 

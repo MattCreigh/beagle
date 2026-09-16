@@ -1,4 +1,5 @@
 import logging
+from typing import Any
 
 # Modified logging for debugging during Copilot task execution
 LOGGING_FORMATTER = logging.Formatter(
@@ -6,7 +7,7 @@ LOGGING_FORMATTER = logging.Formatter(
 )
 
 
-def get_debug_logger(logger_name):
+def get_debug_logger(logger_name: str) -> logging.Logger:
     logger = logging.getLogger(logger_name)
     if not logger.handlers:
         stream_handler = logging.StreamHandler()
@@ -16,7 +17,7 @@ def get_debug_logger(logger_name):
     return logger
 
 
-def debug_env_var(var_name, default=None):
+def debug_env_var(var_name: str, default: Any = None) -> Any:
     import os
 
     logger = get_debug_logger("EnvironmentTrace")

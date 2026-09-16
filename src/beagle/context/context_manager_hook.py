@@ -507,7 +507,7 @@ def integrate_with_orchestrator(orchestrator: Any) -> None:
 
     if original_execute:
 
-        def wrapped_execute(*args, **kwargs):
+        def wrapped_execute(*args: Any, **kwargs: Any) -> Any:
             # Check context status before execution
             status = hook.check_context_status()
 
@@ -520,13 +520,13 @@ def integrate_with_orchestrator(orchestrator: Any) -> None:
         orchestrator.execute = wrapped_execute
 
     # Add callback for context events
-    def on_compress_event(content: str, result: CompressionResult):
+    def on_compress_event(content: str, result: CompressionResult) -> None:
         logger.info(
             f"[{orchestrator.name if hasattr(orchestrator, 'name') else 'Orchestrator'}] "
             f"Context compressed: {result.original_tokens} -> {result.compressed_tokens} tokens"
         )
 
-    def on_chunk_event(file_path: str, chunks: int):
+    def on_chunk_event(file_path: str, chunks: int) -> None:
         logger.info(
             f"[{orchestrator.name if hasattr(orchestrator, 'name') else 'Orchestrator'}] "
             f"File chunked: {file_path} -> {chunks} chunks"

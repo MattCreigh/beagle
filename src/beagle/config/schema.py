@@ -816,6 +816,13 @@ class WorkflowConfig:
     validation: ValidationConfig = field(default_factory=ValidationConfig)
     reproducibility: ReproducibilityConfig = field(default_factory=ReproducibilityConfig)
     sandbox_microvm: SandboxMicroVMConfig = field(default_factory=SandboxMicroVMConfig)
+    # D-10: the fault-recovery sandbox layer reads ``cfg.sandbox_mode`` to
+    # choose between ``native`` | ``wasm`` | ``hybrid``. Grep for
+    # ``sandbox_mode`` across src/beagle/config/ returned nothing, so the
+    # flag was documented but unreachable — every call to
+    # ``get_sandbox_mode()`` fell through to the "native" default. It is now a
+    # real field on the combined config object.
+    sandbox_mode: str = "native"
     a2a: A2AConfig = field(default_factory=A2AConfig)
     learned_routing: LearnedRoutingConfig = field(default_factory=LearnedRoutingConfig)
     decomposition: DecompositionConfig = field(default_factory=DecompositionConfig)

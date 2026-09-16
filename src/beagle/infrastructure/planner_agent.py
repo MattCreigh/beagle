@@ -42,7 +42,7 @@ ORPHEUS_INSTANCE = os.environ.get("ORPHEUS_INSTANCE", "beagle-default")
 class PlannerAgent:
     """Agent responsible for research planning phase."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.agent_name = f"beagle-{AGENT_TYPE}"
         self.ipc = get_ipc(self.agent_name, WORKFLOW_ID)
         self.running = False
@@ -60,7 +60,7 @@ class PlannerAgent:
             },
         )
 
-    async def run(self):
+    async def run(self) -> None:
         """Main agent loop - listens for tasks and processes them."""
         self.running = True
         logger.info(f"[PlannerAgent] Starting {self.agent_name}...")
@@ -230,7 +230,7 @@ success_criteria:
         """Handle incoming message (callback for subscription)."""
         logger.debug(f"[PlannerAgent] Received message: {message.msg_type} from {message.sender}")
 
-    async def shutdown(self):
+    async def shutdown(self) -> None:
         """Graceful shutdown."""
         self.running = False
 
@@ -283,7 +283,7 @@ success_criteria:
         logger.debug(f"[RAG] Logged {event_type}")
 
 
-async def main():
+async def main() -> None:
     """Main entry point."""
     agent = PlannerAgent()
 
