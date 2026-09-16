@@ -1,0 +1,316 @@
+# Semgrep rules — the Beagle doctrine rules ruff cannot express.
+#
+# Usage: semgrep --config $(qup profiles)/semgrep/beagle-doctrine.yml <paths>
+#
+# The ruff profile (~/.claude/qa-profiles/ruff.toml) mechanises most of the
+# doctrine's anti-pattern register. Its README lists what ruff cannot express,
+# because ruff rules are per-node pattern checks with no cross-expression
+# matching. Those gaps are this file.
+#
+# Every rule here corresponds to a specific doctrine line. A rule with no
+# doctrine backing does not belong in this file — that is what makes the set
+# reviewable.
+rules:
+  # ── Doctrine: "Full-entropy identifiers. Never truncate a UUID." ─────────
+  - id: beagle-truncated-uuid
+    languages: [python]
+    severity: ERROR
+    message: >-
+      Truncated UUID. Slicing a uuid4 discards the entropy that made it unique
+      (122 bits is the point) and turns a collision-free identifier into a
+      birthday-problem bug that appears only at scale. Use the full value.
+    patterns:
+      - pattern-either:
+          - pattern: str(uuid.uuid4())[:$N]
+          - pattern: str(uuid.uuid4())[$A:$N]
+          - pattern: uuid.uuid4().hex[:$N]
+          - pattern: uuid.uuid4().hex[$A:$N]
+          - pattern: f"{uuid.uuid4()}"[:$N]
+          - pattern: str(uuid4())[:$N]
+          - pattern: uuid4().hex[:$N]
+
+  # ── Doctrine: "Path containment uses real path resolution, never ─────────
+  #     string-prefix comparison — startswith is a symlink-bypass vector."
+  - id: beagle-startswith-path-containment
+    languages: [python]
+    severity: ERROR
+    message: >-
+      String-prefix path containment. This is bypassable two ways: a symlink
+      inside the root can point anywhere, and a sibling directory sharing the
+      prefix passes the check (/data matches /data-backup). Use
+      Path(p).resolve().relative_to(root.resolve()) inside a try/except ValueError.
+    patterns:
+      - pattern-either:
+          - pattern: str($P).startswith(str($ROOT))
+          - pattern: str($P).startswith($ROOT)
+          - pattern: os.path.abspath($P).startswith($ROOT)
+          - pattern: $P.as_posix().startswith($ROOT)
+          - pattern: os.fspath($P).startswith($ROOT)
+
+  # ── Doctrine: "Never swallow asyncio.CancelledError or MemoryError — ─────
+  #     they propagate by design."
+  - id: beagle-swallowed-cancellederror
+    languages: [python]
+    severity: ERROR
+    message: >-
+      Swallowed CancelledError. Catching it without re-raising breaks task
+      cancellation, and the symptom is a shutdown that hangs rather than an
+      error you can trace. Re-raise after any cleanup.
+    patterns:
+      - pattern-either:
+          - pattern: |
+              try:
+                  ...
+              except asyncio.CancelledError:
+                  pass
+          - pattern: |
+              try:
+                  ...
+              except asyncio.CancelledError:
+                  return ...
+          - pattern: |
+              try:
+                  ...
+              except (..., asyncio.CancelledError, ...):
+                  pass
+      - pattern-not: |
+          try:
+              ...
+          except asyncio.CancelledError:
+              ...
+              raise
+
+  - id: beagle-swallowed-memoryerror
+    languages: [python]
+    severity: ERROR
+    message: >-
+      Swallowed MemoryError. It propagates by design — continuing after one
+      means operating in a process that could not allocate, and the next failure
+      will be somewhere unrelated and much harder to attribute.
+    patterns:
+      - pattern-either:
+          - pattern: |
+              try:
+                  ...
+              except MemoryError:
+                  pass
+          - pattern: |
+              try:
+                  ...
+              except MemoryError:
+                  return ...
+
+  # ── Doctrine: "Monotonic clocks for elapsed time; wall clock only for ────
+  #     timestamps."
+  - id: beagle-walltime-for-interval
+    languages: [python]
+    severity: WARNING
+    message: >-
+      time.time() used for an elapsed interval. Wall clock moves backwards
+      across NTP adjustment and DST, so the difference can be negative or
+      wildly wrong. Use time.monotonic() for durations; keep time.time() for
+      timestamps only.
+    patterns:
+      - pattern-either:
+          - pattern: time.time() - $START
+          - pattern: $END - time.time()
+          - pattern: |
+              $START = time.time()
+              ...
+              $ELAPSED = time.time() - $START
+
+  # ── Doctrine: "Never NamedTemporaryFile(delete=False) without explicit ───
+  #     cleanup."
+  - id: beagle-tempfile-delete-false
+    languages: [python]
+    severity: WARNING
+    message: >-
+      NamedTemporaryFile(delete=False) leaks the file unless something removes
+      it. Wrap in try/finally with an unlink, or use a TemporaryDirectory so
+      cleanup is structural rather than remembered.
+    patterns:
+      - pattern: tempfile.NamedTemporaryFile(..., delete=False, ...)
+      - pattern-not-inside: |
+          try:
+              ...
+          finally:
+              ...
+
+  # ── Doctrine: "Apply atomically — write-temp-then-rename." ───────────────
+  - id: beagle-nonatomic-write-to-config
+    languages: [python]
+    severity: WARNING
+    message: >-
+      Direct truncating write to a config/state file. open(..., "w") truncates
+      before it writes, so a crash mid-write leaves an empty or partial file
+      and the original is unrecoverable. Write to a temp file in the same
+      directory, then os.replace() — atomic on POSIX.
+    patterns:
+      - pattern-either:
+          - pattern: open($P, "w", ...)
+          - pattern: open($P, "wb", ...)
+          - pattern: $PATH.write_text(...)
+          - pattern: $PATH.write_bytes(...)
+      - metavariable-regex:
+          metavariable: $P
+          regex: .*(config|state|progress|manifest|index|registry|\.json|\.toml|\.ya?ml).*
+    paths:
+      exclude:
+        - tests/
+        - test_*.py
+        - conftest.py
+        - scripts/
+        - benchmarks/
+
+  # ── Doctrine: "Every outbound HTTP call carries an explicit timeout." ────
+  # Ruff's S113 covers requests and httpx. These are the libraries it misses.
+  - id: beagle-http-no-timeout-other-libs
+    languages: [python]
+    severity: ERROR
+    message: >-
+      Outbound HTTP call with no explicit timeout. A hung agent producing no
+      tool calls and no error is almost always this. Default 30s; anything over
+      60s needs a documented reason and a circuit breaker.
+    patterns:
+      - pattern-either:
+          - pattern: aiohttp.ClientSession(...).get($U, ...)
+          - pattern: aiohttp.ClientSession(...).post($U, ...)
+          - pattern: urllib.request.urlopen($U)
+          - pattern: urllib.request.urlopen($U, $DATA)
+          - pattern: http.client.HTTPConnection($H)
+          - pattern: http.client.HTTPSConnection($H)
+      - pattern-not-inside: |
+          async with asyncio.timeout(...):
+              ...
+      - pattern-not: $ANY(..., timeout=$T, ...)
+
+  # ── Doctrine: "Retry once, then surface" / subprocess must be bounded ────
+  - id: beagle-subprocess-no-timeout
+    languages: [python]
+    severity: WARNING
+    message: >-
+      subprocess call with no timeout. An unbounded child process hangs the
+      parent with no error and no recovery. Pass timeout=, and kill plus wait
+      on expiry so you do not leak a zombie.
+    patterns:
+      - pattern-either:
+          - pattern: subprocess.run(...)
+          - pattern: subprocess.check_output(...)
+          - pattern: subprocess.check_call(...)
+          - pattern: $P.communicate()
+      - pattern-not: subprocess.run(..., timeout=$T, ...)
+      - pattern-not: subprocess.check_output(..., timeout=$T, ...)
+      - pattern-not: subprocess.check_call(..., timeout=$T, ...)
+      - pattern-not-inside: |
+          asyncio.wait_for(...)
+    paths:
+      exclude:
+        - tests/
+        - test_*.py
+        # qup-local delta from the host copy (see docs/profiles.md §2 in the qup repo, Phase 6):
+        # `qup config edit` launches $EDITOR in the foreground for a human to interact with —
+        # the doctrine's "hangs the parent with no error and no recovery" concern is exactly
+        # backwards here, since a timeout would silently kill unsaved edits mid-session. tup's
+        # reference implementation (src/tup_pkg/cli/commands/config.py) has the identical
+        # unbounded call at the identical call site, unresolved, for the same reason.
+        - src/qup_pkg/cli/commands/config.py
+        # Same rationale, different reason: `qup update` foreground-runs
+        # scripts/install_or_upgrade.py (network downloads, pip/cargo builds), whose real
+        # duration is unbounded by nature, not a hang to guard against. tup's update.py has the
+        # identical unbounded subprocess.run at the identical call site.
+        - src/qup_pkg/cli/commands/update.py
+
+  # ── Doctrine: "Parameterized queries only. Never string-interpolate into ─
+  #     SQL/Cypher/shell." Ruff has no Cypher awareness; Beagle uses Kùzu.
+  - id: beagle-cypher-string-interpolation
+    languages: [python]
+    severity: ERROR
+    message: >-
+      Interpolated Cypher query. String interpolation into a graph query is the
+      injection, exactly as it is for SQL. Use parameters, and gate any dynamic
+      relation or label name against a frozenset allowlist.
+    patterns:
+      - pattern-either:
+          - pattern: $CONN.execute(f"...MATCH...")
+          - pattern: $CONN.execute(f"...CREATE...")
+          - pattern: $CONN.execute(f"...MERGE...")
+          - pattern: $CONN.execute("..." % ...)
+          - pattern: $CONN.execute("...".format(...))
+
+  # ── Doctrine: "Never downgrade crypto" / TLS verification stays on ───────
+  - id: beagle-tls-verification-disabled
+    languages: [python]
+    severity: ERROR
+    message: >-
+      TLS verification disabled. This silently accepts any certificate,
+      including an attacker's. If a self-signed CA is the reason, pass its
+      bundle via verify=<ca-path> instead of turning verification off.
+    patterns:
+      - pattern-either:
+          - pattern: requests.$M(..., verify=False, ...)
+          - pattern: httpx.$M(..., verify=False, ...)
+          - pattern: ssl._create_unverified_context()
+          - pattern: $CTX.check_hostname = False
+
+  # ── Doctrine: "Secrets file must be 0600 or 0400" — create-then-chmod ────
+  #     leaves a window where the file is world-readable.
+  - id: beagle-chmod-after-create-race
+    languages: [python]
+    severity: WARNING
+    message: >-
+      Secret file created then chmod-ed. Between the two calls the file exists
+      with default permissions, and anything watching the directory can read
+      it. Use os.open(path, O_CREAT|O_WRONLY, 0o600) so the mode is set at
+      creation.
+    patterns:
+      - pattern: |
+          $F = open($P, "w", ...)
+          ...
+          os.chmod($P, ...)
+
+  # ── Doctrine: "Fix features, never degrade them." ────────────────────────
+  - id: beagle-silently-degraded-feature
+    languages: [python]
+    severity: INFO
+    message: >-
+      Broad exception around a feature with a silent fallback. Confirm the
+      primary path is fixed and this is a genuine backstop — a fallback that
+      became the default is how a broken feature stops being visible. Log at
+      warning or above so the degradation is observable.
+    patterns:
+      - pattern: |
+          try:
+              ...
+          except Exception:
+              return None
+      # Two dunders legitimately answer "not here" with None on a broad except.
+      # __getattr__ is the PEP 562 lazy-export shape, and __del__ runs during
+      # interpreter teardown where almost anything may already be gone.
+      #
+      # Written as two explicit exclusions rather than one wildcard. The
+      # original form, `def __$ANY__(...)`, is not valid semgrep syntax — a
+      # metavariable cannot be spliced inside an identifier — so the rule
+      # failed to parse and semgrep skipped it while still reporting
+      # "Rules run: 14" and exiting 2. It never fired once. Fixed 2026-07-27.
+      - pattern-not-inside: |
+          def __getattr__(...):
+              ...
+      - pattern-not-inside: |
+          def __del__(...):
+              ...
+
+  # ── Doctrine: "Timestamps are timezone-aware UTC." Ruff's DTZ covers ─────
+  #     datetime; this covers the ORM/pydantic default-callable shape it misses.
+  - id: beagle-naive-datetime-default
+    languages: [python]
+    severity: WARNING
+    message: >-
+      Naive datetime as a field default. utcnow is deprecated in 3.12+ and
+      returns a naive value that compares wrongly against aware datetimes —
+      silently, and usually in the direction that looks correct locally. Use
+      lambda: datetime.now(timezone.utc).
+    patterns:
+      - pattern-either:
+          - pattern: $F(..., default=datetime.utcnow, ...)
+          - pattern: $F(..., default_factory=datetime.utcnow, ...)
+          - pattern: $F(..., default=datetime.datetime.utcnow, ...)
