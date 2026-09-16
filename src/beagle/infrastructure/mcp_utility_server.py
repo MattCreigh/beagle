@@ -26,8 +26,8 @@ import shutil
 import subprocess
 import time
 import uuid
-from pathlib import Path
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 # Project root for subprocess cwd and path resolution (not for sys.path).
@@ -1486,7 +1486,11 @@ async def list_style_guides() -> str:
         try:
             with path.open("rb") as fh:
                 guide = tomllib.load(fh)
-        except (OSError, ValueError):
+        except (OSError, ValueError) as exc:
+            # A guide that will not load is absent from the listing, which is
+            # how a style guide silently stops applying. Log it at warning so
+            # the omission is visible, then skip only this file.
+            logger.warning("style guide %s could not be read: %s", path.name, exc)
             continue
         meta = guide.get("meta", {}) or {}
         out.append(

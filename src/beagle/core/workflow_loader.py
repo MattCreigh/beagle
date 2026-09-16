@@ -73,7 +73,16 @@ def _validate_workflow_path(path: Path) -> bool:
             resolved.relative_to(workspace.resolve())
             return True
         except ValueError:
-            pass
+            # Not contained in the workspace — a NORMAL negative answer for a
+            # containment probe, not an error. It is handled by falling through
+            # to the second anchor below, so there is nothing to log. The
+            # SP-1 gate (correctly) treats an empty handler as unobservable, so
+            # the negative answer is recorded rather than merely dropped.
+            logger.debug(
+                "workflow path %s not under workspace %s; trying the config root",
+                resolved,
+                workspace,
+            )
 
         # Allow the canonical config root as a second containment anchor.
         try:

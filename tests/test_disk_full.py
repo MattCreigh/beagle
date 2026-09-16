@@ -115,9 +115,12 @@ class TestDiskFullTaskStore:
         db_path = tmp_path / "tasks.db"
         store = TaskStore(db_path)
         store.close()
-        # Force a new connection by clearing thread-local
-        if hasattr(store._local, "conn"):
-            del store._local.conn
+        # No internal poking is needed, and none should be: close() clears the
+        # connection registry itself (D-19), so the next operation reconnects by
+        # construction. The earlier version reached into ``store._local`` — an
+        # attribute this class has never had since it moved onto
+        # ThreadLocalSQLite._conns, so the hasattr guard was always False and
+        # the test was only passing by accident.
         task_id = store.create_task(task_type="workflow", spec={"query": "test"})
         assert task_id is not None
         store.close()

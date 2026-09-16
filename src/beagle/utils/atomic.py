@@ -7,9 +7,12 @@ document or the complete new one, never a partial write.
 
 from __future__ import annotations
 
+import logging
 import os
 import tempfile
 from pathlib import Path
+
+logger = logging.getLogger("Beagle.utils.atomic")
 
 
 def _fsync_parent(path: Path) -> None:
@@ -37,10 +40,13 @@ def _fsync_parent(path: Path) -> None:
         return
     try:
         os.fsync(fd)
-    except OSError:
-        # Directory fsync unsupported on this platform/filesystem. The file
-        # data fsync already ran; rename durability is best-effort.
-        pass
+    except OSError as exc:
+        # Directory fsync is unsupported on some platforms/filesystems. The
+        # file data fsync already ran, so the data is durable and only the
+        # rename's durability is best-effort — but an operator investigating a
+        # lost rename needs to know this happened, so it is logged at debug
+        # rather than swallowed.
+        logger.debug("directory fsync unsupported for %s: %s", path, exc)
     finally:
         os.close(fd)
 

@@ -80,11 +80,21 @@ class TestStartupCheckInRunCommand:
         assert "run_startup_checks" in source, "run() should call run_startup_checks"
 
     def test_main_includes_startup_check(self):
-        """The main() function should log startup check failures."""
+        """main() must reach the startup checks.
+
+        The check moved into ``_bootstrap()``, which ``main()`` calls as its
+        first statement. Asserting the call on ``main`` alone would now be
+        asserting a shape the code no longer has; asserting the REACHABILITY is
+        what the test actually cares about — a refactor must not silently drop
+        the check from the CLI start path.
+        """
         from beagle.cli import cli
 
-        source = inspect.getsource(cli.main)
-        assert "run_startup_checks" in source, "main() should call run_startup_checks"
+        assert "_bootstrap()" in inspect.getsource(cli.main), (
+            "main() must call _bootstrap(), which runs the startup checks"
+        )
+        source = inspect.getsource(cli._bootstrap)
+        assert "run_startup_checks" in source, "_bootstrap() should call run_startup_checks"
 
 
 class TestGracefulDegradation:
