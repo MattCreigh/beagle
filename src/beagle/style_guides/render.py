@@ -36,6 +36,11 @@ from .version_resolver import (
     get_workflow_list,
 )
 
+#: The complete set of values a TOML document can hold. Naming it is tighter
+#: than ``Any`` at the renderer boundary and documents why the recursion below
+#: needs only these three branches.
+type TomlValue = str | int | float | bool | list["TomlValue"] | dict[str, "TomlValue"] | None
+
 logger = logging.getLogger("Beagle.style_guides.renderer")
 
 # D-38 (release-readiness audit 2026-08-28): these canonical paths previously
@@ -1914,7 +1919,7 @@ class GooseTopOfMindRenderer:
 
     @staticmethod
     @staticmethod
-    def _md_inline(value: Any) -> str:
+    def _md_inline(value: TomlValue) -> str:
         """Flatten a TOML value onto ONE markdown-safe line.
 
         Three defects were emitted downstream of a naive ``str(v).replace("\n", " ")``:
@@ -1944,7 +1949,7 @@ class GooseTopOfMindRenderer:
         return text.replace(" *", " \\*").replace("* ", "\\* ")
 
     @staticmethod
-    def _md_render_section(value: Any, level: int = 4) -> list[str]:
+    def _md_render_section(value: TomlValue, level: int = 4) -> list[str]:
         """Recursively render a TOML section into Markdown lines.
 
         The output is lint-clean by construction: headings are always followed

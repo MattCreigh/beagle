@@ -20,9 +20,11 @@ from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import TimeoutError as FuturesTimeout
 from dataclasses import dataclass, field
-from importlib.metadata import entry_points
+from importlib.metadata import EntryPoint, entry_points
 from typing import Any
 from unittest.mock import patch
+
+import typer
 
 logger = logging.getLogger("Beagle.cli.plugin_loader")
 
@@ -99,11 +101,11 @@ def discover_frontend_plugins() -> list[FrontendPluginInfo]:
 
     def _daemonised_init(
         self: threading.Thread,
-        group: Any = None,
-        target: Any = None,
+        group: None = None,
+        target: Callable[..., object] | None = None,
         name: str | None = None,
-        args: tuple[Any, ...] = (),
-        kwargs: dict[str, Any] | None = None,
+        args: tuple[object, ...] = (),
+        kwargs: dict[str, object] | None = None,
         *,
         daemon: bool | None = None,
     ) -> None:
@@ -157,7 +159,7 @@ def discover_frontend_plugins() -> list[FrontendPluginInfo]:
     return discovered
 
 
-def mount_frontend_plugins(app: Any, register: Callable[[Any, str], None]) -> int:
+def mount_frontend_plugins(app: typer.Typer, register: Callable[[typer.Typer, str], None]) -> int:
     """Mount every discovered plugin's ``app`` under its entry-point name.
 
     Args:
@@ -243,7 +245,9 @@ def _resolve_frontend_launcher(name: str) -> Callable[[], int] | None:
     return None
 
 
-def _callable_from_entry_point(ep: Any, attr_fallback: str | None) -> Callable[[], int] | None:
+def _callable_from_entry_point(
+    ep: EntryPoint, attr_fallback: str | None
+) -> Callable[[], int] | None:
     """Import ``ep``'s module and return a launcher callable, or ``None``."""
     module_name, _, attr = ep.value.partition(":")
     if not module_name:

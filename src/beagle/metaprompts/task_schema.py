@@ -134,7 +134,9 @@ class TaskSpec(BaseModel):
 
     @field_validator("workflow", mode="before")
     @classmethod
-    def set_default_workflow(cls, v: Any, info: ValidationInfo) -> Any:
+    def set_default_workflow(
+        cls, v: dict[str, Any] | str | None, info: ValidationInfo
+    ) -> dict[str, Any] | str | None:
         """Set default workflow name from task name if not provided."""
         if isinstance(v, dict) and "name" not in v and "name" in info.data:
             v["name"] = info.data["name"]

@@ -12,11 +12,43 @@ from __future__ import annotations
 import functools
 import logging
 import os
-from collections.abc import Callable
-from contextlib import contextmanager
-from typing import Any
+from collections.abc import Awaitable, Callable, Iterator
+from contextlib import AbstractContextManager, contextmanager
+from types import TracebackType
+from typing import Any, ParamSpec, Protocol, Self
 
 logger = logging.getLogger("Beagle.observability.tracing")
+
+#: A span attribute value. OpenTelemetry accepts only these primitives, so this
+#: alias is the real contract — using ``Any`` here would hide a caller passing a
+#: dict or an arbitrary object, which OTel silently drops.
+SpanAttribute = str | bool | int | float
+
+
+class SpanLike(Protocol):
+    """The slice of the OpenTelemetry span API this module uses.
+
+    Declared rather than typing the provider as ``Any``: the module only ever
+    calls these four methods, and stating them is what lets the tracer be typed
+    without an ``Any`` at the boundary.
+    """
+
+    def set_attribute(self, key: str, value: SpanAttribute) -> None: ...
+    def set_status(self, status: object) -> None: ...
+    def record_exception(self, exception: BaseException) -> None: ...
+    def is_recording(self) -> bool: ...
+    def end(self) -> None: ...
+    def add_event(self, name: str, attributes: dict[str, SpanAttribute] | None = ...) -> None: ...
+
+
+class TracerLike(Protocol):
+    """The slice of the OpenTelemetry tracer API this module uses."""
+
+    def start_span(self, name: str) -> SpanLike: ...
+    @contextmanager
+    def start_as_current_span(self, name: str) -> Iterator[SpanLike]: ...
+
+_P = ParamSpec("_P")
 
 # ── OpenTelemetry imports (graceful fallback) ────────────────────────────────
 
@@ -110,7 +142,7 @@ def shutdown_tracing() -> None:
         _provider = None
 
 
-def get_tracer() -> Any:
+def get_tracer() -> TracerLike | None:
     """Get the global tracer instance (no-op tracer if OTel unavailable)."""
     global _tracer
     if _tracer is None and OTEL_AVAILABLE and trace is not None:
@@ -124,9 +156,9 @@ def get_tracer() -> Any:
 @contextmanager
 def span(
     name: str,
-    attributes: dict | None = None,
+    attributes: dict[str, SpanAttribute] | None = None,
     record_exception: bool = True,
-) -> Any:
+) -> Iterator[SpanLike | None]:
     """Context manager for creating a traced span.
 
     Yields the span object, or ``None`` if tracing is not available.
@@ -154,9 +186,9 @@ def trace_async(
 ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """Decorator for tracing async functions."""
 
-    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
+    def decorator[**P, R](func: Callable[P, Awaitable[R]]) -> Callable[P, Awaitable[R]]:
         @functools.wraps(func)
-        async def wrapper(*args: Any, **kwargs: Any) -> Any:
+        async def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
             with span(name, attributes) as s:
                 try:
                     result = await func(*args, **kwargs)
@@ -181,7 +213,7 @@ def add_event(name: str, attributes: dict | None = None) -> None:
         current.add_event(name, attributes=attributes)
 
 
-def set_attribute(key: str, value: Any) -> None:
+def set_attribute(key: str, value: SpanAttribute | None) -> None:
     """Set an attribute on the current span."""
     if not OTEL_AVAILABLE or trace is None:
         return
@@ -213,10 +245,10 @@ class TracingContext:
     def __init__(self, name: str, attributes: dict | None = None):
         self.name = name
         self.attributes = attributes
-        self._span: Any = None  # opentelemetry.trace.Span | None
-        self._token: Any = None  # opentelemetry.context.Token | None
+        self._span: SpanLike | None = None
+        self._token: object | None = None
 
-    def __enter__(self) -> Any:
+    def __enter__(self) -> Self:
         tracer = get_tracer()
         if tracer is not None:
             self._span = tracer.start_span(self.name)
@@ -227,7 +259,10 @@ class TracingContext:
         return self
 
     def __exit__(
-        self, _exc_type: Any, exc_val: BaseException | None, _exc_tb: Any
+        self,
+        _exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        _exc_tb: TracebackType | None,
     ) -> None:
         if self._span is not None:
             if exc_val is not None:
@@ -237,6 +272,8 @@ class TracingContext:
         if self._token is not None:
             trace.context_api.detach(self._token)
 
-    def child_span(self, name: str, attributes: dict[str, Any] | None = None) -> Any:
+    def child_span(
+        self, name: str, attributes: dict[str, SpanAttribute] | None = None
+    ) -> AbstractContextManager[SpanLike | None]:
         """Create a child span within this context."""
         return span(name, attributes)

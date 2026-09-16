@@ -20,7 +20,7 @@ import signal
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any
+from types import FrameType
 
 from beagle.runtime.goose_cli import GooseCliRuntime
 
@@ -446,7 +446,7 @@ def main() -> int:
     """
 
     # Set up signal handlers for graceful shutdown
-    def signal_handler(_sig: int, _frame: Any) -> None:
+    def signal_handler(_sig: int, _frame: FrameType | None) -> None:
         logger.info("\n[Beagle Gateway] Interrupted by user")
         sys.exit(130)
 

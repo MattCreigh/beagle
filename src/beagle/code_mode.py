@@ -571,7 +571,9 @@ if __name__ == "__main__":
         executor = get_code_mode_executor()
 
         # Register a simple tool
-        async def search_handler(params: Any, ctx: Any, results: Any) -> str:
+        async def search_handler(
+            params: dict[str, Any], _ctx: object, results: list[str]
+        ) -> str:
             query = params.get("query", "")
             return f"Search results for: {query}"
 

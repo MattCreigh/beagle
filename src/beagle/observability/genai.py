@@ -22,6 +22,7 @@ from enum import StrEnum
 from typing import Any
 
 from beagle.observability.tracing import (
+    SpanAttribute,
     span,
 )
 
@@ -96,7 +97,7 @@ def genai_span(
             gs.set_cost(0.0023)
 
     """
-    attributes = {
+    attributes: dict[str, SpanAttribute] = {
         ATTR_SYSTEM: system,
         ATTR_REQUEST_MODEL: model,
         ATTR_NODE_NAME: node_name,
