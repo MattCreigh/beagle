@@ -80,28 +80,43 @@ Removing `frontends/` from the package restores the lint gate to a runnable
 
 Severity is likelihood × impact.
 
-| ID | Sev | Risk | Defect | Evidence |
-| --- | --- | --- | --- | --- |
-| D-01 | Critical | Certain × Catastrophic | `await self._get_outbox()` raises an uncaught `AttributeError`; every workflow aborts at its first node | `core/autonomous_orchestrator.py:960` |
-| D-02 | Critical | Likely × Catastrophic | Unauthenticated `POST /api/workflows/{id}/execute` bound to `0.0.0.0` by default | `frontends/webui/server.py:314,385-399,405`; `cli/commands/webui.py:25` |
-| D-03 | High | Certain × Major | `json` used but never imported — `NameError` at runtime, 2 × `F821` | `fault_recovery/dlq.py:256,275` |
-| D-04 | High | Certain × Major | Test suite OOM-killed against source; a production re-ingest daemon starts mid-run | `context/rag_staleness.py:540,563-575` |
-| D-05 | High | Certain × Major | `conftest.py` adds the repo root, not `src/` — all tests import the installed wheel | `tests/conftest.py:17-22` |
-| D-06 | High | Likely × Major | Daemon recurses instead of looping on error; replays the whole stream each time | `fault_recovery/reconciliation.py:302-308` |
-| D-07 | High | Possible × Major | Redis client has no socket timeout; a hung Redis blocks the workflow | `fault_recovery/outbox.py:113` |
-| D-08 | High | Likely × Major | Stream never trimmed; pending entries never reclaimed; shared consumer name breaks ordering | `fault_recovery/outbox.py:170,262-296` |
-| D-09 | High | Certain × Major | Sandbox reports a WASM verdict it never computed | `fault_recovery/sandbox.py:122-129` |
-| D-10 | High | Certain × Moderate | `[sandbox] mode` is inert — the config key does not exist | `fault_recovery/sandbox.py:41` |
-| D-11 | High | Certain × Moderate | `beagle pi` does not exist; the command is never registered | `cli/commands/pi.py:22` vs `cli/cli.py:24-67` |
-| D-12 | Medium | Certain × Moderate | `Argument(None)` for `list[str]` → `TypeError` on no-arg invocation | `cli/commands/pi.py:60,84` |
-| D-13 | Medium | Certain × Minor | Source-checkout fallback paths off by one `.parent`; both branches unreachable | `cli/commands/pi.py:36,52` |
-| D-14 | Medium | Possible × Moderate | Sentinel returns `False` where callers expect `None` | `core/autonomous_orchestrator.py:170-187` |
-| D-15 | Medium | Possible × Moderate | `create_task` handle discarded; the run may be garbage-collected | `frontends/webui/server.py:337` |
-| D-16 | Medium | Certain × Major | Zero tests reference the fault-recovery package | `tests/` |
-| D-17 | Medium | Certain × Moderate | 10 mutual package cycles; `security` imports `runtime` at module scope | `security/firewall.py:19` |
-| D-18 | Medium | Certain × Major | Vendored frontend makes the lint gate unusable | `src/beagle/frontends/` |
-| D-19 | Medium | Likely × Minor | `close()` closes only the calling thread's connection; descriptors leak | `fault_recovery/dlq.py:259`; `reconciliation.py:196`; `infrastructure/task_store.py:98` |
-| D-20 | Low | Certain × Insignificant | 12 `BLE001` doctrine-floor findings; 23 ruff findings; 297 `type: ignore` | tree-wide |
+| ID | Sev | Risk | Defect | Evidence | Status |
+| --- | --- | --- | --- | --- | --- |
+| D-01 | Critical | Certain × Catastrophic | `await self._get_outbox()` raises an uncaught `AttributeError`; every workflow aborts at its first node | `core/autonomous_orchestrator.py:960` | CLOSED f221384 |
+| D-02 | Critical | Likely × Catastrophic | Unauthenticated `POST /api/workflows/{id}/execute` bound to `0.0.0.0` by default | `frontends/webui/server.py:314,385-399,405`; `cli/commands/webui.py:25` | CLOSED f221384 |
+| D-03 | High | Certain × Major | `json` used but never imported — `NameError` at runtime, 2 × `F821` | `fault_recovery/dlq.py:256,275` | CLOSED 25b63ab |
+| D-04 | High | Certain × Major | Test suite OOM-killed against source; a production re-ingest daemon starts mid-run | `context/rag_staleness.py:540,563-575` | CLOSED d5cf526 |
+| D-05 | High | Certain × Major | `conftest.py` adds the repo root, not `src/` — all tests import the installed wheel | `tests/conftest.py:17-22` | CLOSED d5cf526 |
+| D-06 | High | Likely × Major | Daemon recurses instead of looping on error; replays the whole stream each time | `fault_recovery/reconciliation.py:302-308` | CLOSED 25b63ab |
+| D-07 | High | Possible × Major | Redis client has no socket timeout; a hung Redis blocks the workflow | `fault_recovery/outbox.py:113` | CLOSED 25b63ab |
+| D-08 | High | Likely × Major | Stream never trimmed; pending entries never reclaimed; shared consumer name breaks ordering | `fault_recovery/outbox.py:170,262-296` | CLOSED 25b63ab |
+| D-09 | High | Certain × Major | Sandbox reports a WASM verdict it never computed | `fault_recovery/sandbox.py:122-129` | CLOSED 25b63ab |
+| D-10 | High | Certain × Moderate | `[sandbox] mode` is inert — the config key does not exist | `fault_recovery/sandbox.py:41` | CLOSED fb684e3 |
+| D-11 | High | Certain × Moderate | `beagle pi` does not exist; the command is never registered | `cli/commands/pi.py:22` vs `cli/cli.py:24-67` | CLOSED d04308d |
+| D-12 | Medium | Certain × Moderate | `Argument(None)` for `list[str]` → `TypeError` on no-arg invocation | `cli/commands/pi.py:60,84` | CLOSED d04308d |
+| D-13 | Medium | Certain × Minor | Source-checkout fallback paths off by one `.parent`; both branches unreachable | `cli/commands/pi.py:36,52` | CLOSED d04308d |
+| D-14 | Medium | Possible × Moderate | Sentinel returns `False` where callers expect `None` | `core/autonomous_orchestrator.py:170-187` | CLOSED f221384 |
+| D-15 | Medium | Possible × Moderate | `create_task` handle discarded; the run may be garbage-collected | `frontends/webui/server.py:337` | CLOSED b444319 |
+| D-16 | Medium | Certain × Major | Zero tests reference the fault-recovery package | `tests/` | CLOSED 25b63ab |
+| D-17 | Medium | Certain × Moderate | 10 mutual package cycles; `security` imports `runtime` at module scope | `security/firewall.py:19` | OPEN |
+| D-18 | Medium | Certain × Major | Vendored frontend makes the lint gate unusable | `src/beagle/frontends/` | CLOSED |
+| D-19 | Medium | Likely × Minor | `close()` closes only the calling thread's connection; descriptors leak | `fault_recovery/dlq.py:259`; `reconciliation.py:196`; `infrastructure/task_store.py:98` | CLOSED 25b63ab |
+| D-20 | Low | Certain × Insignificant | 12 `BLE001` doctrine-floor findings; 23 ruff findings; 297 `type: ignore` | tree-wide | OPEN — see `scripts/check_quality_ratchet.py` |
+
+Notes on the `Status` column:
+
+- A `CLOSED <sha>` row names a commit that touches the file in that row's
+  `Evidence` column, checked with `git log --oneline -- <path>`.
+- **D-18** is `CLOSED` with no sha on purpose: the fix is a deletion of
+  `src/beagle/frontends/` that a parallel session holds staged and
+  uncommitted at the time of writing. Once that commit lands, replace the
+  bare `CLOSED` with its sha. It is not `OPEN` — the tree no longer carries
+  the directory and the lint gate no longer sees it.
+- **D-17** is genuinely open: `security/firewall.py` still imports
+  `beagle.runtime` at module scope.
+- **D-20** is a ratchet, not a bug fix. It is tracked by
+  `scripts/check_quality_ratchet.py`, whose `--report` mode prints the live
+  count against the baseline for every metric.
 
 ### Reproduction evidence
 
