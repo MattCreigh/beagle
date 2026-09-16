@@ -203,3 +203,16 @@ strict_optional = true
 module = ["numpy.*", "torch.*", "transformers.*", "websockets.*", "uvicorn.*"]
 follow_imports = "skip"
 ignore_errors = true
+
+# langgraph and opentelemetry ship as NAMESPACE packages (no __init__.py;
+# __file__ is None). qup invokes mypy with --no-namespace-packages, under which
+# mypy cannot resolve them and reports their public symbols as missing
+# attributes. Verified: `mypy --no-namespace-packages src/beagle/core/graph.py`
+# reports get_tracer as attr-defined; the same run with --namespace-packages
+# does not. This is a package-layout workaround, not a finding suppression —
+# the import form at graph.py:686 (`import opentelemetry.trace as _otrace`) is
+# already the canonical one for a namespace package.
+[[tool.mypy.overrides]]
+module = ["langgraph.*", "opentelemetry.*"]
+follow_imports = "skip"
+ignore_errors = true
