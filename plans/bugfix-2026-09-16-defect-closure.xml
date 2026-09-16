@@ -1,0 +1,271 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Defect-closure plan generated 2026-09-16.
+  Source: docs/audits/release_readiness_code_audit_2026-08-29.md (D-01..D-20)
+          plus the loose-end sweep of the same date.
+  Baseline: branch feat/cpu-torch-index.
+  Scope: every defect still OPEN after verifying the register against the tree.
+         Defects verified already closed are recorded as such and not reworked.
+-->
+<recipe name="bugfix-2026-09-16-defect-closure" version="1.0.0">
+
+  <metadata>
+    <target_repo>/home/server/Projects/beagle</target_repo>
+    <target_branch>feat/cpu-torch-index</target_branch>
+    <interpreter>/home/server/Projects/beagle/.venv/bin/python</interpreter>
+    <test_runner>tup run_tests (via routeUpper)</test_runner>
+    <lint_gate>qup run_gate (via routeUpper)</lint_gate>
+    <plan_file>plans/bugfix-2026-09-16-defect-closure.xml</plan_file>
+  </metadata>
+
+  <role>
+    <statement>You fix defects. You do not refactor code that is not part of a defect.</statement>
+    <statement>You verify with a command and paste the real result.</statement>
+    <statement>You stop at the first mismatch between expected and actual output.</statement>
+  </role>
+
+  <hard_constraints>
+    <constraint id="HC-1">
+      <rule>Do not disable a lint rule, delete a test, or add a suppression to clear a gate.</rule>
+      <rationale>A finding is a defect of the input, not of the rule.</rationale>
+    </constraint>
+    <constraint id="HC-2">
+      <rule>Do not hand-edit the deployed venv at /opt/beagle/beagle_venv.</rule>
+      <rationale>site-packages is a build artifact. Edit the repo, rebuild, reinstall.</rationale>
+    </constraint>
+    <constraint id="HC-3">
+      <rule>Do not regress the suite. Every work package ends green.</rule>
+    </constraint>
+  </hard_constraints>
+
+  <!-- ================================================================== -->
+  <verified_closed>
+    <defect id="D-01" how="commit f221384; orchestrator outbox call rebound"/>
+    <defect id="D-02" how="commit f221384; webui execute route authenticated"/>
+    <defect id="D-03" how="json imported at dlq.py:17; ruff --select F821 clean"/>
+    <defect id="D-04" how="commit d5cf526; reingest daemon stopped under test"/>
+    <defect id="D-05" how="commit d5cf526; conftest inserts PROJECT_ROOT/src"/>
+    <defect id="D-07" how="outbox.py:155-156 socket_timeout + socket_connect_timeout"/>
+    <defect id="D-08" how="outbox.py:231 maxlen=_MAXLEN; per-host consumer; XAUTOCLAIM"/>
+    <defect id="D-09" how="sandbox.py:127-139 reports fallback_native, no uncomputed pass"/>
+    <defect id="D-10" how="config/schema.py sandbox_mode field added (uncommitted)"/>
+    <defect id="D-06" how="this session; poll guard moved inside the while loop + test repaired"/>
+    <defect id="D-18-interim" how="vendor added to cast_ingestion.excluded_dirs"/>
+  </verified_closed>
+
+  <open_defects>
+    <defect id="D-19" sev="medium">close() frees only the calling thread's connection; descriptors leak.</defect>
+    <defect id="D-11" sev="high">pi_app is defined but never registered; `beagle pi` does not exist.</defect>
+    <defect id="D-12" sev="medium">Argument(None) for list[str] raises TypeError on no-arg invocation.</defect>
+    <defect id="D-13" sev="medium">second bundle-lookup branch is unreachable dead code.</defect>
+    <defect id="D-15" sev="medium">create_task handle discarded; the run may be garbage-collected.</defect>
+    <defect id="D-17" sev="medium">security/firewall.py imports beagle.runtime at module scope.</defect>
+    <defect id="D-16" sev="medium">fault_recovery untracked in git, yet deployed to production.</defect>
+    <defect id="D-EXTRA-1" sev="low">`_tiered` leaks into the human-readable DOCTRINE.md.</defect>
+    <defect id="D-EXTRA-2" sev="low">src/.goosehints untracked and not gitignored.</defect>
+  </open_defects>
+
+  <!-- ================================================================== -->
+  <work_package id="BWP-1" title="Fix connection ownership across the three SQLite stores" covers="D-19" order="1">
+
+    <fact>dlq.py:260, reconciliation.py:205 and task_store.py:98 each implement
+    close() as: if hasattr(self._local, 'conn'): self._local.conn.close().
+    threading.local() is per-thread, so close() called from a different thread
+    than the one that opened a connection frees nothing.</fact>
+    <fact>Measured: sqlite3.threadsafety is 3 on the target interpreter, so a
+    connection may be used from any thread. The store therefore gains nothing
+    from thread-local ownership and loses a deterministic close.</fact>
+    <fact>Measured: foreign-thread close() raises ProgrammingError, not silence.</fact>
+    <fact>The three stores duplicate the same connection logic. A fourth copy
+    would be the next fix, so the shared behaviour gets one home.</fact>
+
+    <instruction>Add src/beagle/infrastructure/sqlite_conn.py holding a
+    ThreadLocalSQLite base class: thread-local connect with the existing WAL and
+    synchronous pragmas, a lock-guarded registry of every live connection, and a
+    close() that closes all of them.</instruction>
+    <instruction>close() must treat a foreign-thread ProgrammingError as
+    "cannot close from here" and drop the reference so the object is collected.
+    It must not raise, and it must not leave the registry populated.</instruction>
+    <instruction>Make DeadLetterQueue, ReconciliationStore and TaskStore inherit
+    the base class. Delete each store's duplicated _get_conn and close.</instruction>
+    <instruction>Keep every public signature identical. Do not change SQL, schema
+    or pragmas.</instruction>
+
+    <acceptance>
+      <criterion id="AC-1">A connection opened on thread A is closed when close()
+      runs on thread B: the registry is empty afterwards and no exception escapes.</criterion>
+      <criterion id="AC-2">Reopening the store after close() works (no stale handle).</criterion>
+      <criterion id="AC-3">All existing fault-recovery and task-store tests still pass.</criterion>
+    </acceptance>
+
+    <commands><![CDATA[
+tup run_tests tests/test_fault_recovery.py
+qup run_gate src/beagle/infrastructure/sqlite_conn.py \
+  src/beagle/fault_recovery/dlq.py \
+  src/beagle/fault_recovery/reconciliation.py \
+  src/beagle/infrastructure/task_store.py
+    ]]></commands>
+    <commit_message>fix(fault-recovery): close every thread's connection, not the caller's (D-19)</commit_message>
+  </work_package>
+
+  <!-- ================================================================== -->
+  <work_package id="BWP-2" title="Make the pi frontend reachable and correct" covers="D-11, D-12, D-13" order="2">
+
+    <fact>cli/commands/pi.py:22 defines pi_app. cli/cli.py:24-33 imports ten
+    command modules and not pi. The command is unreachable.</fact>
+    <fact>Measured before the fix: `beagle pi` is not in the help surface.</fact>
+    <fact>pi.py:60 declares Argument(None) for list[str]; typer raises
+    TypeError: Value after * must be an iterable, not NoneType on a no-arg call.</fact>
+    <fact>Measured: _bundle_dir() resolves on the first branch for both the
+    installed wheel and the source tree, so the second branch cannot be reached.
+    The same holds for _mcp_server_script().</fact>
+
+    <instruction>Register pi_app in cli/cli.py exactly as webui_app is registered,
+    so `beagle pi` flattens into the root namespace.</instruction>
+    <instruction>Replace Argument(None) with Argument(None) replaced by a proper
+    optional list default so a no-argument invocation is valid.</instruction>
+    <instruction>Delete the unreachable second lookup branch in _bundle_dir and
+    _mcp_server_script, and keep the single correct resolver.</instruction>
+
+    <acceptance>
+      <criterion id="AC-4">`beagle --help` lists pi.</criterion>
+      <criterion id="AC-5">Invoking the pi command with no positional argument
+      passes argument validation (it may then fail on a missing node binary;
+      that is a different, honest error).</criterion>
+    </acceptance>
+
+    <commands><![CDATA[
+python -c "from beagle.cli.cli import app; names=[c.name for c in app.registered_commands]; print('pi' in names)"
+python -c "
+from typer.testing import CliRunner
+from beagle.cli.commands.pi import pi_app
+r = CliRunner().invoke(pi_app, [])
+print('exit', r.exit_code)
+print(r.output[:300])"
+qup run_gate src/beagle/cli/cli.py src/beagle/cli/commands/pi.py
+    ]]></commands>
+    <commit_message>fix(cli): register the pi frontend and repair its argument contract (D-11, D-12, D-13)</commit_message>
+  </work_package>
+
+  <!-- ================================================================== -->
+  <work_package id="BWP-3" title="Retain the webui workflow task handle" covers="D-15" order="3">
+
+    <fact>frontends/webui/server.py:418 calls asyncio.get_running_loop().create_task(_runner())
+    and discards the handle. asyncio keeps only a weak reference, so the task can
+    be garbage-collected mid-run.</fact>
+
+    <instruction>Hold the returned task in a module-level set, and discard it via
+    the task's done callback so the set does not grow without bound.</instruction>
+
+    <acceptance>
+      <criterion id="AC-6">The task set is non-empty immediately after the execute
+      route returns, and returns to its prior size once the task completes.</criterion>
+    </acceptance>
+
+    <commands><![CDATA[
+qup run_gate src/beagle/frontends/webui/server.py
+    ]]></commands>
+    <commit_message>fix(webui): retain the workflow task handle against GC (D-15)</commit_message>
+  </work_package>
+
+  <!-- ================================================================== -->
+  <work_package id="BWP-4" title="Break the security to runtime module-scope import" covers="D-17" order="4">
+
+    <fact>security/firewall.py:19-20 import beagle.runtime.goose_cli and
+    beagle.runtime.loader at module scope. Neither symbol is used at import time:
+    runtime_plugin_name is called inside the validation function and
+    GooseCliRuntime is instantiated at firewall.py:250.</fact>
+    <fact>The module-scope import is what contributes firewall.py to the package
+    cycle graph.</fact>
+
+    <instruction>Move both imports into the function that uses them. Keep the
+    failure behaviour identical: an ImportError there must still fail closed, not
+    fall through to allow.</instruction>
+
+    <acceptance>
+      <criterion id="AC-7">`import beagle.security.firewall` no longer imports
+      beagle.runtime at module scope.</criterion>
+      <criterion id="AC-8">The firewall's own tests still pass, and an import
+      failure still denies rather than allows.</criterion>
+    </acceptance>
+
+    <commands><![CDATA[
+tup run_tests tests/ -k firewall
+qup run_gate src/beagle/security/firewall.py
+    ]]></commands>
+    <stop_condition>If moving the import changes any firewall test result, revert
+    and report. The security surface is not a place to trade behaviour for tidiness.</stop_condition>
+    <commit_message>refactor(security): move the runtime import out of module scope (D-17)</commit_message>
+  </work_package>
+
+  <!-- ================================================================== -->
+  <work_package id="BWP-5" title="Stop the tiered form leaking into the rendered doctrine" covers="D-EXTRA-1, D-EXTRA-2" order="5">
+
+    <fact>render.py:1202 skips the _tiered key in the XML path with the comment
+    "tiered-render-only terse form; not part of the full section".</fact>
+    <fact>_md_render_section at render.py:1901 has no equivalent skip, so
+    DOCTRINE.md carries two raw Python dict dumps under headings formatting and
+    CRITICAL_ROUTING_PROTOCOL.</fact>
+
+    <instruction>Add the same _tiered skip to _md_render_section, so the two
+    renderers agree on what the terse form is for.</instruction>
+    <instruction>Add /src/.goosehints to .gitignore beside the existing
+    auto-generated artifact entries.</instruction>
+
+    <acceptance>
+      <criterion id="AC-9">Rendering the doctrine report produces no `_tiered` line
+      and no raw dict literal.</criterion>
+      <criterion id="AC-10">The doctrine-coherence tests still pass.</criterion>
+    </acceptance>
+
+    <commands><![CDATA[
+tup run_tests tests/ -k "doctrine or tom"
+qup run_gate src/beagle/style_guides/render.py
+    ]]></commands>
+    <commit_message>fix(style-guides): keep the tiered form out of the markdown report (_tiered leak)</commit_message>
+  </work_package>
+
+  <!-- ================================================================== -->
+  <work_package id="BWP-6" title="Version the fault-recovery package and its tests" covers="D-16" order="6">
+
+    <fact>git log --all -- src/beagle/fault_recovery/ returns 0 commits and
+    git ls-files returns 0 tracked files, while
+    /opt/beagle/beagle_venv/.../beagle/fault_recovery/ exists. The package is
+    running in production and is not in version control.</fact>
+    <fact>The deployed copy predates the D-06 loop fix and is therefore still
+    liveness-broken.</fact>
+
+    <instruction>Add the package and its tests to git in one commit that
+    references the defect identifiers it closes.</instruction>
+    <instruction>Record in the commit body that the deployed wheel is stale, so
+    the reinstall is not forgotten.</instruction>
+
+    <acceptance>
+      <criterion id="AC-11">git ls-files lists all six fault_recovery modules and
+      tests/test_fault_recovery.py.</criterion>
+      <criterion id="AC-12">git log --follow resolves reconciliation.py to the
+      commit, satisfying the reversion-path requirement for these files.</criterion>
+    </acceptance>
+
+    <commands><![CDATA[
+git add src/beagle/fault_recovery/ tests/test_fault_recovery.py
+git status --short src/beagle/fault_recovery/ tests/test_fault_recovery.py
+git commit -m "feat(fault-recovery): version the DLQ, outbox, reconciliation and sandbox" \
+  -m "Closes D-03, D-06, D-07, D-08, D-09, D-10, D-19. Deployed wheel at
+/opt/beagle/beagle_venv is STALE and predates the D-06 fix; rebuild and reinstall."
+    ]]></commands>
+    <commit_message>feat(fault-recovery): version the DLQ, outbox, reconciliation and sandbox (D-16)</commit_message>
+  </work_package>
+
+  <!-- ================================================================== -->
+  <deferred>
+    <item>D-18 full closure: moving frontends/ out of the package needs
+    beagle-plugin-pi and beagle-plugin-webui to exist first (WP-4 and WP-5 of the
+    release directive). The interim excluded_dirs entry already restores the
+    lint gate.</item>
+    <item>D-20: 296 type-ignore and 186 BLE001 against the unsuppressable
+    doctrine floor. Not a bug fix; it is a ratchet.</item>
+    <item>WP-6/WP-7 of the release directive.</item>
+  </deferred>
+
+</recipe>
