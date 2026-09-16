@@ -49,7 +49,8 @@ SYNC_STATE_FILE = DATA_DIR / "sync_state.json"
 def load_sync_state() -> dict[str, str]:
     """Load last sync timestamps."""
     if SYNC_STATE_FILE.exists():
-        return json.loads(SYNC_STATE_FILE.read_text())  # type: ignore[no-any-return]
+        raw: dict[str, str] = json.loads(SYNC_STATE_FILE.read_text())
+        return raw
     return {}
 
 

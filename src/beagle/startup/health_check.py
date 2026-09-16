@@ -67,13 +67,12 @@ def check_config_loads() -> StartupCheckResult:
         from beagle.config.loader import load_config
 
         config = load_config()
-        if config.orchestrator is None:
-            return StartupCheckResult(
-                name="config",
-                status="fail",
-                message="WorkflowConfig.orchestrator is None",
-                fix_hint="Check config.toml [orchestrator] section",
-            )
+        # ``WorkflowConfig.orchestrator`` is a non-Optional dataclass field with
+        # a default_factory, so it can never be None: an ``is None`` guard here
+        # is dead code (mypy: unreachable). What this check actually verifies is
+        # that the config PARSES and the field is present — which the attribute
+        # access below does, raising AttributeError if the schema changed.
+        _ = config.orchestrator.timeout_seconds
         return StartupCheckResult(name="config", status="ok", message="Config loaded successfully")
     # Config loading can fail on: file I/O (OSError), TOML parse /
     # validation (ValueError, incl. tomllib.TOMLDecodeError), structural

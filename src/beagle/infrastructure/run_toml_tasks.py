@@ -243,7 +243,7 @@ def run_all_pending_tasks(dry_run: bool = False, force: bool = False) -> list[di
     return results
 
 
-def main():
+def main() -> int:
     parser = argparse.ArgumentParser(description="Run OpenClaw TOML task definitions")
     parser.add_argument(
         "--task",

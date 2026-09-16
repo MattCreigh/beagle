@@ -246,7 +246,7 @@ class BeagleApp(App):
         self.sub_title = self.query[:60] + "..." if len(self.query) > 60 else self.query  # type: ignore[arg-type,assignment,index]
 
         bus = get_event_bus()
-        self.sub_id = bus.subscribe("*", self._handle_bus_event)  # type: ignore[assignment]
+        self.sub_id = bus.subscribe("*", self._handle_bus_event)
 
         # Initial state for progress bars
         self.query_one("#budget-progress").update(progress=0)  # type: ignore[attr-defined]

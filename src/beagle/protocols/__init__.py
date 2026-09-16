@@ -1,13 +1,14 @@
 """Security and communication protocols."""
 
 from importlib import import_module
+from types import ModuleType
 
 __all__ = [
     "cvcp",
 ]
 
 
-def __getattr__(name: str):
+def __getattr__(name: str) -> ModuleType:
     """Lazy import protocol components."""
     lazy_imports = {
         "cvcp": ".cvcp",

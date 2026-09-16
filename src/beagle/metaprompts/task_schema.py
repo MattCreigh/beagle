@@ -13,7 +13,7 @@ from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, ValidationInfo, field_validator
 
 
 class TaskType(StrEnum):
@@ -134,7 +134,7 @@ class TaskSpec(BaseModel):
 
     @field_validator("workflow", mode="before")
     @classmethod
-    def set_default_workflow(cls, v, info):
+    def set_default_workflow(cls, v: Any, info: ValidationInfo) -> Any:
         """Set default workflow name from task name if not provided."""
         if isinstance(v, dict) and "name" not in v and "name" in info.data:
             v["name"] = info.data["name"]

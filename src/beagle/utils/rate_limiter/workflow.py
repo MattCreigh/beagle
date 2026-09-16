@@ -544,25 +544,40 @@ class WorkflowRateLimiter:
             return RateLimiter(self.default_config)
 
 
+# Module-level singletons, replacing attributes hung off the function objects.
+#
+# The previous form used hasattr/setattr/getattr on the functions themselves.
+# That is the same storage with none of the clarity, and ruff flags it as
+# B009/B010 (getattr/setattr with a constant name is no safer than attribute
+# access). The reset helpers below delete the attribute to force
+# reconstruction, which module-level sentinels express directly.
+_rate_limiter_lock: asyncio.Lock | None = None
+_rate_limiter_async_instance: WorkflowRateLimiter | None = None
+_rate_limiter_instance: WorkflowRateLimiter | None = None
+
+
 def _get_rate_limiter_lock() -> asyncio.Lock:
     """Get or create the global rate limiter lock."""
-    if not hasattr(_get_rate_limiter_lock, "_lock"):
-        setattr(_get_rate_limiter_lock, "_lock", asyncio.Lock())
-    return getattr(_get_rate_limiter_lock, "_lock")
+    global _rate_limiter_lock  # noqa: PLW0603 — module-level lazy singleton
+    if _rate_limiter_lock is None:
+        _rate_limiter_lock = asyncio.Lock()
+    return _rate_limiter_lock
 
 
 def get_rate_limiter_async() -> WorkflowRateLimiter:
     """Get the singleton async rate limiter instance."""
-    if not hasattr(get_rate_limiter_async, "_instance"):
-        setattr(get_rate_limiter_async, "_instance", WorkflowRateLimiter())
-    return getattr(get_rate_limiter_async, "_instance")
+    global _rate_limiter_async_instance  # noqa: PLW0603 — module-level lazy singleton
+    if _rate_limiter_async_instance is None:
+        _rate_limiter_async_instance = WorkflowRateLimiter()
+    return _rate_limiter_async_instance
 
 
 def get_rate_limiter() -> WorkflowRateLimiter:
     """Get the singleton rate limiter instance."""
-    if not hasattr(get_rate_limiter, "_instance"):
-        setattr(get_rate_limiter, "_instance", WorkflowRateLimiter())
-    return getattr(get_rate_limiter, "_instance")
+    global _rate_limiter_instance  # noqa: PLW0603 — module-level lazy singleton
+    if _rate_limiter_instance is None:
+        _rate_limiter_instance = WorkflowRateLimiter()
+    return _rate_limiter_instance
 
 
 def reset_rate_limiter_async(
@@ -572,15 +587,14 @@ def reset_rate_limiter_async(
     default_burst_size: int = 10,
 ) -> WorkflowRateLimiter:
     """Reset the singleton async rate limiter instance."""
-    if hasattr(get_rate_limiter_async, "_instance"):
-        del get_rate_limiter_async._instance
+    global _rate_limiter_async_instance  # noqa: PLW0603 — module-level lazy singleton
     instance = WorkflowRateLimiter(
         default_requests_per_second=default_requests_per_second,
         default_burst_size=default_burst_size,
         workflow_configs=workflow_configs,
         model_configs=model_configs,
     )
-    get_rate_limiter_async._instance = instance  # type: ignore[attr-defined]
+    _rate_limiter_async_instance = instance
     return instance
 
 
@@ -591,15 +605,14 @@ def reset_rate_limiter(
     default_burst_size: int = 10,
 ) -> WorkflowRateLimiter:
     """Reset the singleton rate limiter instance."""
-    if hasattr(get_rate_limiter, "_instance"):
-        del get_rate_limiter._instance
+    global _rate_limiter_instance  # noqa: PLW0603 — module-level lazy singleton
     instance = WorkflowRateLimiter(
         default_requests_per_second=default_requests_per_second,
         default_burst_size=default_burst_size,
         workflow_configs=workflow_configs,
         model_configs=model_configs,
     )
-    get_rate_limiter._instance = instance  # type: ignore[attr-defined]
+    _rate_limiter_instance = instance
     return instance
 
 

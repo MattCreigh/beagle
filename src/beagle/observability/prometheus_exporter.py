@@ -61,7 +61,7 @@ def _is_enabled() -> bool:
         except ValueError:
             return False
     try:
-        from beagle.config import get_config
+        from beagle.config.loader import get_config
 
         cfg = get_config()
         port = getattr(getattr(cfg, "observability", None), "prometheus_port", 0)
@@ -83,7 +83,7 @@ def _resolve_port() -> int:
                 exc,
             )
     try:
-        from beagle.config import get_config
+        from beagle.config.loader import get_config
 
         cfg = get_config()
         port = getattr(getattr(cfg, "observability", None), "prometheus_port", 0)

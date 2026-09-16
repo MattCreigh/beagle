@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 logger = logging.getLogger("Beagle.blocks.jinja")
 
 _jinja_env = None
 
 
-def get_jinja_env():
+def get_jinja_env() -> Any:
     """Get the singleton sandboxed Jinja environment."""
     global _jinja_env
     if _jinja_env is None:

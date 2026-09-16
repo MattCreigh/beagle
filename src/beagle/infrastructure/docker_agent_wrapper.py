@@ -70,13 +70,13 @@ _RING_IO_MAP = {
 class DockerAgentWrapper:
     """Wrapper that bridges LangGraph nodes and Docker/Orpheus container environment."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.agent_name = f"beagle-{AGENT_TYPE}"
         self.node_func = None
         self.running = False
         self.tasks_processed = 0
         self.start_time = time.monotonic()
-        self.state = {}
+        self.state: dict[str, Any] = {}
 
         # Load node function dynamically
         self._load_node_function()
@@ -298,7 +298,7 @@ class DockerAgentWrapper:
             f.write(json.dumps(log_entry) + "\n")
 
 
-def main():
+def main() -> None:
     """Main entry point for Docker container execution.
 
     Reads input from stdin (JSON) or environment variables,

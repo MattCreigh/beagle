@@ -1,6 +1,7 @@
 """Command-line interface entry points."""
 
 from importlib import import_module
+from types import ModuleType
 
 __all__ = [
     "cli",
@@ -8,7 +9,7 @@ __all__ = [
 ]
 
 
-def __getattr__(name: str):
+def __getattr__(name: str) -> ModuleType:
     """Lazy import CLI components."""
     lazy_imports = {
         "cli": ".cli",

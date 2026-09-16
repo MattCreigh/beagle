@@ -7,6 +7,8 @@ __all__ = [
     "agent_config",
     "config",
     "defaults",
+    "get_config",
+    "load_config",
     "env_overrides",
     "loader",
     "model_resolver",
@@ -33,6 +35,17 @@ def __getattr__(name: str) -> ModuleType:
         "registry": ".registry",
         "defaults": ".defaults",
     }
+    # Re-exported callables, not modules: the lazy table above maps to module
+    # paths, so these need their own branch. `from beagle.config import
+    # get_config` was an ImportError before this, and prometheus_exporter.py
+    # calls it on two paths.
+    reexported = {
+        "get_config": ("loader", "get_config"),
+        "load_config": ("loader", "load_config"),
+    }
+    if name in reexported:
+        module_name, attr = reexported[name]
+        return getattr(import_module("." + module_name, __package__), attr)
     if name in lazy_imports:
         module = import_module(lazy_imports[name], __package__)
         return module

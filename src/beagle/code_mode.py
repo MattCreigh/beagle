@@ -567,11 +567,11 @@ def get_code_mode_executor() -> CodeModeExecutor:
 
 if __name__ == "__main__":
 
-    async def demo():
+    async def demo() -> None:
         executor = get_code_mode_executor()
 
         # Register a simple tool
-        async def search_handler(params, ctx, results):
+        async def search_handler(params: Any, ctx: Any, results: Any) -> str:
             query = params.get("query", "")
             return f"Search results for: {query}"
 

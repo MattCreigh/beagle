@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import logging
 import time
+from collections.abc import Iterator
 from contextlib import contextmanager
 from enum import StrEnum
 from typing import Any
@@ -72,7 +73,7 @@ def genai_span(
     workflow_id: str = "",
     system: str = "ollama",
     extra_attributes: dict[str, Any] | None = None,
-):
+) -> Iterator[GenAISpanContext]:
     """Create a GenAI-attributed span following OTel semantic conventions.
 
     Args:

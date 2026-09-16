@@ -12,6 +12,7 @@ from __future__ import annotations
 import functools
 import logging
 import os
+from collections.abc import Callable
 from contextlib import contextmanager
 from typing import Any
 
@@ -35,7 +36,7 @@ try:
     OTEL_AVAILABLE = True
 except ImportError:
     OTEL_AVAILABLE = False
-    trace = None  # type: ignore[assignment]
+    trace = None
 
 # ── Global state ─────────────────────────────────────────────────────────────
 
@@ -148,12 +149,14 @@ def span(
             raise
 
 
-def trace_async(name: str, attributes: dict | None = None):
+def trace_async(
+    name: str, attributes: dict[str, Any] | None = None
+) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """Decorator for tracing async functions."""
 
-    def decorator(func):
+    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
         @functools.wraps(func)
-        async def wrapper(*args, **kwargs):
+        async def wrapper(*args: Any, **kwargs: Any) -> Any:
             with span(name, attributes) as s:
                 try:
                     result = await func(*args, **kwargs)
@@ -213,7 +216,7 @@ class TracingContext:
         self._span: Any = None  # opentelemetry.trace.Span | None
         self._token: Any = None  # opentelemetry.context.Token | None
 
-    def __enter__(self):
+    def __enter__(self) -> Any:
         tracer = get_tracer()
         if tracer is not None:
             self._span = tracer.start_span(self.name)
@@ -223,7 +226,9 @@ class TracingContext:
             self._token = trace.context_api.attach(trace.set_span_in_context(self._span))
         return self
 
-    def __exit__(self, _exc_type, exc_val, _exc_tb):
+    def __exit__(
+        self, _exc_type: Any, exc_val: BaseException | None, _exc_tb: Any
+    ) -> None:
         if self._span is not None:
             if exc_val is not None:
                 self._span.set_status(Status(StatusCode.ERROR, str(exc_val)))
@@ -232,6 +237,6 @@ class TracingContext:
         if self._token is not None:
             trace.context_api.detach(self._token)
 
-    def child_span(self, name: str, attributes: dict | None = None):
+    def child_span(self, name: str, attributes: dict[str, Any] | None = None) -> Any:
         """Create a child span within this context."""
         return span(name, attributes)

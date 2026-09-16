@@ -382,12 +382,12 @@ def build_cvcp_subgraph(
     """
     graph = StateGraph(CVCPState)
 
-    graph.add_node("execute", _cvcp_execute)  # type: ignore[type-var]
-    graph.add_node("validate", _cvcp_validate)  # type: ignore[type-var]
-    graph.add_node("incorporate_feedback", _incorporate_feedback)  # type: ignore[type-var]
+    graph.add_node("execute", _cvcp_execute)
+    graph.add_node("validate", _cvcp_validate)
+    graph.add_node("incorporate_feedback", _incorporate_feedback)
 
     if enable_ground_truth_validation:
-        graph.add_node("ground_truth_validate", _cvcp_ground_truth_validate)  # type: ignore[type-var]
+        graph.add_node("ground_truth_validate", _cvcp_ground_truth_validate)
 
     graph.set_entry_point("execute")
     graph.add_edge("execute", "validate")

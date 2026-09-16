@@ -55,7 +55,7 @@ class ComposerConfig:
     max_workers: int = 4
     schema_version: str = "1.0.0"
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.timeout_seconds <= 0:
             try:
                 from beagle.config.config import get_config
@@ -369,7 +369,7 @@ class BlockComposer:
             from .mcp_exposure import _build_input_schema, _build_output_schema
         except ImportError as exc:
             logger.warning(f"Block '{name}' schema validation unavailable: {exc}")
-            jsonschema = None  # type: ignore[assignment]
+            jsonschema = None
 
         if jsonschema is not None:
             try:

@@ -29,7 +29,7 @@ try:
     OTEL_METRICS_AVAILABLE = True
 except ImportError:
     OTEL_METRICS_AVAILABLE = False
-    otel_metrics = None  # type: ignore[assignment]
+    otel_metrics = None
 
 
 # ── Data types ───────────────────────────────────────────────────────────────
