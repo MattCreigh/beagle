@@ -23,7 +23,7 @@ import uuid
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, TypeVar
+from typing import Any, ClassVar, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
@@ -298,6 +298,13 @@ _bootstrap_singleton_lock = threading.Lock()
 class Singleton[T](ABC):
     """Thread-safe singleton base class for synchronous resources."""
 
+    # Declared, never assigned: ``None`` as a default would make
+    # ``hasattr(cls, "_singleton_instance")`` true on the base class, so the
+    # fast path in ``get_instance`` would take a None-valued attribute and
+    # raise AttributeError on ``.get()``. ClassVar cannot hold a type
+    # variable, so the value is typed Any; ``get()`` recovers the real type.
+    _singleton_instance: ClassVar[Any]
+
     def __init__(self, name: str | None = None) -> None:
         self._name = name or self.__class__.__name__
         self._instance: T | None = None
@@ -331,7 +338,7 @@ class Singleton[T](ABC):
         lock_name = "_singleton_construction_lock"
         # Fast path: the instance is already constructed.
         if hasattr(cls, "_singleton_instance"):
-            return getattr(cls, "_singleton_instance").get()
+            return cls._singleton_instance.get()
         # Slow path: take the class-level lock and check again.
         with _bootstrap_singleton_lock:
             if not hasattr(cls, lock_name):
@@ -339,8 +346,8 @@ class Singleton[T](ABC):
             cls_lock = getattr(cls, lock_name)
         with cls_lock:
             if not hasattr(cls, "_singleton_instance"):
-                setattr(cls, "_singleton_instance", cls())
-        return getattr(cls, "_singleton_instance").get()
+                cls._singleton_instance = cls()
+        return cls._singleton_instance.get()
 
     def get(self) -> T:
         """Get the singleton instance, creating if necessary."""
