@@ -11,33 +11,76 @@ using Docker, with Orpheus ring buffers for high-speed IPC between agent contain
 ## Architecture Overview
 
 ```text
-┌─────────────────────────────────────────────────────────────────┐
-│                      SKYLON DEV STACK                            │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  ┌──────────────┐     ┌──────────────┐     ┌──────────────┐     │
-│  │  PLANNER     │────▶│  EXECUTOR    │────▶│  VERIFIER    │     │
-│  │  AGENT       │◀────│  AGENT       │◀────│  AGENT       │     │
-│  │  (Container) │     │  (Container) │     │  (Container) │     │
-│  └──────┬───────┘     └──────┬───────┘     └──────┬───────┘     │
-│         │                    │                    │              │
-│         │    O R P H E U S   R I N G   B U F F E R S             │
-│         │    (Shared Memory IPC - Zero Copy)                      │
-│         │                    │                    │              │
-│         └────────────────────┼────────────────────┘              │
-│                              │                                   │
-│                    ┌─────────▼─────────┐                        │
-│                    │   ORCHESTRATOR     │                        │
-│                    │   (Container)      │                        │
-│                    └─────────────────────┘                        │
-│                                                                 │
-│  ┌──────────────┐     ┌──────────────┐                           │
-│  │  SYNTHESIZER │     │   ORPHEUS    │                           │
-│  │  AGENT       │     │   DAEMON     │                           │
-│  │  (Container) │     │  (Ring Mgmt) │                           │
-│  └──────────────┘     └──────────────┘                           │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────┐
+│                 SKYLON DEV STACK                │
+├─────────────────────────────────────────────────┤
+│                                                 │
+│  ┌───────────┐   ┌───────────┐   ┌───────────┐  │
+│  │  PLANNER  │─▶ │  EXECUTOR │─▶ │  VERIFIER │  │
+│  │   AGENT   │◀─ │   AGENT   │◀─ │   AGENT   │  │
+│  │(Container)│   │(Container)│   │(Container)│  │
+│  └───────────┘   └───────────┘   └───────────┘  │
+│                                                 │
+│        │               │               │        │
+│        └───────────────┬───────────────┘        │
+│                        │ ORPHEUS RING BUFFERS   │
+│                        │ (shared-memory IPC)    │
+│                        ▼                        │
+│                 ┌─────────────┐                 │
+│                 │ ORCHESTRATOR│                 │
+│                 │ (Container) │                 │
+│                 └─────────────┘                 │
+│                                                 │
+│  ┌───────────┐   ┌───────────┐                  │
+│  │SYNTHESIZER│   │  ORPHEUS  │                  │
+│  │   AGENT   │   │   DAEMON  │                  │
+│  │(Container)│   │(Ring Mgmt)│                  │
+│  └───────────┘   └───────────┘                  │
+│                                                 │
+└─────────────────────────────────────────────────┘
+```
+
+```mermaid
+flowchart LR
+    P[Planner container] --> E[Executor container] --> V[Verifier container]
+    E --> R[(Orpheus ring buffers)]
+    R --> O[Orchestrator container]
+    V --> S[Synthesizer container]
+    R --> D[Orpheus daemon]
+```
+
+### Agent lifecycle
+
+```text
+┌─────────────────────────────────────────────────┐
+│                 AGENT LIFECYCLE                 │
+├─────────────────────────────────────────────────┤
+│                                                 │
+│  ┌───────────┐                                  │
+│  │   SPAWN   │                                  │
+│  │ container │                                  │
+│  └───────────┘                                  │
+│                                                 │
+│        │                                        │
+│┌───────┴───────┐                                │
+││               │                                │
+│▼               ▼                                │
+│  ┌───────────┐ ┌───────────┐                    │
+│  │   ATTACH  │ │  PUBLISH  │                    │
+│  │    ring   │ │   result  │                    │
+│  └───────────┘ └───────────┘                    │
+│                                                 │
+│  Both are ephemeral: the daemon reaps an agent  │
+│ when its ring detaches, so there is no registry.│
+│                                                 │
+└─────────────────────────────────────────────────┘
+```
+
+```mermaid
+flowchart TD
+    S[spawn container] --> A[attach ring]
+    S --> P[publish result]
+    A -.-> X[daemon reaps on detach]
 ```
 
 ## DAG Node to Container Mapping
