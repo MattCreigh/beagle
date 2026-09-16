@@ -1,6 +1,7 @@
 """Configuration and path management."""
 
 from importlib import import_module
+from types import ModuleType
 
 __all__ = [
     "agent_config",
@@ -17,7 +18,7 @@ __all__ = [
 ]
 
 
-def __getattr__(name: str):
+def __getattr__(name: str) -> ModuleType:
     """Lazy import config components."""
     lazy_imports = {
         "config": ".config",

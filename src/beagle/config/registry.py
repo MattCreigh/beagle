@@ -99,14 +99,14 @@ class _EmptyRoleDict(dict):
     (model="", provider="") rather than raising StrictUndefined.
     """
 
-    def __missing__(self, key: str) -> Any:
+    def __missing__(self, _key: str) -> Any:
         return _EmptyRoleView()
 
 
 class _EmptyFallbackDict(dict):
     """dict that yields an empty chain list for unknown roles."""
 
-    def __missing__(self, key: str) -> list[dict[str, Any]]:
+    def __missing__(self, _key: str) -> list[dict[str, Any]]:
         return []
 
 

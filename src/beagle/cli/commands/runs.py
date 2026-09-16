@@ -175,7 +175,7 @@ def diff_runs(
     # Resolve short IDs
     runs = db.get_workflow_runs(limit=100)
 
-    def resolve(sid):
+    def resolve(sid: str) -> str:
         matches = [r.id for r in runs if r.id.startswith(sid)]
         return matches[0] if len(matches) == 1 else sid
 

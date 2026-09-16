@@ -245,7 +245,7 @@ class ContextPreprocessor:
     def _create_chunks_from_boundaries(
         self,
         boundaries: list[int],
-        total_lines: int,
+        _total_lines: int,
         target_lines: int,
     ) -> list[ChunkMetadata]:
         """Create chunks from boundary positions."""
