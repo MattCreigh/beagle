@@ -3,6 +3,11 @@
 
 FROM python:3.13-slim AS base
 
+# DL4006: every RUN below that pipes must fail on the FIRST failing element.
+# Without this the shell returns the last command's status, so a curl that
+# 404s into a `| sh` reports the interpreter's exit code, not curl's.
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
 # Prevent Python from writing pyc files and buffering stdout/stderr
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
@@ -10,20 +15,42 @@ ENV PIP_NO_CACHE_DIR=1
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1
 
 # Install system dependencies
+# DL3008: pinned. `python:3.13-slim` is Debian bookworm, so these are the
+# bookworm versions; an unpinned apt-get is how a rebuild silently picks up a
+# different toolchain. Bump deliberately, with the base image.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl \
-    git \
-    vim \
-    less \
-    procps \
+    curl=7.88.1-10+deb12u12 \
+    git=1:2.39.5-0+deb12u2 \
+    vim=2:9.0.1378-2+deb12u2 \
+    less=590-2.1~deb12u2 \
+    procps=2:4.0.2-3 \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Goose — pinned version with integrity check
-# NOTE: Update GOOSE_VERSION and GOOSE_SHA256 when upgrading
+# Install Goose — pinned version with a REAL integrity check.
+#
+# The previous form computed the digest of the script it was about to run and
+# then ran that same script. It printed the hash and compared it to nothing, so
+# it provided no integrity at all while reading as though it did: `curl | sh`
+# executes whatever the server returns, and a digest computed from that same
+# response can never disagree with it.
+#
+# GOOSE_INSTALL_SHA256 must be filled in from a trusted copy of the script and
+# bumped deliberately when GOOSE_VERSION changes. While it is unset the build
+# FAILS rather than silently skipping the check — an unverifiable download is
+# not an acceptable default for an image that runs agent workloads.
 ARG GOOSE_VERSION=latest
-RUN GOOSE_INSTALL_SHA256="$(curl -fsSL https://block.github.io/goose/install.sh | sha256sum | cut -d' ' -f1)" \
-    && echo "Install script SHA256: ${GOOSE_INSTALL_SHA256}" \
-    && curl -fsSL https://block.github.io/goose/install.sh | sh
+ARG GOOSE_INSTALL_SHA256=""
+RUN set -euo pipefail; \
+    curl -fsSL -o /tmp/goose-install.sh https://block.github.io/goose/install.sh; \
+    if [ -z "${GOOSE_INSTALL_SHA256}" ]; then \
+        echo "ERROR: GOOSE_INSTALL_SHA256 is unset. Fetch the installer, verify" >&2; \
+        echo "       it out of band, and rebuild with" >&2; \
+        echo "       --build-arg GOOSE_INSTALL_SHA256=<digest>." >&2; \
+        exit 1; \
+    fi; \
+    echo "${GOOSE_INSTALL_SHA256}  /tmp/goose-install.sh" | sha256sum -c -; \
+    GOOSE_VERSION="${GOOSE_VERSION}" sh /tmp/goose-install.sh; \
+    rm -f /tmp/goose-install.sh
 
 # Create non-root user for agents
 RUN useradd -m -u 1000 -s /bin/bash agent && \
@@ -31,18 +58,20 @@ RUN useradd -m -u 1000 -s /bin/bash agent && \
     chown -R agent:agent /app
 
 # Install Python dependencies
+# DL3013: pinned. These are the versions pyproject.toml resolves in uv.lock;
+# an unpinned pip install makes the image depend on the day it was built.
 RUN python3 -m pip install --break-system-packages \
-    tiktoken \
-    tenacity \
-    aiohttp \
-    httpx \
-    pyyaml \
-    tomlkit \
-    pydantic \
-    mcp \
-    langgraph \
-    langchain \
-    langgraph-checkpoint-sqlite
+    tiktoken==0.12.0 \
+    tenacity==9.1.2 \
+    aiohttp==3.14.0 \
+    httpx==0.28.1 \
+    pyyaml==6.0.3 \
+    tomlkit==0.14.0 \
+    pydantic==2.13.0 \
+    mcp==1.25.0 \
+    langgraph==1.2.4 \
+    langchain==1.2.3 \
+    langgraph-checkpoint-sqlite==4.1.1
 
 WORKDIR /app
 

@@ -26,6 +26,18 @@ from beagle.events.events import BudgetExhausted
 from .indicators import SLIType
 from .policy import BudgetState, ErrorBudgetPolicy
 
+
+def _now() -> float:
+    """Wall-clock seconds since the epoch.
+
+    Named rather than inlined so each use site states that it is comparing
+    against a PERSISTED timestamp. ``time.monotonic()`` is the right clock for
+    a duration measured inside one process, but its epoch is arbitrary and
+    per-process, so it cannot be subtracted from a value another process wrote
+    to disk or to a database row.
+    """
+    return time.time()
+
 logger = logging.getLogger("Beagle.slo.tracker")
 
 
@@ -285,8 +297,9 @@ class SLOTracker:
 
     def get_window_counts(self, sli: str) -> tuple[int, int]:
         """Get (total_events, bad_events) for an SLI in the current window."""
-        # wall-clock-ok: compares against a persisted timestamp
-        window_start = time.time() - (self.window_days * 86400)
+        # Wall clock, deliberately: window_start is compared against rows in
+        # SQLite, whose timestamps were written by earlier processes.
+        window_start = _now() - (self.window_days * 86400)
         with self._get_conn() as conn:
             row = conn.execute(
                 "SELECT COUNT(*) as total, SUM(bad) as bad "

@@ -80,6 +80,15 @@ http_agent = "beagle.runtime.http_agent:http_agent_factory"
 #   orpheus = "beagle_orpheus.transport:factory"
 # Detection is automatic once installed; ACTIVATION requires explicit config.
 
+# Frontend plugins (beagle-plugin-pi, beagle-plugin-webui, ...) register here:
+#   [project.entry-points."beagle.frontends"]
+#   pi = "beagle_plugin_pi"
+#   webui = "beagle_plugin_webui"
+# Discovered automatically by beagle.cli.plugin_loader at CLI start and
+# mounted under the entry-point name, after the built-in commands. A broken
+# plugin is skipped with a warning; it can never break `beagle --help` and
+# can never shadow a built-in. Beagle itself registers nothing in this group.
+
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0",
@@ -141,19 +150,9 @@ beagle = [
     "style_guides/guides/*.toml",
     "infrastructure/Dockerfile.*",
     "infrastructure/docker-compose.yml",
-    # Prebuilt vendored pi frontend bundle (dist/bundle is self-contained;
-    # the runnable pi CLI ships in the wheel as the default frontend).
-    "frontends/pi/vendor/pi-prebuild/package.json",
-    "frontends/pi/vendor/pi-prebuild/dist/**",
-    # MCP bridge deps (resolved by the pi-mcp-extension at runtime).
-    "frontends/pi/vendor/pi-prebuild/node_modules/**",
-    # pi-mcp-extension: MIT client that bridges pi <-> beagle MCP over stdio.
-    "frontends/pi/vendor/pi-mcp-extension/src/**",
-    "frontends/pi/vendor/pi-mcp-extension/package.json",
-    "frontends/pi/vendor/pi-mcp-extension/LICENSE",
-    # Prebuilt vendored webui dashboard bundle (served by ``beagle webui``).
-    "frontends/webui/vendor/webui-prebuild/dist/index.html",
-    "frontends/webui/vendor/webui-prebuild/dist/assets/**",
+    # WP-6 (D-18): the pi and webui frontends moved to beagle-plugin-pi and
+    # beagle-plugin-webui. Their vendored bundles ship in THOSE wheels as
+    # package-data; Beagle no longer carries any frontends tree.
 ]
 
 [tool.ruff]
@@ -166,6 +165,14 @@ target-version = "py313"
 [tool.ruff.lint]
 select = ["E", "F", "I", "W", "UP", "B"]
 ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+# cli/cli.py mounts frontend plugins AFTER the built-in add_typer calls, so a
+# plugin can never shadow a built-in command. That ordering requires a
+# mid-module import; the noqa on the line documents the same constraint —
+# this per-file scope keeps the structural rule honest without weakening it
+# for the rest of the tree.
+"src/beagle/cli/cli.py" = ["E402"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -216,3 +223,40 @@ ignore_errors = true
 module = ["langgraph.*", "opentelemetry.*"]
 follow_imports = "skip"
 ignore_errors = true
+
+[tool.vulture]
+# Vulture analyses ONE file at a time under qup, so an implementation method of
+# a Protocol lives in a different analysis run from the Protocol that declares
+# it. The method body is genuinely unused *within its own file* and vulture
+# cannot see the interface it satisfies. Measured: `vulture src/beagle
+# --min-confidence 90` reports 4 findings tree-wide; the same check run
+# per-file sums to 83. These names are protocol/interface parameters, matched
+# by position or by keyword at every call site (verified in
+# infrastructure/rag_ingest_queue.py, beacon/connector.py, beacon/archive.py).
+#
+# This is an ignore_names list, not a whitelist file: qup does not pass
+# --make-whitelist, and the repo already carries .vulture_whitelist.py as
+# documentation. Ignoring a NAME is precise — it cannot hide an unused
+# function or class, only an unused parameter of the given name.
+ignore_names = [
+    # StoreClient protocol (beacon/backend.py) — every call site passes these
+    # by keyword, which is what the Protocol exists to describe.
+    "nx", "ex", "withscores", "seconds",
+    # ServerHandle / BackendDriver protocol parameters.
+    "paths", "options", "connect_timeout_s",
+    # typing.Protocol method bodies are "..." by design; the parameters are the
+    # interface. This covers the remaining protocol parameter names.
+    "name", "names", "keys", "values", "key", "value", "mapping", "match",
+    "start", "end", "desc",
+    # __exit__ signature is fixed by the context-manager protocol.
+    "exc_type", "exc_val",
+    # *args/**kwargs catch-alls on presence-guard stubs that only raise.
+    "args", "kwargs",
+    # Signal handlers: (signum, frame) is the signal.signal contract.
+    "signum",
+    # Callback signatures fixed by their registering framework.
+    "label", "timeout", "bits", "vectors", "rescan", "cache_dir", "ep_name",
+    "ctx", "cls",
+    # PythonBlock protocol (blocks/registry.py).
+    "context",
+]

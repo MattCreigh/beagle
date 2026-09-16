@@ -358,8 +358,12 @@ class VFSArchive:
             Number of archives removed
 
         """
-        # wall-clock-ok: compares against a persisted timestamp
-        cutoff = time.time() - (max_age_days * 86400)
+        # Wall clock, deliberately: this cutoff is compared against file
+        # mtimes and a persisted index, which are wall-clock values written by
+        # an EARLIER process. time.monotonic() has an arbitrary per-process
+        # epoch, so a monotonic cutoff could not be compared with them at all.
+        now = time.time()
+        cutoff = now - (max_age_days * 86400)
         removed = 0
 
         for uri, path_str in list(self._index.items()):

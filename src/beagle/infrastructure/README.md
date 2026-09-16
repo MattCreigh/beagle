@@ -1,10 +1,11 @@
 # Beagle Docker Infrastructure
 
-Containerized deployment of the Beagle (Autonomous Execution & Cognitive Architecture) workflow using Docker and Orpheus ring buffers for zero-copy IPC.
+Containerized deployment of the Beagle (Autonomous Execution & Cognitive
+Architecture) workflow using Docker and Orpheus ring buffers for zero-copy IPC.
 
 ## Architecture
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────┐
 │                      SKYLON DEV STACK                            │
 ├─────────────────────────────────────────────────────────────────┤
@@ -83,7 +84,7 @@ docker compose -f /home/server/Servers/server_1/docker_agent_stack/docker-compos
 
 ## File Structure
 
-```
+```text
 infrastructure/
 ├── Dockerfile.base              # Base image (MCP, langgraph, goose)
 ├── Dockerfile.agent             # Agent image template
@@ -120,12 +121,14 @@ All agent operations are automatically logged to RAG via `docker_rag_logger.py`:
 - **Container lifecycle**: Startup/shutdown events
 
 RAG storage:
+
 - Instance tier: `/opt/beagle/data/instance_rag`
 - Main tier: `/opt/beagle/data/main_rag`
 
 ## Health Checks
 
 Each container verifies:
+
 1. Goose binary is accessible
 2. Orpheus ring directory is writable
 3. Agent can write to `/app/state` and `/app/output`
@@ -147,12 +150,14 @@ python3 infrastructure/orpheus_ring_manager.py --action init
 ## MCP Servers
 
 ### RAG Server (`mcp_rag_server.py`)
+
 - Transport: stdio
 - Stores: LanceDB (vector), Kùzu (graph)
 - Tools: dense retrieval, AST traversal
 - Security: secret scrubbing on all responses
 
 ### Utility Server (`mcp_utility_server.py`)
+
 - Transport: stdio
 - Tools: run research workflow, build graph
 - Orchestrates: planner → executor → verifier → synthesizer
@@ -177,6 +182,7 @@ python3 infrastructure/orpheus_ring_manager.py --action init
 ## Troubleshooting
 
 ### Container won't start
+
 ```bash
 # Check health check
 docker exec server_1_beagle_planner python3 /app/infrastructure/health_check.py --agent planner
@@ -189,6 +195,7 @@ ls -la /run/orpheus/nexus/
 ```
 
 ### RAG server not responding
+
 ```bash
 # Check Orpheus socket
 ls -la /run/orpheus/docker.sock/

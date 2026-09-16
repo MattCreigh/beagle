@@ -13,6 +13,18 @@ import time
 
 from .checkpoint import Checkpoint, get_checkpoint_manager
 
+
+def _now() -> float:
+    """Wall-clock seconds since the epoch.
+
+    Named rather than inlined so each use site states that it is comparing
+    against a PERSISTED timestamp. ``time.monotonic()`` is the right clock for
+    a duration measured inside one process, but its epoch is arbitrary and
+    per-process, so it cannot be subtracted from a value another process wrote
+    to disk or to a database row.
+    """
+    return time.time()
+
 logger = logging.getLogger("Beagle.lifecycle")
 
 
@@ -74,8 +86,9 @@ async def restore_from_checkpoint(
         checkpoint.version,
         checkpoint.restart_reason,
         checkpoint.restart_count,
-        # wall-clock-ok: compares against a persisted timestamp
-        time.time() - checkpoint.timestamp,
+        # Wall clock, deliberately: checkpoint.timestamp was persisted by the
+        # process that died, so a monotonic reading cannot be compared with it.
+        _now() - checkpoint.timestamp,
     )
 
     # 3. Restore health monitor state
@@ -91,10 +104,8 @@ async def restore_from_checkpoint(
     mgr.clear()
 
     # 7. Log restoration summary
-    age = (
-        # wall-clock-ok: compares against a persisted timestamp
-        time.time() - checkpoint.timestamp
-    )
+    # Wall clock, deliberately: see the note above on persisted timestamps.
+    age = _now() - checkpoint.timestamp
     logger.info(
         "Checkpoint restored: reason=%s age=%.1fs restart_count=%d "
         "health_state=%s health_score=%.2f circuits=%d",

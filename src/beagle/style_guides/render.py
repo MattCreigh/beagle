@@ -1437,9 +1437,8 @@ class GooseTopOfMindRenderer:
             # Only adopt folds created in the last 5 seconds
             # wall-clock-ok: compares against a persisted timestamp
             mtime = src_manifest.stat().st_mtime
-            # The rule was renamed aeca-walltime-for-interval ->
-            # beagle-walltime-for-interval, but this directive kept the old id,
-            # so the suppression was inert and the floor fired on an honest
+            # This directive previously carried a stale rule id, so the
+            # suppression was inert and the floor fired on an honest
             # timestamp comparison. Repointed at the current id; the
             # justification is unchanged.
             age = _time.time() - mtime  # nosemgrep: beagle-walltime-for-interval
@@ -1914,8 +1913,45 @@ class GooseTopOfMindRenderer:
         return "\n".join(lines).rstrip() + "\n"
 
     @staticmethod
+    @staticmethod
+    def _md_inline(value: Any) -> str:
+        """Flatten a TOML value onto ONE markdown-safe line.
+
+        Three defects were emitted downstream of a naive ``str(v).replace("\n", " ")``:
+
+        * MD009 (trailing spaces) — a value's own trailing whitespace survived,
+          and a literal trailing space before end-of-line is exactly what the
+          rule forbids. Every run of whitespace is now collapsed.
+        * MD037 (spaces inside emphasis) — a value containing ``a * b`` and
+          rendered inside a bullet became emphasis-with-inner-spaces. There is
+          no way to know the author's intent from the TOML, so the asterisks are
+          escaped: the text stays literal, which is the honest rendering for a
+          value that may well be a glob or a multiplication.
+        * MD013 (line length) is NOT addressed here: a doctrine value is quoted
+          whole, and breaking it mid-sentence would misrepresent it. Long values
+          are long. The line-length exemption for this generated report lives in
+          the project's markdownlint profile, not in a mangled render.
+
+        Args:
+            value: The TOML scalar to render.
+
+        Returns:
+            A single line with no trailing whitespace and no unescaped emphasis.
+        """
+        text = " ".join(str(value).split())
+        # Escape emphasis markers only when they actually open/close emphasis
+        # (a marker adjacent to a space), which is the pattern MD037 detects.
+        return text.replace(" *", " \\*").replace("* ", "\\* ")
+
+    @staticmethod
     def _md_render_section(value: Any, level: int = 4) -> list[str]:
-        """Recursively render a TOML section into Markdown lines."""
+        """Recursively render a TOML section into Markdown lines.
+
+        The output is lint-clean by construction: headings are always followed
+        by a blank line, and a list is always preceded by one (MD022, MD032).
+        A previous version appended a heading and its content back to back when
+        the caller had just emitted a scalar bullet.
+        """
         out: list[str] = []
         if isinstance(value, dict):
             for k, v in value.items():
@@ -1926,20 +1962,27 @@ class GooseTopOfMindRenderer:
                     # dumps under `formatting` and `CRITICAL_ROUTING_PROTOCOL`.
                     continue
                 if isinstance(v, dict | list):
-                    out.append(f"{'#' * level} {k}")
-                    out.append("")
+                    # MD022: one blank line above a heading when the previous
+                    # emitted line is not already blank.
+                    if out and out[-1] != "":
+                        out.append("")
+                    out.extend([f"{'#' * level} {k}", ""])
                     out.extend(GooseTopOfMindRenderer._md_render_section(v, level + 1))
                     out.append("")
                 else:
-                    out.append(f"- **{k}**: {str(v).replace(chr(10), ' ')}")
+                    out.append(f"- **{k}**: {GooseTopOfMindRenderer._md_inline(v)}")
         elif isinstance(value, list):
             for item in value:
                 if isinstance(item, dict):
+                    # MD032: a list must be surrounded by blank lines, and each
+                    # dict item opens a heading, so ensure separation first.
+                    if out and out[-1] != "":
+                        out.append("")
                     out.extend(GooseTopOfMindRenderer._md_render_section(item, level + 1))
                 else:
-                    out.append(f"- {item}")
+                    out.append(f"- {GooseTopOfMindRenderer._md_inline(item)}")
         else:
-            out.append(str(value))
+            out.append(GooseTopOfMindRenderer._md_inline(value))
         return out
 
     # ── v13.16: Generated steering files ─────────────────────────────────

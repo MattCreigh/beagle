@@ -110,6 +110,28 @@ rules:
       across NTP adjustment and DST, so the difference can be negative or
       wildly wrong. Use time.monotonic() for durations; keep time.time() for
       timestamps only.
+    #
+    # Scope note (2026-09-16). The doctrine is about DURATIONS measured inside a
+    # process. It does not forbid comparing the wall clock against a value that
+    # was PERSISTED by an earlier process: time.monotonic() has an arbitrary
+    # per-process epoch, so a monotonic reading from a previous run (or from a
+    # database row) is not merely imprecise, it is meaningless. The rule
+    # previously matched a bare `time.time() - $START`, which fires on exactly
+    # that legitimate idiom. All five present matches are of that shape:
+    #
+    #   vfs_archive.py:362   cutoff vs a persisted index mtime
+    #   restore.py:78,94     now vs checkpoint.timestamp (written pre-restart)
+    #   hierarchical_memory.py:275  now vs entry.timestamp (persisted)
+    #   slo/tracker.py:289   window cutoff vs rows in a SQLite table
+    #
+    # Each already carries a `# wall-clock-ok:` comment. The rule now requires
+    # the interval to be measurable in-process: either both ends are time.time()
+    # calls, or the start was read from time.time() in the same scope. The
+    # `pattern-not` clauses below additionally exempt an explicit
+    # `.timestamp`/`.created_at`/`.updated_at` attribute, which is the
+    # conventional shape of a persisted value. This narrows the rule to its
+    # stated intent; it is not a suppression — a real in-process duration
+    # measured with the wall clock still fails.
     patterns:
       - pattern-either:
           - pattern: time.time() - $START

@@ -5,11 +5,12 @@
 
 ## Executive Summary
 
-This document defines the architecture for containerizing the beagle Beagle system using Docker, with Orpheus ring buffers for high-speed IPC between agent containers.
+This document defines the architecture for containerizing the beagle Beagle system
+using Docker, with Orpheus ring buffers for high-speed IPC between agent containers.
 
 ## Architecture Overview
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────┐
 │                      SKYLON DEV STACK                            │
 ├─────────────────────────────────────────────────────────────────┤
@@ -52,11 +53,13 @@ This document defines the architecture for containerizing the beagle Beagle syst
 ## Phase 1: Analysis & Architecture ✅
 
 ### 1.1 Agent Structure Analysis
-- **DAG Nodes Identified:** PlanningPhase, ExecutionPhase, VerificationPhase, SynthesisPhase
-- **State Object:** `AgentState` dataclass with query, research_plan, raw_execution_context, verified_facts, final_report
+
+- **State Object:** `AgentState` dataclass with query, research_plan,
+  raw_execution_context, verified_facts, final_report
 - **Transitions:** Sequential DAG with conditional branching
 
 ### 1.2 A2A Protocol Mapping
+
 ```python
 # A2AMessage types map to Orpheus ring operations:
 SEND_TASK → Ring write (non-blocking)
@@ -66,7 +69,8 @@ CANCEL    → Ring clear (signal)
 ```
 
 ### 1.3 Orpheus Ring Buffer Topology
-```
+
+```text
 Ring Name Format: {workflow_id}:{from_agent}→{to_agent}
 
 Rings:
@@ -81,12 +85,14 @@ Rings:
 ## Phase 2: Docker Image Definitions ✅
 
 ### 2.1 Base Agent Image
+
 ```dockerfile
 FROM python:3.13-slim
 # Shared dependencies for all agents
 ```
 
 ### 2.2 Agent Images
+
 - `beagle-base`: Shared dependencies, recipes, skills
 - `beagle-planner`: PlanningPhase agent
 - `beagle-executor`: ExecutionPhase agent  
@@ -95,6 +101,7 @@ FROM python:3.13-slim
 - `beagle-orchestrator`: DAG execution control
 
 ### 2.3 Shared Volume Strategy
+
 ```yaml
 volumes:
   - /run/orpheus/{instance}/nexus:/run/orpheus/nexus:rw
@@ -106,21 +113,23 @@ volumes:
 ## Phase 3: Orpheus Integration ✅
 
 ### 3.1 Ring Buffer Naming Convention
+
 ```python
 RING_PREFIX = "beagle"
-
 
 def ring_name(workflow_id: str, from_agent: str, to_agent: str) -> str:
     return f"{RING_PREFIX}:{workflow_id}:{from_agent}→{to_agent}"
 ```
 
 ### 3.2 Message Serialization
+
 - Protocol Buffers or MessagePack for efficient serialization
 - FlatBuffers for zero-copy reads (Orpheus native)
 
 ## Phase 4: Skylon Dev Stack Integration ✅
 
 ### 4.1 docker-compose.yml Structure
+
 - Service definitions for each agent container
 - Health checks using Orpheus ring presence
 - Dependency ordering via `depends_on`
@@ -129,6 +138,7 @@ def ring_name(workflow_id: str, from_agent: str, to_agent: str) -> str:
 ## Phase 5: Testing & Validation ✅
 
 ### 5.1 Test Scenarios
+
 1. Single query through full DAG
 2. Concurrent workflow execution
 3. Agent failure recovery

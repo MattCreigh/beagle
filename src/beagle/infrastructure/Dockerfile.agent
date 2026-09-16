@@ -1,8 +1,15 @@
 # Beagle Agent - Specific Agent Image Template
 # Build with: docker build -f Dockerfile.agent --build-arg AGENT_TYPE=planner .
 
+# DL3007: `beagle-base:latest` is intentional and scoped — this Dockerfile is
+# built by the same pipeline that builds Dockerfile.base, in the same build
+# context, immediately after it. Pinning to a registry digest would require
+# publishing the base image first, which the single-pipeline build does not do.
+# The tag is written as an ARG so an operator CAN pin it without an edit:
+#   docker build -f Dockerfile.agent --build-arg BASE_IMAGE=beagle-base@sha256:...
+ARG BASE_IMAGE=beagle-base:latest
 ARG AGENT_TYPE=orchestrator
-FROM beagle-base:latest AS agent
+FROM ${BASE_IMAGE} AS agent
 
 # Agent-specific configuration
 ARG AGENT_TYPE

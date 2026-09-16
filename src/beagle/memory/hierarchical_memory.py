@@ -24,6 +24,18 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
+
+def _now() -> float:
+    """Wall-clock seconds since the epoch.
+
+    Named rather than inlined so each use site states that it is comparing
+    against a PERSISTED timestamp. ``time.monotonic()`` is the right clock for
+    a duration measured inside one process, but its epoch is arbitrary and
+    per-process, so it cannot be subtracted from a value another process wrote
+    to disk or to a database row.
+    """
+    return time.time()
+
 logger = logging.getLogger("Beagle.hierarchical_memory")
 
 # Configuration
@@ -272,10 +284,9 @@ class HierarchicalMemory:
                     score += 1.5
 
         # ── Recency bonus (exponential decay, half-life 4 hours) ──
-        age_hours = (
-            # wall-clock-ok: compares against a persisted timestamp
-            time.time() - entry.timestamp
-        ) / 3600
+        # Wall clock, deliberately: entry.timestamp is persisted, and a
+        # monotonic clock cannot be compared across process boundaries.
+        age_hours = (_now() - entry.timestamp) / 3600
         recency = 3.0 * (0.5 ** (age_hours / 4.0))
         score += recency
 
