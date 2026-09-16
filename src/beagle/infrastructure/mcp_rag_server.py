@@ -1567,6 +1567,15 @@ async def rag_hotswap_ingest(
     # and fast enough that bounding it to the swap window is cheap.
     if isinstance(result, dict) and result.get("status") == "ok":
         _enforce_readonly_storage()
+        # 2026-09-16: force connection re-init so the live process serves
+        # the swapped-in table. The LanceDB/Kùzu connections are opened
+        # once at init and cached in module globals; hotswap replaces the
+        # FILES on disk, and without this reset every subsequent
+        # rag_search kept querying the pre-swap table (observed: status
+        # reported 5768 chunks while search still returned the 2 chunks
+        # of the old index). Mirrors rag_ingest's `_initialized = False`.
+        global _initialized
+        _initialized = False
 
     if ctx is not None:
         with contextlib.suppress(Exception):
