@@ -66,14 +66,14 @@ class TrackingDatabase:
             self._local.conn = conn
         return self._local.conn
 
-    def _init_db(self):
+    def _init_db(self) -> None:
         """Initialize schema and run migrations."""
         with self._get_conn() as conn:
             conn.executescript(SCHEMA)
             conn.commit()
         logger.debug(f"Tracking database initialized at {self.db_path}")
 
-    def insert_workflow_run(self, run: WorkflowRun):
+    def insert_workflow_run(self, run: WorkflowRun) -> None:
         """Insert a new workflow run."""
         query = """
         INSERT INTO workflow_runs (id, workflow_name, query, mode, started_at, budget_usd)
@@ -93,7 +93,7 @@ class TrackingDatabase:
             )
             conn.commit()
 
-    def update_workflow_run(self, run: WorkflowRun):
+    def update_workflow_run(self, run: WorkflowRun) -> None:
         """Update an existing workflow run."""
         query = """
         UPDATE workflow_runs SET
@@ -119,7 +119,7 @@ class TrackingDatabase:
             )
             conn.commit()
 
-    def insert_node_run(self, run: NodeRun):
+    def insert_node_run(self, run: NodeRun) -> None:
         """Insert a new node run."""
         query = """
         INSERT INTO node_runs (id, workflow_run_id, node_name, skill_name, model, started_at)
@@ -139,7 +139,7 @@ class TrackingDatabase:
             )
             conn.commit()
 
-    def update_node_run(self, run: NodeRun):
+    def update_node_run(self, run: NodeRun) -> None:
         """Update an existing node run."""
         query = """
         UPDATE node_runs SET
@@ -166,7 +166,7 @@ class TrackingDatabase:
             )
             conn.commit()
 
-    def insert_finding(self, finding: Finding):
+    def insert_finding(self, finding: Finding) -> str:
         """Insert a new finding with deduplication logic."""
         # Find if this finding already exists from a previous run
         # tuple: (file_path, line_number, title)
@@ -234,7 +234,12 @@ class TrackingDatabase:
         import time
 
         # wall-clock-ok: compares against a persisted timestamp
-        threshold = time.time() - (since_days * 86400)
+        # Repointed from aeca-walltime-for-interval — the rule was renamed to
+        # beagle-walltime-for-interval and the stale id matched nothing, so this
+        # honest timestamp comparison hit the doctrine floor. The comparison is
+        # against a persisted wall-clock column, not a duration, so monotonic
+        # is not applicable.
+        threshold = time.time() - (since_days * 86400)  # nosemgrep: beagle-walltime-for-interval
 
         with self._get_conn() as conn:
             total_runs = conn.execute(

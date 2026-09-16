@@ -48,6 +48,7 @@ from http.server import (  # D9 fix (v13.21.10): ThreadingHTTPServer prevents he
     BaseHTTPRequestHandler,
     ThreadingHTTPServer,
 )
+from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
@@ -309,17 +310,17 @@ class ProxyHandler(BaseHTTPRequestHandler):
     # Upstream set by handler_factory before instantiation
     _upstream: str = "https://ollama.com"
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         self._api_key = _get_api_key()
         super().__init__(*args, **kwargs)
 
-    def do_POST(self):
+    def do_POST(self) -> None:
         self._proxy("POST")
 
-    def do_GET(self):
+    def do_GET(self) -> None:
         self._proxy("GET")
 
-    def do_OPTIONS(self):
+    def do_OPTIONS(self) -> None:
         self._proxy("OPTIONS")
 
     def _proxy(self, method: str) -> None:
@@ -729,7 +730,7 @@ class ProxyHandler(BaseHTTPRequestHandler):
             body = json.dumps(data).encode()
         return body
 
-    def log_message(self, _format, *_args):
+    def log_message(self, _format: str, *_args: Any) -> None:
         pass  # Suppress default HTTP request logging
 
 
@@ -779,7 +780,7 @@ def main() -> None:
     # Patch the class default before starting server
     ProxyHandler._upstream = args.upstream
 
-    def handler_factory(*a, **kw):
+    def handler_factory(*a: Any, **kw: Any) -> ProxyHandler:
         return ProxyHandler(*a, **kw)
 
     server = ThreadingHTTPServer((args.bind, args.port), handler_factory)

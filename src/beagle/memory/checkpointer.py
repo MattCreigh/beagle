@@ -22,6 +22,7 @@ import contextlib
 import os
 import re
 import stat
+from collections.abc import AsyncIterator
 from pathlib import Path
 from typing import Any
 
@@ -30,7 +31,7 @@ from beagle.config.paths import get_checkpoint_dir
 try:
     from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 except ImportError:
-    AsyncSqliteSaver = None  # type: ignore[assignment,misc]
+    AsyncSqliteSaver = None
 
 # SECURITY (DevSecOps CVE-2025-64439 fix):
 # JsonPlusSerializer defaults to pickle_fallback=True, which allows
@@ -43,10 +44,10 @@ try:
         JsonPlusSerializer as _JsonPlusSerializer,
     )
 except ImportError:  # pragma: no cover — langgraph is a hard dependency
-    _JsonPlusSerializer = None  # type: ignore[assignment,misc]
+    _JsonPlusSerializer = None
 
 
-def _make_secure_serde():
+def _make_secure_serde() -> Any:
     """Create a serializer with pickle fallback DISABLED (CVE-2025-64439).
 
     Fail-closed: if JsonPlusSerializer is unavailable, raise RuntimeError
@@ -288,7 +289,7 @@ def _create_sqlite_checkpointer(db_path: str | Path | None = None) -> Any:
     from contextlib import asynccontextmanager
 
     @asynccontextmanager
-    async def _secure_sqlite_saver():
+    async def _secure_sqlite_saver() -> AsyncIterator[AsyncSqliteSaver]:
         import aiosqlite
 
         async with aiosqlite.connect(str(db_path)) as conn:

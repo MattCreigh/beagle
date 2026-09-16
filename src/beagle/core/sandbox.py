@@ -89,7 +89,7 @@ class SandboxContext:
         # Guard: detect concurrent entry from different threads
         self._owning_thread: threading.Thread | None = None
 
-    def __enter__(self):
+    def __enter__(self) -> SandboxContext:
         """Set up sandbox environment."""
         # S03 remediation: SandboxContext mutates process-global state
         # (os.chdir, os.environ, resource.setrlimit). Using it from any
@@ -165,7 +165,7 @@ class SandboxContext:
             self._owning_thread = None
             raise
 
-    def __exit__(self, _exc_type, _exc_val, _exc_tb):
+    def __exit__(self, _exc_type: object, _exc_val: object, _exc_tb: object) -> None:
         """Clean up sandbox environment."""
         # Restore resource limits
         self._restore_resource_limits()
@@ -188,7 +188,6 @@ class SandboxContext:
 
         self._owning_thread = None
         logger.debug("Sandbox exited")
-        return False
 
     def _capture_original_limits(self) -> None:
         """Snapshot current rlimits so __exit__ can restore them.
@@ -332,7 +331,7 @@ class SandboxContext:
                     f"Parent process now has LEAKED sandbox limits."
                 )
 
-    def _sanitize_environment(self):
+    def _sanitize_environment(self) -> None:
         """Remove sensitive env vars and restrict to whitelist."""
         # Remove potentially dangerous env vars
         dangerous_vars = [
@@ -908,7 +907,7 @@ if __name__ == "__main__":
 
     logging.basicConfig(level=logging.INFO)
 
-    async def test_sandbox():
+    async def test_sandbox() -> None:
         executor = SandboxedExecutor()
         config = get_sandbox_profile("safe")
 

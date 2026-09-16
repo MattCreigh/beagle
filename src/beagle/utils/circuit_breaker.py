@@ -217,8 +217,8 @@ class CircuitBreaker:
     async def call(
         self,
         func: Callable[..., T],
-        *args,
-        **kwargs,
+        *args: Any,
+        **kwargs: Any,
     ) -> T:
         """Execute a function with circuit breaker protection.
 
@@ -255,7 +255,7 @@ class CircuitBreaker:
         """Async context manager entry."""
         return self
 
-    async def __aexit__(self, exc_type, exc_val, _exc_tb) -> bool:
+    async def __aexit__(self, exc_type: Any, exc_val: Any, _exc_tb: Any) -> bool:
         """Async context manager exit."""
         if exc_type is not None and exc_val is not None:
             await self._record_failure()
@@ -449,8 +449,8 @@ class LLMCircuitBreaker(CircuitBreaker):
     async def call_llm(
         self,
         func: Callable[..., Awaitable[T]],
-        *args,
-        **kwargs,
+        *args: Any,
+        **kwargs: Any,
     ) -> T:
         """Call an LLM with circuit breaker + semantic monitoring."""
         self._stats.total_calls += 1
@@ -601,7 +601,7 @@ class LLMCircuitBreaker(CircuitBreaker):
                 node_name=node_name,
                 error=f"circuit-breaker: {error}",
             )
-        except Exception as _dlq_exc:  # broad catch: DLQ is best-effort
+        except Exception as _dlq_exc:  # noqa: BLE001 — RATIONALE=DLQ persistence is best-effort: a fault here must not mask the original circuit failure or propagate to the caller. The specific exception is unavailable by design (any storage/IO error counts) and the caught value is logged below.
             logger.debug(
                 "[%s] DLQ route failed (%s); continuing without persistence.",
                 self.name,
@@ -674,7 +674,7 @@ async def get_llm_circuit_breaker(
 
 if __name__ == "__main__":
     # Demo
-    async def demo():
+    async def demo() -> None:
         cb = CircuitBreaker(
             "test",
             CircuitBreakerConfig(
