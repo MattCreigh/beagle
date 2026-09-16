@@ -28,6 +28,7 @@ docs/spec/*.pdf
 
 # Auto-generated render-prompts / memory artifacts (regenerate, don't commit)
 /.goosehints
+/src/.goosehints
 /CLAUDE.md
 /src/beagle/CLAUDE.md
 /src/beagle/MEMORY_INDEX.md

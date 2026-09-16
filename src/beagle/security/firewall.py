@@ -16,9 +16,6 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-from beagle.runtime.goose_cli import GooseCliRuntime
-from beagle.runtime.loader import runtime_plugin_name
-
 # SP-7: validate_goose_binary now lives in the leaf module
 # security/binary_validator.py (stdlib only), breaking the
 # security.validation <-> security.firewall cycle: validation lazily imports
@@ -239,6 +236,15 @@ async def semantic_firewall(user_query: str) -> bool:
     # goose binary. Skip the binary validation AND the goose subprocess
     # fallback, returning the fast pattern-pass verdict. We NEVER skip the
     # goose path when the plugin IS goose_cli.
+    #
+    # D-17: both symbols are imported here, not at module scope. Neither is
+    # needed at import time, and the module-scope import made security depend
+    # on the runtime package eagerly — one of the cycle edges in the audit's
+    # import graph. The failure path is unchanged: ImportError propagates to
+    # the caller's fail-closed guard exactly as before.
+    from beagle.runtime.goose_cli import GooseCliRuntime
+    from beagle.runtime.loader import runtime_plugin_name
+
     if runtime_plugin_name() != "goose_cli":
         return True
 

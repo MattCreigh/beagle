@@ -49,6 +49,12 @@ _DEFAULT_PORT = 8080
 # rogue `float("inf")` must never reach the runner.
 _BUDGET_CEILING = 1_000_000.0
 
+# D-15: the loop keeps only a weak reference to a task, so a workflow started
+# here could be garbage-collected mid-run. Holding a strong reference for the
+# task's lifetime is the documented remedy; the done-callback releases it, so
+# the set cannot grow without bound.
+_background_tasks: set[asyncio.Task[None]] = set()
+
 
 def _webui_token() -> str:
     """Return the configured bearer token, or "" when none is set."""
@@ -415,7 +421,9 @@ async def _handle_api_execute(req: web.Request) -> web.Response:
         except (OSError, RuntimeError, ValueError, ImportError) as exc:  # pragma: no cover
             logger.warning("workflow %s failed from webui: %s", wf_id, exc)
 
-    asyncio.get_running_loop().create_task(_runner())
+    _task = asyncio.get_running_loop().create_task(_runner())
+    _background_tasks.add(_task)
+    _task.add_done_callback(_background_tasks.discard)
 
     return _json_response(
         {

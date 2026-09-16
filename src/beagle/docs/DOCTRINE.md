@@ -59,6 +59,14 @@ Domain: **universal**
 - **sanitization**: LINEAR_RE2_PRE_INGEST
 - **permissions**: secret files 0600 or 0400
 - **no_plaintext**: never persist unencrypted secrets
+- **loader**: load via secrets_loader.py — env vars first, then ~/.config/goose/secrets.yaml; open secret files with os.open() and explicit mode 0o600
+- **log_scrubbing**: scrub secrets from logs via _SECRET_PATTERNS (20+ char minimum); use Path.name, not the full path, for binaries in log messages
+
+### crypto
+
+- **signing**: Ed25519 for A2A agent signing — raise RuntimeError if the key is missing
+- **hashing**: hashlib.sha256().hexdigest()[:48] for guardian hashes
+- **no_downgrade**: never downgrade crypto — no MD5, no SHA1 for security purposes
 
 ### sandbox
 
@@ -187,34 +195,150 @@ Universal behavioural directives for the Goose Beagle Orchestrator. Auto-injecte
 - **resilience**: If a tool call fails, retry once with corrected arguments; if it fails again, surface the error in your final_answer and continue with what you can. Do not loop on the same failure. If context is compacted, call beagle_session_bootstrap and resume — never apologise, never ask, never stop.
 - **verification**: After substantive code changes, run the test suite via the tup MCP server (run_tests) — goose MUST be connected to TestUpper (tup) over MCP and MUST use it to run ALL tests. Never a bare full pytest run. If the controller's steering_prompt named a verification gate, honour it. Emit <final_answer> with: (1) what you did, (2) what you verified, (3) any blockers or follow-ups.
 
-## Security Baseline
+## Run-to-Completion Doctrine
 
-### validation
+### rule_0_user_override
 
-#### rules
+- **id**: R0
+- **priority**: 0
+- **title**: USER OVERRIDE — Highest Priority
+#### trigger_phrases
 
-- Validate all external input at system boundaries
-- Use parameterized queries — never string interpolation for SQL/Cypher
-- Strip injection tags BEFORE html.escape(), not after
-- Use allowlists (frozenset) for dynamic identifiers like relation types
-- Check Path.relative_to() for path traversal, not str.startswith()
-- Use os.open() with explicit mode (0o600) for secret files
+- continue
+- do not stop
+- execute end to end
+- run the rest of the plan
 
+- **rule**: When the user explicitly commands continuation or gives any contrary directive, that command takes precedence over every static constraint (plans, task XML, work-package boundaries, policy files).
+- **action**: Obey the user and log the deviation via beagle_progress_update (step_just_done, next_step, rationale).
+- **stop_condition**: Stop only if the user's command is ambiguous or impossible — then ask for clarification, do not proceed on assumption.
+- **logic**: ( user_explicit_continue OR user_contrary_directive ) -> ( obey_user AND log_via_beagle_progress_update ) where:   user_explicit_continue = user says "continue" OR "do not stop" OR "execute end to end" OR "run the rest of the plan" OR semantic equivalent   user_contrary_directive = any user instruction that conflicts with a static constraint   obey_user = ignore conflicting plan/policy/work-package boundary for this action 
+- **enforcement**: Prompt-substrate must state Rule 0 first and render its precedence explicitly.
 
-### secrets
+### phase_completion_gate
 
-#### rules
+- **id**: R1
+- **priority**: 1
+- **title**: PHASE COMPLETION CHECKLIST — Mandatory Gate
+- **applies_after**: every work package / phase
+#### gate
 
-- Load via secrets_loader.py — env vars first, then ~/.config/goose/secrets.yaml
-- Secrets file must be 0600 or 0400 permissions
-- Scrub secrets from logs using _SECRET_PATTERNS with 20+ char minimum
-- Use Path.name not full path in log messages for binaries
+- all planned actions — executed?
+- all tests — passing?
+- all artifacts — committed or saved?
+- no unhandled errors — if any, resolved or escalated?
+- user confirmation — for the final phase, summarise and ask 'Is this complete?'
 
+- **rule**: Before declaring a phase done, verify all 5 items. If any item fails, do not stop — attempt remediation or escalate with a clear reason.
+#### verification
 
-### crypto
+- cite tool output for each check (test runner, git status, ls, etc.)
+- do not mark phase complete on self-report
 
-#### rules
+- **logic**: phase_done_allowed <-> ( planned_actions_done AND tests_passing AND artifacts_saved AND no_unhandled_errors AND ( NOT final_phase OR user_confirmed ) ) where:   planned_actions_done = every action in plan/task executed and evidenced   tests_passing = relevant test file/package green   artifacts_saved = files committed or persisted as required   no_unhandled_errors = zero unresolved errors OR escalated with reason   final_phase = last phase of the overall task 
 
-- Ed25519 for A2A agent signing — raise RuntimeError if key missing
-- Use hashlib.sha256 with hexdigest()[:48] for guardian hashes
-- Never downgrade crypto — no MD5, no SHA1 for security purposes
+### automated_error_recovery
+
+- **id**: R2
+- **priority**: 2
+- **title**: AUTOMATED ERROR RECOVERY — 3 Strikes → Research → 3 Strikes → Escalate
+- **scope**: per action
+- **strikes_1_to_3**: Try obvious fixes — retry with different flags, fallback packages, alternative commands.
+#### strike_4_research
+
+- Extract the exact error message.
+- Run beagle.code_search for the error signature in the codebase.
+- Run beagle.rag_search for similar issues in the knowledge base.
+- Read relevant documentation (beagle.file_discovery, beagle.code_context).
+- Log the research steps to beagle_progress_update.
+
+- **strikes_4_to_6**: Apply insights from research (patch, different version, config change, etc.).
+- **escalation_after_6**: Escalate to user with structured summary (problem, attempts, research findings, request for manual intervention) per Rule 8 format.
+- **constraint**: Do not repeat the same failing command with the same arguments more than 3 times without research (see also Rule 5 Thrashing Guard).
+- **logic**: attempts <= 3 -> obvious_fix_retry attempts = 4 -> mandatory_research 5 <= attempts <= 6 -> research_informed_retry attempts > 6 -> escalate_structured where:   obvious_fix_retry = different flags OR fallback package OR alternative command   mandatory_research = code_search AND rag_search AND file_discovery AND code_context AND progress_update 
+
+### authoritative_plan_priority
+
+- **id**: R3
+- **priority**: 3
+- **title**: AUTHORITATIVE PLAN PRIORITY
+- **trigger**: plan or task file contains word 'AUTHORITATIVE' or is explicitly described as source of truth
+- **rule**: Read it completely first and execute its instructions in the given order. Do not skip, reorder, or substitute alternative steps unless a step fails irrecoverably — in which case follow Rule 2 recovery. Log any deviation with a rationale via beagle_progress_update.
+- **logic**: is_authoritative -> ( read_completely_first AND execute_in_order ) where:   is_authoritative = contains("AUTHORITATIVE") OR described_as_source_of_truth   deviation_allowed <-> step_fails_irrecoverably AND recovery_protocol_followed 
+
+### environment_readiness
+
+- **id**: R4
+- **priority**: 4
+- **title**: ENVIRONMENT READINESS — Pre-flight Check
+#### checks
+
+- target Python interpreter exists and has all required packages (as listed in plan)
+- external binaries (ffmpeg, flatc, goose, etc.) are on PATH or installable
+
+- **install_policy**: If missing, first attempt installation using the documented method (prefer uv pip install over apt-get where possible).
+- **failure_policy**: If installation fails, do not proceed — escalate per Rule 2 with clear description of missing dependency and attempted fixes.
+- **gate**: Only after all dependencies are satisfied may you start the main task.
+- **logic**: main_task_allowed <-> ( python_ready AND binaries_ready ) where:   python_ready = interpreter_exists AND required_packages_installed   binaries_ready = all_required_binaries_on_PATH OR installable_and_installed 
+
+### thrashing_guard
+
+- **id**: R5
+- **priority**: 5
+- **title**: THRASHING GUARD — No Repeated Failures
+- **rule**: Do not run the same command or tool with the same arguments more than 3 times consecutively.
+- **remediation**: If it fails 3 times, you must change the approach (different flags, different package version, different installation method, etc.) before trying again.
+- **scope**: limit applies per action, not per phase
+- **logic**: consecutive_same_args_failures >= 3 -> must_change_approach_before_retry where:   must_change_approach = different_flags OR different_package_version OR different_install_method OR alternative_command 
+
+### session_continuity
+
+- **id**: R6
+- **priority**: 6
+- **title**: MANDATORY SESSION CONTINUITY
+#### steps
+
+- At the start of every session, call beagle_session_bootstrap.
+- After completing each work package or major step, call beagle_progress_update with step_just_done and next_step.
+
+- **purpose**: Ensures that if the session restarts, the agent can resume correctly. Do not rely on memory alone — persist progress.
+- **logic**: session_start -> beagle_session_bootstrap work_package_done -> beagle_progress_update(step_just_done, next_step) 
+
+### evidence_requirement
+
+- **id**: R7
+- **priority**: 7
+- **title**: EVIDENCE REQUIREMENT — Verify Before Assert
+- **rule**: Any factual claim in a report (e.g., 'test passes', 'file exists', 'package installed') must be backed by a tool output or a command that directly verifies it.
+- **method**: Before stating a fact, run a command (e.g., grep, ls, python -c) to confirm it. If the fact is derived from a prior step, cite that step and its output.
+- **prohibition**: Never assert something that has not been directly observed.
+- **logic**: factual_claim_allowed <-> has_direct_tool_evidence where:   has_direct_tool_evidence = command_output_verified OR cited_prior_step_output 
+
+### escalation_format
+
+- **id**: R8
+- **priority**: 8
+- **title**: ESCALATION FORMAT — Structured Hand-off
+- **when**: when asking the user for help after exhausting autonomous recovery
+- **template**: I have encountered a problem that I cannot resolve autonomously:   - Problem: [clear description]   - Attempted: [list of actions tried]   - Research findings: [what I discovered]   - Possible next steps: [suggestions, e.g., manual install, different command] Please provide guidance or authorise one of the options. 
+- **rule**: Use exactly this structured format when escalating. This prevents vague stopping and gives the user actionable context.
+- **logic**: escalation_required -> use_structured_template where:   escalation_required = attempts_exhausted OR blocked_on_missing_dependency OR ambiguous_user_command 
+
+### implementation
+
+#### target_files
+
+- src/beagle/style_guides/guides/run_to_completion.toml
+- src/beagle/style_guides/guides/beagle_core_directives.toml (alternative)
+
+#### render_commands
+
+- beagle render-prompts
+- beagle render-hints
+
+#### verify_commands
+
+- grep -n 'USER OVERRIDE\|PHASE COMPLETION\|THRASHING GUARD\|EVIDENCE REQUIREMENT' $(beagle prompt-path 2>/dev/null || echo ~/.config/goose/beagle_top_of_mind.xml)
+- beagle --help | head
+
+- **notes**: Chosen to create dedicated run_to_completion.toml rather than overwriting beagle_core_directives.toml unread, per locate→validate→apply discipline and sandbox read failure. Both are ingested by render-prompts. If consolidation is preferred, merge this file into beagle_core_directives.toml and delete this file.

@@ -1437,7 +1437,12 @@ class GooseTopOfMindRenderer:
             # Only adopt folds created in the last 5 seconds
             # wall-clock-ok: compares against a persisted timestamp
             mtime = src_manifest.stat().st_mtime
-            age = _time.time() - mtime  # nosemgrep: aeca-walltime-for-interval
+            # The rule was renamed aeca-walltime-for-interval ->
+            # beagle-walltime-for-interval, but this directive kept the old id,
+            # so the suppression was inert and the floor fired on an honest
+            # timestamp comparison. Repointed at the current id; the
+            # justification is unchanged.
+            age = _time.time() - mtime  # nosemgrep: beagle-walltime-for-interval
             if age > 5.0:
                 return None
             src_id = src_manifest.stem.replace("_manifest", "")
@@ -1842,6 +1847,11 @@ class GooseTopOfMindRenderer:
                     lines.append("| Field | Value |")
                     lines.append("|---|---|")
                     for k, v in routing.items():
+                        if k == "_tiered":
+                            # Rendering input, not doctrine — same skip the XML
+                            # path applies. Without it the human-readable report
+                            # carries the raw terse dict as a table cell.
+                            continue
                         v_clean = str(v).replace("|", "\\|").replace("\n", " ")
                         lines.append(f"| `{k}` | {v_clean} |")
                     lines.append("")
@@ -1873,6 +1883,12 @@ class GooseTopOfMindRenderer:
                 lines.append("### Formatting")
                 lines.append("")
                 for k, v in formatting.items():
+                    if k == "_tiered":
+                        # Third and last site for this skip: `formatting` has its
+                        # own renderer, so guarding `_md_render_section` and the
+                        # routing table was not sufficient. The `_tiered` key is
+                        # a rendering input, never doctrine.
+                        continue
                     v_clean = str(v).replace("\n", " ")
                     lines.append(f"- **{k}**: {v_clean}")
                 lines.append("")
@@ -1898,11 +1914,17 @@ class GooseTopOfMindRenderer:
         return "\n".join(lines).rstrip() + "\n"
 
     @staticmethod
-    def _md_render_section(value, level: int = 4) -> list[str]:
+    def _md_render_section(value: Any, level: int = 4) -> list[str]:
         """Recursively render a TOML section into Markdown lines."""
         out: list[str] = []
         if isinstance(value, dict):
             for k, v in value.items():
+                if k == "_tiered":
+                    # Same skip the XML path applies (see _render_dict_section):
+                    # the tiered form is a rendering input, not doctrine. Without
+                    # this the human-readable report carried two raw Python dict
+                    # dumps under `formatting` and `CRITICAL_ROUTING_PROTOCOL`.
+                    continue
                 if isinstance(v, dict | list):
                     out.append(f"{'#' * level} {k}")
                     out.append("")
