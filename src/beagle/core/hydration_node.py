@@ -979,7 +979,7 @@ if __name__ == "__main__":
     # Demo: Test hydration
     import sys
 
-    async def main():
+    async def main() -> None:
         query = sys.argv[1] if len(sys.argv) > 1 else "Implement context hydration"
         skill = sys.argv[2] if len(sys.argv) > 2 else "sota-dev"
 

@@ -11,10 +11,9 @@ existing profile metadata.
 from __future__ import annotations
 
 import logging
+import tomllib
 from pathlib import Path
 from typing import Any
-
-import tomllib
 
 from .a2a_types import AgentCard
 from .config import get_a2a_config

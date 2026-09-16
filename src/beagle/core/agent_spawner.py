@@ -418,7 +418,7 @@ def extract_final_answer(result_text: str) -> str:
             text_matches = [
                 t.get_text(strip=True) for t in final_tags if len(t.get_text(strip=True)) > 10
             ]
-            return text_matches[-1] if text_matches else final_tags[-1].get_text(strip=True)  # type: ignore[no-any-return]
+            return str(text_matches[-1] if text_matches else final_tags[-1].get_text(strip=True))
     except (IndexError, AttributeError) as exc:
         logger.warning(
             "Cannot extract a <final_answer> tag from the agent response (%s); "
@@ -618,7 +618,9 @@ class BeagleDAGNode(DAGNode):
             stdout_data: list[str] = []
             stderr_data: list[str] = []
 
-            async def read_stream(stream, target_list, stream_type) -> None:
+            async def read_stream(
+                stream: Any, target_list: list[str], stream_type: str
+            ) -> None:
                 while True:
                     line = await stream.readline()
                     if not line:

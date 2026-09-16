@@ -323,8 +323,8 @@ class A2AConnection:
     def is_healthy(self, timeout_seconds: int = 30) -> bool:
         """Check if connection is healthy."""
         return (
-            # wall-clock-ok: compares against a persisted timestamp
-            time.time() - self.last_heartbeat < timeout_seconds
+            # wall-clock-ok: compares against last_heartbeat, a persisted epoch
+            time.time() - self.last_heartbeat < timeout_seconds  # nosemgrep: beagle-walltime-for-interval
         )
 
 

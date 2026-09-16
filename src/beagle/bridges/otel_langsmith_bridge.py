@@ -104,7 +104,7 @@ class BeagleLangSmithBridge:
         try:
             import langsmith
 
-            self._langsmith_client = langsmith.Client(api_key=api_key)  # type: ignore[assignment]
+            self._langsmith_client = langsmith.Client(api_key=api_key)
             logger.info(f"LangSmith bridge started: project={self.config.project_name}")
         except ImportError:
             logger.debug("langsmith SDK not installed — using env-var-based tracing only")
@@ -234,8 +234,9 @@ class BeagleLangSmithBridge:
                 outputs={"output_length": output_length},
                 error=error,
                 project_name=self.config.project_name,
-                # wall-clock-ok: compares against a persisted timestamp
-                start_time=time.time() - duration_seconds,
+                # wall-clock-ok: reconstructs a persisted start_time epoch from
+                # the measured duration; both spans are wall-clock timestamps
+                start_time=time.time() - duration_seconds,  # nosemgrep: beagle-walltime-for-interval
                 end_time=time.time(),
             )
         except Exception as exc:  # ruff: ignore[BLE001]  # broad catch intentional

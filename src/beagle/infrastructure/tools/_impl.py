@@ -1578,7 +1578,7 @@ def _read_beagle_artifact(root: Path, basename: str) -> dict[str, Any]:
             # epoch). time.monotonic() would be WRONG here — the file mtime is
             # wall-clock, not monotonic. This is a timestamp comparison, which
             # the rule explicitly permits ("keep time.time() for timestamps").
-            int((time.time() - mtime) / 86400),  # nosemgrep: aeca-walltime-for-interval
+            int((time.time() - mtime) / 86400),  # nosemgrep: beagle-walltime-for-interval
         )
         return {
             "exists": True,

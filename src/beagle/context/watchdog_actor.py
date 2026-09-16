@@ -355,7 +355,7 @@ class WatchdogActor:
         stays consistent (in case the monitor is reused).
         """
         try:
-            monitor.record_compaction(0, node_name=fold_type)  # type: ignore[attr-defined]
+            monitor.record_compaction(0, node_name=fold_type)
         except (AttributeError, RuntimeError, ValueError, OSError) as exc:
             logger.debug(f"monitor.record_compaction failed (non-fatal): {exc}")
 

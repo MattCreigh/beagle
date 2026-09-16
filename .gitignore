@@ -71,3 +71,8 @@ scripts/sync-to-opt-venv.sh
 # The tracked source of truth is the sibling *.template, which carries the
 # literal {repo_root} placeholder; the rendered file names an absolute path.
 .agents/plugins/*/hooks/hooks.json
+
+# pi's per-machine frontend state — carries an absolute host interpreter path,
+# so it is local state, not reviewed source (same rule as the rendered
+# .agents/plugins/*/hooks/hooks.json).
+/.pi/

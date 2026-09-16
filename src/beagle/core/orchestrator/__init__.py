@@ -80,7 +80,7 @@ __all__ = [
 ]
 
 
-def __getattr__(name: str):
+def __getattr__(name: str) -> object:
     """Lazy import DAGOrchestrator to break the cycle with the facade."""
     if name == "DAGOrchestrator":
         from beagle.core.autonomous_orchestrator import (

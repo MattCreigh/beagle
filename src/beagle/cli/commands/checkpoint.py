@@ -7,10 +7,9 @@ import logging
 from pathlib import Path
 
 import typer
+from rich.console import Console
 
 logger = logging.getLogger(__name__)
-
-from rich.console import Console
 
 console = Console(stderr=True)
 

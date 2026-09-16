@@ -29,7 +29,7 @@ class RouteResult:
     reasoning: str
     alternatives: list[tuple[str, float]] | None = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.alternatives is None:
             self.alternatives = []
 

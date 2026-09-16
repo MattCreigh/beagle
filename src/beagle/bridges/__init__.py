@@ -19,6 +19,7 @@ All model calls route through Ollama Cloud exclusively.
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 # non-empty-init-module is a preview rule; under preview=false it no longer
 # fires, so no suppression is needed. The module-logger and lazy module map are
@@ -46,7 +47,7 @@ _BRIDGE_MODULES = {
 }
 
 
-def __getattr__(name: str):
+def __getattr__(name: str) -> Any:
     """Lazy-load bridge sub-modules only when accessed."""
     if name in _BRIDGE_MODULES:
         import importlib

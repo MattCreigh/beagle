@@ -26,10 +26,14 @@ import logging
 import time
 import tomllib
 from collections.abc import Awaitable, Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 from beagle.config._config_path import find_config_toml
+from beagle.utils.circuit_breaker import (
+    CircuitBreakerConfig,
+    get_llm_circuit_breaker,
+)
 
 logger = logging.getLogger("Beagle.dynamic_pool")
 
@@ -256,11 +260,6 @@ class LLMBackpressure:
         if provider in self._circuits:
             return self._circuits[provider]
         try:
-            from beagle.utils.circuit_breaker import (
-                CircuitBreakerConfig,
-                get_llm_circuit_breaker,
-            )
-
             cfg = self.circuit_config or CircuitBreakerConfig()
             async with self._circuits_lock:
                 if provider not in self._circuits:
@@ -270,7 +269,7 @@ class LLMBackpressure:
                         cfg,
                     )
             return self._circuits[provider]
-        except Exception as exc:  # broad catch: circuit layer is best-effort
+        except Exception as exc:  # noqa: BLE001 — RATIONALE=circuit-breaker acquisition is best-effort backpressure: any failure here degrades to "no breaker" (return None) and must not take down the calling workflow; the caught value is logged at debug level below.
             logger.debug("[LLMBackpressure] circuit breaker unavailable (%s)", exc)
             return None
 

@@ -64,7 +64,7 @@ class EmbeddingAdapter:
     _instance: EmbeddingAdapter | None = None
     _initialized: bool = False
 
-    def __new__(cls, *args: Any, **kwargs: Any) -> EmbeddingAdapter:
+    def __new__(cls, *_args: Any, **_kwargs: Any) -> EmbeddingAdapter:
         if cls._instance is None:
             cls._instance = super().__new__(cls)
         return cls._instance
@@ -93,9 +93,9 @@ class EmbeddingAdapter:
             return
 
         try:
-            self._embedder = get_embedder()  # type: ignore[assignment]
+            self._embedder = get_embedder()
             # Quick smoke test: encode a single string
-            result = self._embedder.encode(["test"])  # type: ignore[attr-defined]
+            result = self._embedder.encode(["test"])
             if result and len(result[0]) == self._dimension:
                 self._available = True
                 logger.info(
@@ -187,7 +187,7 @@ class EmbeddingAdapter:
                 "NumPy required for pseudo-embeddings. Install with: pip install numpy"
             )
 
-        result = np.zeros((len(texts), self._dimension), dtype=np.float32)
+        result: np.ndarray = np.zeros((len(texts), self._dimension), dtype=np.float32)
         for i, text in enumerate(texts):
             # D11 (Fable 5 DD 2026-06-11): Python's builtin `hash()` is salted
             # per-process since 3.3, so this fallback produced different
@@ -255,7 +255,7 @@ class EmbeddingAdapter:
 
         dots = candidate_vecs @ query_vec
         valid = norms > 1e-10
-        sims = np.zeros(len(candidate_vecs), dtype=np.float32)
+        sims: np.ndarray = np.zeros(len(candidate_vecs), dtype=np.float32)
         sims[valid] = dots[valid] / (norms[valid] * query_norm)
 
         # Top-k indices

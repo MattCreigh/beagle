@@ -25,7 +25,7 @@ import logging
 from collections.abc import Callable
 from typing import Any
 
-from langgraph.graph import StateGraph
+from langgraph.graph.state import StateGraph
 
 from ..utils.prompt_builder import make_prompt_builder
 from .state import BeagleState, OperationalMetadata
@@ -343,7 +343,7 @@ def build_workflow_graph(
     nodes: list[dict[str, Any]],
     transitions: list[tuple[str, str, str | None]],
     _workflow_query: str = "",
-    complexity: str = "normal",
+    _complexity: str = "normal",
 ) -> StateGraph:
     """Build a custom workflow graph from node specs and transitions.
 
@@ -398,22 +398,22 @@ def build_workflow_graph(
 
         async def node_fn(
             state: dict[str, Any],
-            _skill=skill,
-            _pb=prompt_builder,
-            _ok=output_key,
-            _model_hint=model_hint,
-            _enable_grpo=enable_grpo,
-            _enable_ensemble=enable_ensemble,
-            _bw=budget_weight,
-            _require_approval=require_approval,
-            _name=name,
-            _executor=_executor,
-            _tool_name=_tool_name,
-            _tool_method=_tool_method,
-            _input_mapping=_input_mapping,
-            _agent_url=_agent_url,
-            _agent_name=_agent_name,
-            _timeout=_timeout,
+            _skill: str = skill,
+            _pb: Callable[[dict[str, Any]], str] = prompt_builder,
+            _ok: str = output_key,
+            _model_hint: str | None = model_hint,
+            _enable_grpo: bool = enable_grpo,
+            _enable_ensemble: bool = enable_ensemble,
+            _bw: float = budget_weight,
+            _require_approval: bool = require_approval,
+            _name: str = name,
+            _executor: str = _executor,
+            _tool_name: str | None = _tool_name,
+            _tool_method: str | None = _tool_method,
+            _input_mapping: dict[str, Any] = _input_mapping,
+            _agent_url: str | None = _agent_url,
+            _agent_name: str | None = _agent_name,
+            _timeout: int = _timeout,
         ) -> dict[str, Any]:
             if _require_approval:
                 approval_granted = state.get("approval_granted", False)
@@ -490,7 +490,7 @@ def build_workflow_graph(
                 state, _skill, _pb, _ok, model_override=_model_hint, timeout=_timeout
             )
 
-        graph.add_node(name, node_fn)  # type: ignore[type-var]
+        graph.add_node(name, node_fn)
 
     if nodes:
         graph.set_entry_point(nodes[0]["name"])
@@ -499,7 +499,7 @@ def build_workflow_graph(
     for from_node, to_node, condition_field in transitions:
         if condition_field:
 
-            def make_condition(field: str, target: str):
+            def make_condition(field: str, target: str) -> Callable[[dict[str, Any]], str]:
                 def cond(state: dict[str, Any]) -> str:
                     breaker = _check_circuit_breaker(state)
                     if breaker is not None:

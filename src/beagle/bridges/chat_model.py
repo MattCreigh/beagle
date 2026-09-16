@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import logging
 import os
+from collections.abc import AsyncIterator
 from typing import Any
 
 from ..secrets_loader import load_secret
@@ -37,7 +38,7 @@ def _get_ollama_cloud_base_url() -> str:
         if hasattr(config, "_raw"):
             url = config._raw.get("llm", {}).get("ollama_cloud_endpoint", "")
             if url:
-                return url  # type: ignore[no-any-return]
+                return url
     except Exception as exc:  # ruff: ignore[BLE001]  # broad catch intentional
         logger.debug(f"Could not read ollama_cloud_endpoint from config: {exc}")
 
@@ -201,7 +202,9 @@ class OllamaCloudChatModel:
         """Sync invoke the chat model."""
         return self._llm.invoke(input, config=config, **kwargs)
 
-    async def astream(self, input: Any, config: Any = None, **kwargs: Any):
+    async def astream(
+        self, input: Any, config: Any = None, **kwargs: Any
+    ) -> AsyncIterator[Any]:
         """Async stream tokens from the chat model."""
         async for chunk in self._llm.astream(input, config=config, **kwargs):
             yield chunk

@@ -39,7 +39,7 @@ __all__ = [
 ]
 
 
-def __getattr__(name: str):
+def __getattr__(name: str) -> object:
     """Lazy import to avoid circular dependencies."""
     lazy_imports = {
         "AutonomousOrchestrator": ".autonomous_orchestrator",

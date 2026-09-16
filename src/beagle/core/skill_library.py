@@ -761,7 +761,7 @@ async def create_elementary_skills() -> None:
 
 if __name__ == "__main__":
 
-    async def demo():
+    async def demo() -> None:
         # Create elementary skills
         await create_elementary_skills()
 

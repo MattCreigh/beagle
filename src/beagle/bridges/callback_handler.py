@@ -76,6 +76,7 @@ class BeagleCallbackHandler(BaseCallbackHandler):
 
     def on_llm_end(self, response: Any, **kwargs: Any) -> None:
         """Fired when an LLM call completes."""
+        _ = response  # required by the LLMManagerMixin override; not used here
         run_id = str(kwargs.get("run_id", "unknown"))
         start = self._start_times.pop(run_id, time.monotonic())
         duration = time.monotonic() - start
@@ -134,6 +135,7 @@ class BeagleCallbackHandler(BaseCallbackHandler):
 
     def on_tool_end(self, output: Any, **kwargs: Any) -> None:
         """Fired when a tool call completes."""
+        _ = output  # required by the ToolManagerMixin override; not used here
         run_id = str(kwargs.get("run_id", "unknown"))
         start = self._start_times.pop(run_id, time.monotonic())
         duration = time.monotonic() - start
@@ -185,6 +187,7 @@ class BeagleCallbackHandler(BaseCallbackHandler):
 
     def on_chain_end(self, outputs: dict, **kwargs: Any) -> None:
         """Fired when a chain completes."""
+        _ = outputs  # required by the ChainManagerMixin override; not used here
         run_id = str(kwargs.get("run_id", "unknown"))
         start = self._start_times.pop(run_id, time.monotonic())
         duration = time.monotonic() - start

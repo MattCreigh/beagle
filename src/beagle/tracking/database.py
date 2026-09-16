@@ -234,9 +234,8 @@ class TrackingDatabase:
         import time
 
         # wall-clock-ok: compares against a persisted timestamp
-        # Repointed from aeca-walltime-for-interval — the rule was renamed to
-        # beagle-walltime-for-interval and the stale id matched nothing, so this
-        # honest timestamp comparison hit the doctrine floor. The comparison is
+        # This directive previously carried a stale rule id, so the honest
+        # timestamp comparison hit the doctrine floor. The comparison is
         # against a persisted wall-clock column, not a duration, so monotonic
         # is not applicable.
         threshold = time.time() - (since_days * 86400)  # nosemgrep: beagle-walltime-for-interval

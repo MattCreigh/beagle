@@ -368,7 +368,7 @@ def run(
 
             app = BeagleApp(workflow_id=workflow, query=query)
 
-            async def run_with_tui():
+            async def run_with_tui() -> dict:
                 # Start dashboard in the background
                 # (Textual apps run their own event loop, so we run them together)
                 workflow_task = asyncio.create_task(
@@ -493,6 +493,12 @@ def run(
             console.print("[bold red]Workflow completed with errors:[/bold red]")
             for error in errors:
                 console.print(f"  - {error}")
+            # A headless run is a CI/CD signal: a workflow that reported
+            # errors must not exit 0, or the pipeline reads a failed run as
+            # green. The interactive paths keep returning normally so the
+            # operator still sees the summary below.
+            if headless:
+                raise typer.Exit(code=1)
         else:
             if not headless:
                 console.print("[bold green]Workflow completed successfully![/bold green]")

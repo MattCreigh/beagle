@@ -275,7 +275,7 @@ class BeagleDAGNode(DAGNode):
             stop=stop_after_attempt(3),
             wait=wait_exponential(multiplier=1, min=2, max=10),
         )
-        async def _execute_with_retry():
+        async def _execute_with_retry() -> str:
             logger.info(f"[{self.name}] Executing node...")
             start_time = time.monotonic()
 

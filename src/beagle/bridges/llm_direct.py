@@ -272,8 +272,9 @@ class DirectLLMClient:
             await self._http.aclose()
             self._http = None
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> DirectLLMClient:
         return self
 
     async def __aexit__(self, *exc: Any) -> None:
+        del exc  # aiohttp contract: the exception triple is not used here
         await self.close()

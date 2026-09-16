@@ -84,7 +84,7 @@ def topological_sort(nodes: list[DAGNode]) -> list[DAGNode]:
     sorted_nodes = []
     temp_marks = set()
 
-    def visit(node: DAGNode):
+    def visit(node: DAGNode) -> None:
         if node.name in visited:
             return
         if node.name in temp_marks:

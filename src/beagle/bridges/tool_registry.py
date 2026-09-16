@@ -39,6 +39,7 @@ class ToolRegistry:
 
     _instance: ToolRegistry | None = None
     _lock = threading.Lock()
+    _initialized: bool = False
 
     def __new__(cls) -> ToolRegistry:
         """Singleton — return the shared registry instance."""
@@ -50,7 +51,7 @@ class ToolRegistry:
         return cls._instance
 
     def __init__(self) -> None:
-        if self._initialized:  # type: ignore[has-type]
+        if self._initialized:
             return
         self._tools: dict[str, Any] = {}  # Cached tool instances
         self._tool_classes: dict[str, type] = {}  # Imported but not instantiated

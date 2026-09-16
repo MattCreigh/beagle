@@ -317,7 +317,7 @@ def get_context_summary() -> dict[str, Any]:
 if __name__ == "__main__":
     import sys
 
-    def reset_tracker():
+    def reset_tracker() -> None:
         global _tracker_state
         _tracker_state = ContextTrackerState()
 

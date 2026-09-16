@@ -154,7 +154,7 @@ def _unpack_bit_indices(data: bytes, total_values: int, bits: int) -> np.ndarray
         return np.frombuffer(data, dtype=np.uint8)[:total_values].copy()
 
     mask = (1 << bits) - 1
-    result = np.zeros(total_values, dtype=np.uint8)
+    result: np.ndarray = np.zeros(total_values, dtype=np.uint8)
     buf = data  # bytes object, indexable
 
     bit_pos = 0
@@ -218,7 +218,7 @@ class TurboQuantCompressor:
             )
 
         original_shape = vectors.shape
-        flat_vectors = vectors.flatten().astype(np.float32)
+        flat_vectors: np.ndarray = vectors.flatten().astype(np.float32)
 
         # Generate seed deterministically
         if self._seed is not None:
@@ -279,7 +279,7 @@ class TurboQuantCompressor:
         # Extract mins/maxs (float16, 4 bytes per vector)
         mins_maxs_offset = 16
         mins_maxs_end = mins_maxs_offset + n_vectors * 4
-        mins_maxs = (
+        mins_maxs: np.ndarray = (
             np.frombuffer(compressed[mins_maxs_offset:mins_maxs_end], dtype=np.float16)
             .reshape(-1, 2)
             .copy()
@@ -291,7 +291,7 @@ class TurboQuantCompressor:
         all_indices = _unpack_bit_indices(compressed[data_start:], total_indices, self.bits)
 
         # Reconstruct vectors from indices + centroids
-        result = np.zeros((n_vectors, vec_size), dtype=np.float32)
+        result: np.ndarray = np.zeros((n_vectors, vec_size), dtype=np.float32)
         for i in range(n_vectors):
             vmin = float(mins_maxs[i, 0])
             vmax = float(mins_maxs[i, 1])
@@ -357,7 +357,7 @@ def _estimate_entropy_per_value(vectors: np.ndarray) -> float:
     scaled = ((vectors.astype(np.float32) - vmin) * 255.0 / (vmax - vmin)).astype(np.int32)
     scaled = np.clip(scaled, 0, 255)
     counts = np.bincount(scaled.flatten(), minlength=256)
-    total = counts.sum()
+    total: int = int(counts.sum())
     if total == 0:
         return 0.0
     p = counts.astype(np.float64) / float(total)

@@ -170,7 +170,7 @@ class ContextMonitor:
                 # compaction_state.json, possibly written by a previous
                 # process. time.monotonic() is not comparable across restarts,
                 # so wall clock is the correct clock here. (Read into a named
-                # variable: the aeca-walltime-for-interval rule flags inline
+                # variable: the walltime-for-interval rule flags inline
                 # `time.time() - x` subtractions, which are for durations.)
                 _now_wall = time.time()
                 if _now_wall - _state.get("last_compaction", 0) < 3600:

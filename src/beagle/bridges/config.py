@@ -15,7 +15,7 @@ from typing import Any
 logger = logging.getLogger("Beagle.bridges.config")
 
 # Use tomllib for Python 3.11+, fall back to tomli
-import tomllib
+import tomllib  # noqa: E402 — deliberately after the logger; the comment above documents the 3.11+ floor
 
 
 def _find_config_path() -> Path:

@@ -44,7 +44,7 @@ except ImportError:
 
             return nullcontext()
 
-    _tracer = _StubTracer()  # type: ignore[assignment]
+    _tracer = _StubTracer()
 
 # aiohttp is imported lazily in _ensure_session to keep the module importable
 # without the optional runtime dependency, but typed references are used in

@@ -496,7 +496,7 @@ async def auto_hydrate(config: AutoHydrationConfig | None = None) -> HydrationRe
             # wall-clock, not monotonic. Same timestamp-comparison pattern as
             # semantic_knowledge.py / render.py / tools/_impl.py.
             md_mtime = claude_md.stat().st_mtime
-            md_age = time.time() - md_mtime  # nosemgrep: aeca-walltime-for-interval
+            md_age = time.time() - md_mtime  # nosemgrep: beagle-walltime-for-interval
             if md_age > 7 * 86400:
                 logger.warning(f"[AutoHydration] CLAUDE.md is {md_age / 86400:.1f} days old")
 

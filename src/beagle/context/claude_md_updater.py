@@ -165,10 +165,8 @@ def update_claude_md(
 
     # Step 2: Check staleness (skip if recently updated, unless forced)
     if claude_md_path.exists() and not force:
-        md_age = (
-            # wall-clock-ok: compares against a persisted timestamp
-            time.time() - claude_md_path.stat().st_mtime
-        )
+        # wall-clock-ok: compares against a persisted file mtime
+        md_age = time.time() - claude_md_path.stat().st_mtime  # nosemgrep: beagle-walltime-for-interval
         if md_age < _STALE_THRESHOLD_SECONDS:
             result["reason"] = (
                 f"CLAUDE.md is only {md_age / 3600:.1f}h old "

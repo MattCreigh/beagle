@@ -720,7 +720,7 @@ def patch_orchestrator(orchestrator_class: type) -> type:
     """
     original_init = orchestrator_class.__init__  # type: ignore[misc]
 
-    def enhanced_init(self, *args, **kwargs):
+    def enhanced_init(self: Any, *args: object, **kwargs: object) -> None:
         original_init(self, *args, **kwargs)
 
         # Initialize context integration
@@ -733,7 +733,9 @@ def patch_orchestrator(orchestrator_class: type) -> type:
 
         logger.info(f"[{self.name}] Context integration initialized with 50% threshold")
 
-    async def enhanced_context_fold(self, _state, data_to_fold, fold_mode="auto"):
+    async def enhanced_context_fold(
+        self: Any, _state: object, data_to_fold: str, fold_mode: str = "auto"
+    ) -> str:
         # _state: see the module-level wrapper above — signature-compat only.
         integration = get_context_integration()
         return await integration.enhanced_context_fold(data_to_fold, fold_mode)
@@ -785,7 +787,7 @@ if __name__ == "__main__":
     logger.info("\nTesting context fold...")
     large_data = "x" * 10000
 
-    async def test_fold():
+    async def test_fold() -> None:
         result = await integration.enhanced_context_fold(large_data, "auto")
         logger.info(f"  Original size: {len(large_data)}")
         logger.info(f"  Folded size: {len(result)}")

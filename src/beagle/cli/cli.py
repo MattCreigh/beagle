@@ -25,12 +25,10 @@ from .commands.checkpoint import checkpoint_app
 from .commands.config import config_app
 from .commands.coord import coord_app
 from .commands.execution import execution_app
-from .commands.pi import pi_app
 from .commands.render import render_app
 from .commands.runs import runs_app
 from .commands.slo import slo_app
 from .commands.system import system_app
-from .commands.webui import webui_app
 from .commands.workflows import workflows_app
 
 logger = logging.getLogger(__name__)
@@ -63,13 +61,19 @@ app.add_typer(config_app, name="config")
 app.add_typer(checkpoint_app, name="checkpoint")
 app.add_typer(slo_app, name="slo")
 app.add_typer(coord_app, name="coord")
-# webui_app's single "webui" command flattens into the root namespace, so
-# ``beagle webui --port`` works directly (same pattern as execution_app).
-app.add_typer(webui_app)
-# D-11: pi_app was defined at commands/pi.py:22 and registered nowhere, so the
-# entire frontend was unreachable — `beagle pi` did not exist. Flattened here
-# for the same reason as webui_app.
-app.add_typer(pi_app)
+# WP-6 (D-18): the frontends moved to beagle-plugin-pi / beagle-plugin-webui.
+# Both commands now arrive through the beagle.frontends entry-point group and
+# are mounted below by the plugin loader, after the built-ins.
+
+# WP-3: frontend plugins are discovered through the ``beagle.frontends``
+# entry-point group and mounted after the built-ins, so a plugin can never
+# shadow a built-in command. Discovery never raises: a broken plugin is
+# skipped with a warning and the CLI still starts.
+from .plugin_loader import (
+    mount_frontend_plugins,  # noqa: E402 — must stay below the add_typer calls: a plugin must never shadow a built-in
+)
+
+mount_frontend_plugins(app, lambda plugin_app, name: app.add_typer(plugin_app, name=name))
 
 
 def _version_callback(value: bool) -> None:
@@ -138,19 +142,27 @@ def _bootstrap() -> None:
 def main() -> None:
     """Main entry point — initializes Beagle and runs the CLI.
 
-    With no subcommand, the vendored pi frontend is launched (the default
-    interactive experience). Explicit subcommands (``beagle run``, …) dispatch
-    to the normal CLI.
+    With no subcommand, the default interactive frontend is launched (the
+    vendored pi frontend when installed). Explicit subcommands (``beagle run``,
+    …) dispatch to the normal CLI.
     """
     _bootstrap()
 
-    # Bare ``beagle`` (no subcommand) launches the pi frontend. typer's
+    # Bare ``beagle`` (no subcommand) launches the default frontend. typer's
     # ``no_args_is_help`` would otherwise print help; the frontend is the
     # intended out-of-the-box entry point.
+    #
+    # Resolved through the ``beagle.frontends`` entry-point group, never by
+    # naming a frontend module: D-18 extracted the frontends to their own
+    # distributions, so a hardcoded ``..frontends.pi.launcher`` import is a
+    # dangling reference to a path that no longer exists. A missing frontend
+    # falls through to the help surface rather than raising.
     if len(sys.argv) <= 1:
-        from ..frontends.pi.launcher import main as pi_main
+        from .plugin_loader import launch_frontend
 
-        sys.exit(pi_main())
+        exit_code = launch_frontend("pi")
+        if exit_code is not None:
+            sys.exit(exit_code)
 
     app()
 

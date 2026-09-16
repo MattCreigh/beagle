@@ -22,14 +22,14 @@ from .workflow_schema import (
 
 # Optional LangGraph imports
 try:
-    from langgraph.graph import StateGraph
+    from langgraph.graph.state import StateGraph
 
     from beagle.core.graph import build_workflow_graph
 
     _HAS_LANGGRAPH = True
 except ImportError:
     _HAS_LANGGRAPH = False
-    StateGraph = None  # type: ignore[assignment,misc]
+    StateGraph = None
 
 logger = logging.getLogger("Beagle.workflow_builder")
 
