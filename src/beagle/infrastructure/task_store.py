@@ -21,11 +21,15 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+from beagle.infrastructure.sqlite_conn import ThreadLocalSQLite
 
-class TaskStore:
+
+class TaskStore(ThreadLocalSQLite):
     """SQLite-backed task persistence with audit trail.
 
-    Thread-safe implementation with connection pooling.
+    Connections are one-per-thread and all of them are released by ``close()``,
+    from any thread (see
+    :class:`~beagle.infrastructure.sqlite_conn.ThreadLocalSQLite`).
     """
 
     SCHEMA = """
@@ -80,35 +84,17 @@ class TaskStore:
     VALID_TYPES = frozenset({"workflow", "skill", "delegate", "tool_invocation"})
 
     def __init__(self, db_path: Path | str):
-        self.db_path = Path(db_path)
-        self.db_path.parent.mkdir(parents=True, exist_ok=True)
-        self._local = threading.local()
+        super().__init__(db_path)
         self._init_db()
-
-    def _get_conn(self) -> sqlite3.Connection:
-        """Get thread-local connection with WAL mode for concurrent read/write."""
-        if not hasattr(self._local, "conn"):
-            self._local.conn = sqlite3.connect(str(self.db_path))
-            self._local.conn.row_factory = sqlite3.Row
-            # Enable WAL mode for better concurrent read/write performance
-            self._local.conn.execute("PRAGMA journal_mode=WAL")
-            self._local.conn.execute("PRAGMA synchronous=NORMAL")
-        return self._local.conn
-
-    def close(self) -> None:
-        """Close the thread-local database connection."""
-        if hasattr(self._local, "conn"):
-            self._local.conn.close()
-            del self._local.conn
 
     def __del__(self) -> None:
         """Ensure connection cleanup on garbage collection."""
         self.close()
 
-    def __enter__(self):
+    def __enter__(self) -> TaskStore:
         return self
 
-    def __exit__(self, *exc):
+    def __exit__(self, *_exc: Any) -> None:
         self.close()
 
     @contextmanager
