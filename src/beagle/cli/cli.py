@@ -25,6 +25,7 @@ from .commands.checkpoint import checkpoint_app
 from .commands.config import config_app
 from .commands.coord import coord_app
 from .commands.execution import execution_app
+from .commands.pi import pi_app
 from .commands.render import render_app
 from .commands.runs import runs_app
 from .commands.slo import slo_app
@@ -65,6 +66,10 @@ app.add_typer(coord_app, name="coord")
 # webui_app's single "webui" command flattens into the root namespace, so
 # ``beagle webui --port`` works directly (same pattern as execution_app).
 app.add_typer(webui_app)
+# D-11: pi_app was defined at commands/pi.py:22 and registered nowhere, so the
+# entire frontend was unreachable — `beagle pi` did not exist. Flattened here
+# for the same reason as webui_app.
+app.add_typer(pi_app)
 
 
 def _version_callback(value: bool) -> None:
