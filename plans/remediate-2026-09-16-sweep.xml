@@ -1,0 +1,632 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Sweep remediation recipe — 2026-09-16.
+
+  Standards: prose is ASD-STE100. Diagrams are ASCII-first; a genuine graph
+  carries its mermaid source immediately below. Conditional and dependency
+  behaviour is stated as a logic block with a where: legend, never as prose.
+
+  Measured: 2026-09-16T10:15-10:30Z against HEAD 2c9522a on feat/cpu-torch-index,
+  with a DIRTY worktree. Every <fact> below was read or executed in that window.
+  Gate measurements were taken through routeUpper with no_cache=true.
+
+  Supersedes the <remediation_plan> form of this file. The earlier form carried
+  ten work packages, six of which measurement showed were already complete; it
+  also asserted a retracted finding in three places. See <revision_log>.
+-->
+<recipe name="remediate-2026-09-16-sweep" version="2.0.0">
+
+  <usage><![CDATA[
+goose run --recipe plans/remediate-2026-09-16-sweep.xml
+  ]]></usage>
+
+  <metadata>
+    <target_repo>/home/server/Projects/beagle</target_repo>
+    <target_branch>feat/cpu-torch-index</target_branch>
+    <secondary_repo>/home/server/Projects/beagle-plugin-pi</secondary_repo>
+    <interpreter>/home/server/Projects/beagle/.venv/bin/python</interpreter>
+    <mypy>/home/server/Projects/beagle/.venv/bin/mypy</mypy>
+    <test_runner>tup run_tests (via routeUpper)</test_runner>
+    <lint_gate>qup run_gate (via routeUpper)</lint_gate>
+    <plan_file>plans/remediate-2026-09-16-sweep.xml</plan_file>
+    <executor_model>deepseek-v4.1-flash</executor_model>
+  </metadata>
+
+  <role>
+    <statement>You are a leaf executor. You apply the edits written below, exactly as written.</statement>
+    <statement>Every decision in this recipe is already made. You do not choose between options.</statement>
+    <statement>You verify with a command and paste its real output. You never summarise a result you did not see.</statement>
+    <statement>You stop at the first mismatch between the expected output and the actual output.</statement>
+  </role>
+
+  <mission>
+    <objective>Close the static-gate findings in core/, context/ and config/ that measurement confirms are still open.</objective>
+    <objective>Give a reversion path to four pieces of completed work that are currently untracked.</objective>
+    <objective>Repair the quality ratchet's regression list after the gate work moves the counts.</objective>
+    <prohibition>Do not re-do any work package listed under verified_closed. It is already done, and re-doing it would overwrite working code.</prohibition>
+    <prohibition>Do not disable a lint rule, add a noqa, add a nosemgrep marker, or delete a test to clear a gate.</prohibition>
+    <prohibition>Do not refactor code that is not named in a work package.</prohibition>
+    <prohibition>Do not run `git add -A`, and never `git add` with a bare directory argument. The worktree carries another session's in-flight edits.</prohibition>
+  </mission>
+
+  <hard_constraints>
+    <constraint id="HC-1" severity="critical">
+      <rule>Reach qup and tup only through routeUpper: rup_call(tool="qup", tool_name="run_gate", arguments={"paths": [...], "no_cache": true}).</rule>
+      <rationale>Shelling out to the binaries bypasses the router's trust cache and the gate's schema normalisation.</rationale>
+      <required_action>Use the &lt;gate&gt; block given in each work package verbatim.</required_action>
+      <prohibited_phrase>qup check</prohibited_phrase>
+      <prohibited_phrase>qup run_gate src/</prohibited_phrase>
+    </constraint>
+    <constraint id="HC-2" severity="critical">
+      <rule>One work package, one commit. Stage only the files that work package names.</rule>
+      <rationale>The worktree is dirty with a parallel session's edits to bridges/, cli/, core/dynamic_pool.py, core/state.py and pyproject.toml. A directory-level add would commit another session's work.</rationale>
+      <required_action>git add &lt;explicit file list&gt;, then git status --short to confirm nothing else is staged.</required_action>
+      <prohibited_phrase>git add -A</prohibited_phrase>
+      <prohibited_phrase>git add .</prohibited_phrase>
+    </constraint>
+    <constraint id="HC-3" severity="high">
+      <rule>Never use --no-verify, and never force-push.</rule>
+      <rationale>A failing hook is a defect to fix, not an obstacle to route around.</rationale>
+    </constraint>
+    <constraint id="HC-4" severity="high">
+      <rule>Do not hand-edit any site-packages tree, including /opt/beagle/beagle_venv.</rule>
+      <rationale>site-packages is a build artifact. Edit the repo, rebuild the wheel, reinstall.</rationale>
+      <required_action>uv build, then uv pip install --reinstall --no-deps dist/*.whl</required_action>
+    </constraint>
+    <constraint id="HC-5" severity="high">
+      <rule>A mypy "unused type: ignore" finding is cleared by deleting the ignore comment, never by widening it or by adding a new code.</rule>
+      <rationale>mypy reports an ignore as unused only when it suppresses nothing. Deletion is provably behaviour-neutral.</rationale>
+    </constraint>
+  </hard_constraints>
+
+  <execution_protocol>
+    <step order="1">Run exactly one work package at a time, in the order attribute's order.</step>
+    <step order="2">Apply every &lt;instruction&gt; in that package before running its gate.</step>
+    <step order="3">Run the package's &lt;gate&gt; and &lt;commands&gt;. Paste the real output into your report.</step>
+    <step order="4">Compare against &lt;acceptance&gt;. If any criterion fails, STOP and report. Do not continue to the next package.</step>
+    <step order="5">Commit with the package's &lt;commit_message&gt;. One commit per package.</step>
+    <step order="6">git pull --rebase before any push. All commits go on feat/cpu-torch-index.</step>
+  </execution_protocol>
+
+  <!-- ================================================================== -->
+  <!-- Measured complete. DO NOT RE-DO ANY OF THESE.                      -->
+  <!-- ================================================================== -->
+  <verified_closed>
+    <item id="0-01" how="cli/cli.py:160 calls plugin_loader.launch_frontend('pi'); the helper exists at plugin_loader.py:266. The hardcoded ..frontends.pi.launcher import is gone."/>
+    <item id="0-02" how="beagle-plugin-pi launcher.py:213 emits ['--extension', str(ext)] as two tokens; vendor/pi-mcp-extension/node_modules/ is installed so zod resolves. Measured: bare `beagle` with stdin closed EXITS 0."/>
+    <item id="C-01" how="cli/commands/execution.py:500-501 raises typer.Exit(code=1) inside the headless errors branch, with the CI/CD rationale in a comment above it."/>
+    <item id="B-01" how="scripts/setup_firecracker.py (192 lines) and scripts/setup_orpheus_rings.py (165 lines) both exist. setup_orpheus_rings.py:142 implements --dry-run. They are UNTRACKED — SWP-2 versions them."/>
+    <item id="D-01a..D-01h" how="rup_call qup run_gate on src/beagle/bridges with no_cache=true, 2026-09-16T10:15:51Z: mypy 0, ruff 0, ruff-doctrine 0, semgrep 0, vulture 0 across 32 files, cache 0/32. All bridges findings are closed."/>
+    <item id="E-01" how="All six walltime sites carry the CURRENT rule id: auto_hydration.py:499, tools/_impl.py:1581, semantic_knowledge.py:391, claude_md_updater.py:169, a2a_types.py:327, otel_langsmith_bridge.py:239. Zero stale ids remain. semgrep reports 0 findings on these paths."/>
+    <item id="E-05" how="cli/commands/checkpoint.py hoists `from rich.console import Console` above the logger; ruff clean."/>
+    <item id="F-01-step-1" how="scripts/check_quality_ratchet.py:34-81 resolves the doctrine profile from baselines/semgrep/ then qup's bundled profiles by glob, and raises a named error when absent. The literal 15/1/1 fallback is deleted. The profile file is UNTRACKED — SWP-2 versions it."/>
+    <item id="J-01" how="The retired project-name prefix survives at ZERO tracked source, script, baseline and doc paths. The only surviving occurrences were inside the previous version of THIS FILE, which this rewrite removes. SWP-2 proves the count is 0."/>
+  </verified_closed>
+
+  <!-- ================================================================== -->
+  <!-- Decisions already taken. Do not re-open these.                     -->
+  <!-- ================================================================== -->
+  <decisions>
+
+    <decision id="DEC-1" topic="langgraph and opentelemetry attr-defined">
+      <chosen>Add a [[tool.mypy.overrides]] block to pyproject.toml for module = ["langgraph.*", "opentelemetry.*"] with follow_imports = "skip" and ignore_errors = true.</chosen>
+      <reason>Measured root cause: langgraph ships as a NAMESPACE package (site-packages/langgraph has no __init__.py; langgraph.__file__ is None) and qup invokes mypy with --no-namespace-packages, documented at pyproject.toml:202-203. Under that flag mypy cannot resolve the package and reports attr-defined. Proof: `mypy --no-namespace-packages src/beagle/core/graph.py` gives 1 StateGraph attr-defined error; `mypy --namespace-packages` on the same file gives none. Verified fix: with the override added, graph.py:35, graph_builder.py:28 and a2a_protocol.py:26 all report 0 attr-defined errors. This is the same toolchain-crash class already handled for numpy/torch/transformers/websockets/uvicorn at pyproject.toml:209-212, so it follows existing house precedent.</reason>
+      <rejected name="Change the import form">The previous plan prescribed replacing attribute access with `from langgraph.graph import StateGraph`. That form is ALREADY in the file at graph.py:35 and graph_builder.py:28 and the error persists. The premise was false.</rejected>
+      <rejected name="Add type: ignore[attr-defined] on the two import lines">A suppression at the call site hides a toolchain configuration problem in two places instead of stating it once in config, and would itself become an unused-ignore if the toolchain changes.</rejected>
+      <rejected name="Drop --no-namespace-packages from qup">qup's invocation is not this repo's to change, and the flag exists to work around a mypy 2.3.1 internal error.</rejected>
+    </decision>
+
+    <decision id="DEC-2" topic="ordering of the unused-ignore deletions in graph.py">
+      <chosen>Apply DEC-1 FIRST, then delete the ignore comments.</chosen>
+      <reason>Measured with the override in place: all 21 ignores in graph.py, graph_builder.py and workflow_builder.py are STILL reported unused. So the deletions are safe and unmask nothing. Applying them in the other order risks deleting an ignore that the config change would have made load-bearing.</reason>
+      <rejected name="Delete ignores first">Untested ordering; the recipe must not leave an ordering hazard to the executor's judgement.</rejected>
+    </decision>
+
+    <decision id="DEC-3" topic="module-level __getattr__ return types">
+      <chosen>config/__init__.py:20 and core/__init__.py:42 get `-> ModuleType` (add `from types import ModuleType`). core/orchestrator/__init__.py:83 gets `-> Any` (add `from typing import Any`).</chosen>
+      <reason>The first two return `import_module(...)`, which is a module, on every returning branch. The third returns the DAGOrchestrator CLASS, and naming its type would require a module-level import of beagle.core.autonomous_orchestrator — which is the exact circular import the lazy __getattr__ exists to break. Any is the honest type there, not a guess.</reason>
+      <rejected name="-> Any everywhere">Loses real type information at two of the three sites.</rejected>
+    </decision>
+
+    <decision id="DEC-4" topic="numpy-backed variable annotations">
+      <chosen>Annotate as bare `np.ndarray`, except turboquant.py:360 which gets `Any`.</chosen>
+      <reason>House precedent is bare np.ndarray — see context/embedding_cache.py:76 `arr: np.ndarray = np.load(file_path)` and :131 `results: dict[int, np.ndarray]`. turboquant.py:360 is `total = counts.sum()`, a numpy scalar rather than an array, and numpy resolves to Any under the existing override, so Any is the accurate type. Do not cast with int() — that changes runtime behaviour.</reason>
+      <rejected name="npt.NDArray[np.float32]">Not used anywhere in this repo; introducing a second convention makes the codebase inconsistent.</rejected>
+    </decision>
+
+    <decision id="DEC-5" topic="unused parameters flagged by vulture">
+      <chosen>Underscore-prefix the parameter at all five sites. Do not add entries to .vulture_whitelist.py.</chosen>
+      <reason>All five are parameters required by a contract but unused in the body, which is exactly the case .vulture_whitelist.py's own header documents as "Fixed by prefixing with underscore". Renaming is safe at every site because every caller passes positionally: build_workflow_graph is called positionally at workflow_builder.py:317 and workflow_loader.py:303; _create_chunks_from_boundaries has one caller, context_preprocessor.py:189, positional; __missing__ and __new__ are dunders invoked by the interpreter. graph_builder.py:345 already carries `_workflow_query` in the very same signature, so the rename matches the file's local convention.</reason>
+      <rejected name="Whitelist entries">The whitelist is for fixtures, re-exports and probes. Using it for an ordinary unused parameter suppresses the finding instead of fixing the input.</rejected>
+      <rejected name="Delete the parameters">Every one is required by its caller or by the interpreter's dunder contract. Deleting changes the signature and breaks the call.</rejected>
+    </decision>
+
+    <decision id="DEC-6" topic="state.py Singleton._singleton_instance">
+      <chosen>Declare `_singleton_instance: ClassVar[Any]` in the class body of `class Singleton[T](ABC)` at state.py:298, directly after its docstring.</chosen>
+      <reason>get_instance assigns cls._singleton_instance at state.py:342 and reads it at :343, but the attribute is never declared, so mypy reports attr-defined twice. ClassVar cannot contain a type variable, so ClassVar[Singleton[T]] is rejected by mypy; ClassVar[Any] is the only form that types a per-subclass class attribute here. NOTE: this defect was INTRODUCED by the previous plan's own E-04 remediation, whose verify gate was ruff-only and therefore could not see it.</reason>
+      <rejected name="ClassVar[Singleton[T]]">mypy rejects a type variable inside ClassVar.</rejected>
+    </decision>
+
+    <decision id="DEC-7" topic="agent_spawner.read_stream and the Optional stream">
+      <chosen>Annotate `read_stream(stream: asyncio.StreamReader, target_list: list[str], stream_type: str) -> None`, AND guard the call sites at :638-639 because process.stdout / process.stderr are typed `StreamReader | None`.</chosen>
+      <reason>Annotating alone converts a no-untyped-def finding into two arg-type findings, because asyncio.subprocess.Process.stdout is Optional. The complete fix is both edits together. stream_type is genuinely used, at :633.</reason>
+      <rejected name="Annotate stream as StreamReader | None">Would force a None check inside the loop body and change the function's contract; the guard belongs at the call site where the Process object is known.</rejected>
+    </decision>
+
+  </decisions>
+
+  <!-- ================================================================== -->
+  <work_package id="SWP-1" title="Land the pi launcher fix in the plugin repo and deploy it" covers="0-02 closure" order="1">
+
+    <fact>The code fix is COMPLETE but UNCOMMITTED. git -C /home/server/Projects/beagle-plugin-pi status --porcelain reports M src/beagle_plugin_pi/launcher.py, M tests/test_pi_plugin.py, M src/beagle_plugin_pi/README.md, M src/beagle_plugin_pi.egg-info/SOURCES.txt, and untracked vendor/pi-mcp-extension/node_modules/ plus package-lock.json.</fact>
+    <fact>launcher.py:213 now reads `argv = ["--extension", str(ext)] + argv` — the two-token form the vendored parser requires. launcher.py:48 defines _extension_is_loadable as a build-time assertion helper.</fact>
+    <fact>Measured: bare `beagle` with stdin closed now exits 0 against the .venv. The deployed /opt/beagle/beagle_venv has NOT been updated, so /home/server/.local/bin/beagle still runs the old plugin.</fact>
+    <fact>node_modules/ is a build input of several thousand files. It must NOT be committed to git; it belongs to the wheel build.</fact>
+
+    <instruction>In /home/server/Projects/beagle-plugin-pi, add `src/beagle_plugin_pi/vendor/pi-mcp-extension/node_modules/` and `src/beagle_plugin_pi/vendor/pi-mcp-extension/package-lock.json` to .gitignore if they are not already ignored.</instruction>
+    <instruction>Commit ONLY these four tracked files: src/beagle_plugin_pi/launcher.py, tests/test_pi_plugin.py, src/beagle_plugin_pi/README.md, src/beagle_plugin_pi.egg-info/SOURCES.txt.</instruction>
+    <instruction>Build the wheel with uv, then install it with --no-deps into BOTH /home/server/Projects/beagle/.venv AND /opt/beagle/beagle_venv.</instruction>
+    <instruction>If the install into /opt/beagle/beagle_venv requires a password, STOP and report that the deployed venv needs `sudo sklninstl update server_1 --core` from the user. Do not attempt to work around it.</instruction>
+
+    <acceptance>
+      <criterion id="AC-1">The plugin test suite passes.</criterion>
+      <criterion id="AC-2">Bare `beagle` via the .venv interpreter exits 0 and prints neither "Unknown option: --extension" nor "Cannot find module 'zod'".</criterion>
+      <criterion id="AC-3">git status in the plugin repo shows no tracked file left modified, and node_modules/ does not appear as untracked.</criterion>
+    </acceptance>
+
+    <commands><![CDATA[
+cd /home/server/Projects/beagle-plugin-pi
+git status --porcelain
+git add .gitignore src/beagle_plugin_pi/launcher.py tests/test_pi_plugin.py \
+        src/beagle_plugin_pi/README.md src/beagle_plugin_pi.egg-info/SOURCES.txt
+git status --short
+git commit -m "fix(launcher): pass --extension as two tokens and gate the preload on loadability"
+uv build
+uv pip install --python /home/server/Projects/beagle/.venv/bin/python --reinstall --no-deps dist/*.whl
+cd /home/server/Projects/beagle
+timeout 30 /home/server/Projects/beagle/.venv/bin/python -c "from beagle.cli.cli import main; main()" </dev/null; echo "EXIT=$?"
+    ]]></commands>
+    <expected_output>The final line reads EXIT=0.</expected_output>
+    <stop_condition>If EXIT is not 0, paste the last 20 lines of output and STOP. Do not edit cli/cli.py or plugin_loader.py to compensate — the dispatch side is already correct and is owned by a parallel session.</stop_condition>
+    <commit_message>fix(launcher): pass --extension as two tokens and gate the preload on loadability</commit_message>
+  </work_package>
+
+  <!-- ================================================================== -->
+  <work_package id="SWP-2" title="Give the untracked completed work a reversion path" covers="B-01, F-01-step-1, J-01" order="2">
+
+    <fact>Three completed artifacts are untracked, so none has a reversion path and none survives a fresh clone: scripts/setup_firecracker.py, scripts/setup_orpheus_rings.py, and baselines/semgrep/beagle-doctrine.yml.</fact>
+    <fact>baselines/semgrep/beagle-doctrine.yml is the FIRST resolution candidate of scripts/check_quality_ratchet.py:34. On a fresh clone the ratchet falls through to qup's bundled copy, and if qup is absent it raises. The vendored copy is the intended self-contained path, so it must be tracked.</fact>
+    <fact>plans/remediate-2026-09-16-sweep.xml is itself untracked. Doctrine requires plans to be version-controlled; a local-only plan is invisible to a fresh clone and has no reversion path.</fact>
+    <fact>git check-ignore reports none of these paths as ignored. They are simply not added.</fact>
+
+    <instruction>Confirm the vendored profile is licensed for redistribution before committing it: read its header comment. If it carries no licence statement, STOP and report — do not commit it, and record the blocker.</instruction>
+    <instruction>Commit the five files listed in the commands block, and nothing else.</instruction>
+
+    <acceptance>
+      <criterion id="AC-4">git ls-files lists all five paths.</criterion>
+      <criterion id="AC-5">The repo-wide search for the retired project-name prefix returns 0 lines.</criterion>
+      <criterion id="AC-6">The ratchet still runs and still reports its regression list (it will still exit 1 — that is expected until SWP-8).</criterion>
+    </acceptance>
+
+    <commands><![CDATA[
+cd /home/server/Projects/beagle
+head -20 baselines/semgrep/beagle-doctrine.yml
+git add scripts/setup_firecracker.py scripts/setup_orpheus_rings.py \
+        baselines/semgrep/beagle-doctrine.yml plans/remediate-2026-09-16-sweep.xml
+git status --short
+git ls-files scripts/setup_firecracker.py scripts/setup_orpheus_rings.py baselines/semgrep/beagle-doctrine.yml plans/remediate-2026-09-16-sweep.xml
+# Purge proof. RETIRED is assembled at runtime so this file contains no occurrence of the token.
+RETIRED=$(printf '%s%s' ae ca)
+grep -rn "$RETIRED" --include=*.py --include=*.toml --include=*.yml --include=*.json \
+     --include=*.md --include=*.xml . | grep -v "^./.venv\|^./.git/\|node_modules\|^./build/" | wc -l
+    ]]></commands>
+    <expected_output>git ls-files prints all four paths it was given. The final wc -l prints 0.</expected_output>
+    <stop_condition>If the purge count is not 0, paste every matching line and STOP. Do not edit CHANGELOG.md released sections to force the count down without reporting first.</stop_condition>
+    <commit_message>chore: version the provisioning scripts, the vendored doctrine profile and the sweep recipe</commit_message>
+  </work_package>
+
+  <!-- ================================================================== -->
+  <work_package id="SWP-3" title="Teach mypy to resolve the two namespace packages" covers="E-03 root cause, E-06 a2a_protocol" order="3">
+
+    <fact>Measured: `mypy --no-namespace-packages src/beagle/core/graph.py` reports `Module "langgraph.graph" has no attribute "StateGraph"`. The same command with --namespace-packages reports no such error. langgraph 1.2.4 is a namespace package: site-packages/langgraph has no __init__.py and langgraph.__file__ is None.</fact>
+    <fact>graph.py:35 and graph_builder.py:28 ALREADY read `from langgraph.graph import StateGraph`. The import form is not the problem.</fact>
+    <fact>opentelemetry is a namespace package with the same symptom at a2a_protocol.py:26.</fact>
+    <fact>pyproject.toml:209-212 already carries exactly this shape of override for numpy, torch, transformers, websockets and uvicorn, with a comment explaining it is a toolchain workaround and not a finding suppression.</fact>
+    <fact>Verified fix: with module = ["langgraph.*", "opentelemetry.*"] added, graph.py, graph_builder.py, workflow_builder.py and a2a_protocol.py report ZERO attr-defined errors.</fact>
+
+    <instruction>Append a new [[tool.mypy.overrides]] block to pyproject.toml, immediately after the existing block that ends at line 212. Use this exact content:</instruction>
+    <contract><![CDATA[
+# langgraph and opentelemetry ship as NAMESPACE packages (no __init__.py;
+# __file__ is None). qup invokes mypy with --no-namespace-packages, under which
+# mypy cannot resolve them and reports their public symbols as missing
+# attributes. Verified: `mypy --no-namespace-packages src/beagle/core/graph.py`
+# reports StateGraph as attr-defined; the same run with --namespace-packages
+# does not. This is a package-layout workaround, not a finding suppression —
+# the import form at graph.py:35 is already correct.
+[[tool.mypy.overrides]]
+module = ["langgraph.*", "opentelemetry.*"]
+follow_imports = "skip"
+ignore_errors = true
+    ]]></contract>
+    <instruction>Do not modify the existing numpy/torch override block.</instruction>
+    <instruction>Do not change any import statement in graph.py, graph_builder.py, workflow_builder.py or a2a_protocol.py in this package.</instruction>
+
+    <acceptance>
+      <criterion id="AC-7">mypy reports 0 attr-defined errors mentioning StateGraph.</criterion>
+      <criterion id="AC-8">mypy reports 0 attr-defined errors mentioning opentelemetry.</criterion>
+      <criterion id="AC-9">The 21 unused-ignore findings listed in SWP-4 are still reported. They are cleared in SWP-4, not here.</criterion>
+    </acceptance>
+
+    <commands><![CDATA[
+cd /home/server/Projects/beagle
+/home/server/Projects/beagle/.venv/bin/mypy --no-namespace-packages \
+  src/beagle/core/graph.py src/beagle/core/graph_builder.py \
+  src/beagle/core/workflow_builder.py src/beagle/core/a2a_protocol.py 2>&1 | grep -c "attr-defined"
+    ]]></commands>
+    <expected_output>The count printed is 0.</expected_output>
+    <stop_condition>If the count is not 0, paste the full mypy output and STOP.</stop_condition>
+    <commit_message>build(mypy): resolve langgraph and opentelemetry under --no-namespace-packages</commit_message>
+  </work_package>
+
+  <!-- ================================================================== -->
+  <work_package id="SWP-4" title="Delete the 21 stale type-ignore comments" covers="E-03" order="4">
+
+    <fact>Measured with SWP-3 applied: all 21 ignores below are still reported unused, so deleting them suppresses nothing and unmasks nothing.</fact>
+    <fact>mypy reports an ignore as unused only when it suppresses no error. Deletion is behaviour-neutral by definition.</fact>
+
+    <instruction>Delete ONLY the trailing ignore comment on each line below. Keep the code on the line unchanged, and keep any other trailing comment.</instruction>
+    <edits>
+      <edit file="src/beagle/core/graph.py" line="222" delete="  # type: ignore[misc]"/>
+      <edit file="src/beagle/core/graph.py" line="393" delete="  # type: ignore[misc]"/>
+      <edit file="src/beagle/core/graph.py" line="565" delete="  # type: ignore[type-var]"/>
+      <edit file="src/beagle/core/graph.py" line="566" delete="  # type: ignore[type-var]"/>
+      <edit file="src/beagle/core/graph.py" line="567" delete="  # type: ignore[type-var]"/>
+      <edit file="src/beagle/core/graph.py" line="568" delete="  # type: ignore[type-var]"/>
+      <edit file="src/beagle/core/graph.py" line="569" delete="  # type: ignore[type-var]"/>
+      <edit file="src/beagle/core/graph.py" line="596" delete="  # type: ignore[type-var]"/>
+      <edit file="src/beagle/core/graph.py" line="597" delete="  # type: ignore[type-var]"/>
+      <edit file="src/beagle/core/graph.py" line="598" delete="  # type: ignore[type-var]"/>
+      <edit file="src/beagle/core/graph.py" line="599" delete="  # type: ignore[type-var]"/>
+      <edit file="src/beagle/core/graph.py" line="683" delete="  # type: ignore[import-untyped,attr-defined]"/>
+      <edit file="src/beagle/core/graph.py" line="693" delete="  # type: ignore[assignment]"/>
+      <edit file="src/beagle/core/graph.py" line="715" delete="  # type: ignore[import-untyped]"/>
+      <edit file="src/beagle/core/graph.py" line="800" delete="  # type: ignore[call-overload]"/>
+      <edit file="src/beagle/core/graph.py" line="809" delete="  # type: ignore[call-overload]"/>
+      <edit file="src/beagle/core/graph.py" line="813" delete="  # type: ignore[call-overload]"/>
+      <edit file="src/beagle/core/graph.py" line="822" delete="  # type: ignore[call-overload]"/>
+      <edit file="src/beagle/core/graph.py" line="833" delete="  # type: ignore[no-any-return]"/>
+      <edit file="src/beagle/core/graph_builder.py" line="493" delete="  # type: ignore[type-var]"/>
+      <edit file="src/beagle/core/workflow_builder.py" line="32" delete="  # type: ignore[assignment,misc]"/>
+    </edits>
+    <instruction>Line numbers shift only if you insert or remove whole lines. You are editing in place, so they do not shift. Match on the full line text, not on the number alone.</instruction>
+    <instruction>Do NOT delete the ignore at graph.py:841 (`queue = asyncio.Queue()  # type: ignore[var-annotated]`). mypy does not report it as unused; it is load-bearing.</instruction>
+
+    <acceptance>
+      <criterion id="AC-10">mypy reports 0 unused-ignore findings across the three files.</criterion>
+      <criterion id="AC-11">No new error of any other category appears in those files beyond the no-untyped-def findings that SWP-5 owns.</criterion>
+    </acceptance>
+
+    <commands><![CDATA[
+cd /home/server/Projects/beagle
+/home/server/Projects/beagle/.venv/bin/mypy --no-namespace-packages \
+  src/beagle/core/graph.py src/beagle/core/graph_builder.py \
+  src/beagle/core/workflow_builder.py 2>&1 | grep -c "unused-ignore"
+    ]]></commands>
+    <expected_output>The count printed is 0.</expected_output>
+    <stop_condition>If deleting an ignore produces a REAL error on that line, STOP and report the error. Never restore the ignore.</stop_condition>
+    <commit_message>refactor(core): delete 21 type-ignore comments that suppress nothing</commit_message>
+  </work_package>
+
+  <!-- ================================================================== -->
+  <work_package id="SWP-5" title="Add the missing annotations across config, context, core and cli" covers="E-06" order="5">
+
+    <fact>Measured by rup_call qup run_gate with no_cache=true over src/beagle/{core,context,config} at 2026-09-16T10:16:57Z: 60 mypy findings across 88 files. The sites below are every no-untyped-def, var-annotated and unused-ignore finding in that run, minus those owned by SWP-3 and SWP-4.</fact>
+    <fact>The three bridges sites the previous plan listed here (bridges/__init__.py:49, chat_model.py:204, llm_direct.py:275) are ALREADY FIXED and are not in this list. cli/commands/execution.py:371 is also already annotated.</fact>
+
+    <instruction>Apply each annotation exactly as given. Add the import named in the `needs_import` attribute when one is present and the file does not already have it.</instruction>
+    <edits>
+      <edit file="src/beagle/config/__init__.py" line="20" from="def __getattr__(name: str):" to="def __getattr__(name: str) -> ModuleType:" needs_import="from types import ModuleType"/>
+      <edit file="src/beagle/core/__init__.py" line="42" from="def __getattr__(name: str):" to="def __getattr__(name: str) -> ModuleType:" needs_import="from types import ModuleType"/>
+      <edit file="src/beagle/core/orchestrator/__init__.py" line="83" from="def __getattr__(name: str):" to="def __getattr__(name: str) -> Any:" needs_import="from typing import Any"/>
+      <edit file="src/beagle/context/context_integration.py" line="723" from="def enhanced_init(self, *args, **kwargs):" to="def enhanced_init(self: Any, *args: Any, **kwargs: Any) -> None:"/>
+      <edit file="src/beagle/context/context_integration.py" line="736" from="async def enhanced_context_fold(self, _state, data_to_fold, fold_mode=&quot;auto&quot;):" to="async def enhanced_context_fold(self: Any, _state: Any, data_to_fold: str, fold_mode: str = &quot;auto&quot;) -> str:" note="mirrors the fully annotated module-level wrapper at context_integration.py:698, which the comment at :737 points to"/>
+      <edit file="src/beagle/context/context_integration.py" line="788" from="async def test_fold():" to="async def test_fold() -> None:"/>
+      <edit file="src/beagle/context/context_tracker_ext.py" line="320" from="def reset_tracker():" to="def reset_tracker() -> None:"/>
+      <edit file="src/beagle/context/embedding_adapter.py" line="190" from="result = np.zeros((len(texts), self._dimension), dtype=np.float32)" to="result: np.ndarray = np.zeros((len(texts), self._dimension), dtype=np.float32)"/>
+      <edit file="src/beagle/context/embedding_adapter.py" line="258" from="sims = np.zeros(len(candidate_vecs), dtype=np.float32)" to="sims: np.ndarray = np.zeros(len(candidate_vecs), dtype=np.float32)"/>
+      <edit file="src/beagle/core/dag_nodes.py" line="87" from="def visit(node: DAGNode):" to="def visit(node: DAGNode) -> None:"/>
+      <edit file="src/beagle/core/graph.py" line="836" from="async def stream_submit_message(" to="async def stream_submit_message(" note="Leave the parameter list unchanged. Change ONLY the closing line of the signature, currently `):` at line 845, to `) -&gt; AsyncIterator[BeagleEvent]:`. The function yields at graph.py:878, so it is an async generator." needs_import="from collections.abc import AsyncIterator"/>
+      <edit file="src/beagle/core/graph.py" line="854" from="async def subscriber(event: BeagleEvent):" to="async def subscriber(event: BeagleEvent) -> None:"/>
+      <edit file="src/beagle/core/graph_builder.py" line="399" from="async def node_fn(" to="async def node_fn(" note="Annotate every defaulted parameter in the signature block that follows: _skill=skill becomes _skill: Any = skill, and likewise _pb, _ok, _model_hint, _enable_grpo, _enable_ensemble, _bw. state is already annotated. Add the return annotation -&gt; dict[str, Any] on the signature's closing line." needs_import="from typing import Any"/>
+      <edit file="src/beagle/core/graph_builder.py" line="502" from="def make_condition(field: str, target: str):" to="def make_condition(field: str, target: str) -> Callable[[dict[str, Any]], str]:" needs_import="from collections.abc import Callable"/>
+      <edit file="src/beagle/core/hydration_node.py" line="982" from="async def main():" to="async def main() -> None:"/>
+      <edit file="src/beagle/core/orchestrator/executor.py" line="278" from="async def _execute_with_retry():" to="async def _execute_with_retry() -> str:" note="its only return is `return final_answer` at executor.py:440; final_answer is sliced as a string at :436"/>
+      <edit file="src/beagle/core/router.py" line="32" from="def __post_init__(self):" to="def __post_init__(self) -> None:"/>
+      <edit file="src/beagle/core/skill_library.py" line="764" from="async def demo():" to="async def demo() -> None:"/>
+      <edit file="src/beagle/core/turboquant.py" line="157" from="result = np.zeros(total_values, dtype=np.uint8)" to="result: np.ndarray = np.zeros(total_values, dtype=np.uint8)"/>
+      <edit file="src/beagle/core/turboquant.py" line="221" from="flat_vectors = vectors.flatten().astype(np.float32)" to="flat_vectors: np.ndarray = vectors.flatten().astype(np.float32)"/>
+      <edit file="src/beagle/core/turboquant.py" line="283" from="mins_maxs = (" to="mins_maxs: np.ndarray = (" note="the assignment opens a parenthesised expression spanning lines 283-285; annotate only the opening line"/>
+      <edit file="src/beagle/core/turboquant.py" line="294" from="result = np.zeros((n_vectors, vec_size), dtype=np.float32)" to="result: np.ndarray = np.zeros((n_vectors, vec_size), dtype=np.float32)"/>
+      <edit file="src/beagle/core/turboquant.py" line="360" from="total = counts.sum()" to="total: Any = counts.sum()" needs_import="from typing import Any"/>
+      <edit file="src/beagle/cli/commands/runs.py" line="178" from="def resolve(sid):" to="def resolve(sid: str) -> str:"/>
+      <edit file="src/beagle/core/agent_spawner.py" line="621" from="async def read_stream(stream, target_list, stream_type) -> None:" to="async def read_stream(stream: asyncio.StreamReader, target_list: list[str], stream_type: str) -> None:" note="see DEC-7; the call-site guard below is part of the same edit"/>
+      <edit file="src/beagle/core/agent_spawner.py" line="637" from="await asyncio.gather(" to="if process.stdout is None or process.stderr is None:&#10;                raise GooseExecutionError(&quot;subprocess was created without stdout/stderr pipes&quot;)&#10;            await asyncio.gather(" note="insert the two guard lines immediately before the gather, at the gather's own indentation. Confirm GooseExecutionError is already imported in this module; if it is not, use RuntimeError instead."/>
+    </edits>
+    <instruction>Delete the trailing ignore comment on each of these five lines. They are all reported unused.</instruction>
+    <edits>
+      <edit file="src/beagle/context/embedding_adapter.py" line="96" delete="  # type: ignore[assignment]"/>
+      <edit file="src/beagle/context/embedding_adapter.py" line="98" delete="  # type: ignore[attr-defined]"/>
+      <edit file="src/beagle/context/watchdog_actor.py" line="358" delete="  # type: ignore[attr-defined]"/>
+      <edit file="src/beagle/core/a2a_protocol.py" line="47" delete="  # type: ignore[assignment]"/>
+      <edit file="src/beagle/core/agent_spawner.py" line="421" delete="  # type: ignore[no-any-return]"/>
+    </edits>
+    <instruction>Do NOT touch embedding_adapter.py:72 (`# type: ignore[has-type]`) or context_preprocessor.py:252 (`# type: ignore[var-annotated]`). Neither is reported unused.</instruction>
+
+    <acceptance>
+      <criterion id="AC-12">The gate reports 0 mypy findings across src/beagle/core, src/beagle/context and src/beagle/config.</criterion>
+      <criterion id="AC-13">The test suite shows no new failures.</criterion>
+    </acceptance>
+
+    <gate tool="qup" tool_name="run_gate">
+      <paths>src/beagle/core</paths>
+      <paths>src/beagle/context</paths>
+      <paths>src/beagle/config</paths>
+      <no_cache>true</no_cache>
+      <expect>mypy 0 violations. vulture will still report 6 findings — SWP-6 owns those.</expect>
+    </gate>
+    <commands><![CDATA[
+cd /home/server/Projects/beagle
+/home/server/Projects/beagle/.venv/bin/mypy --no-namespace-packages src/beagle/core src/beagle/context src/beagle/config 2>&1 | tail -3
+    ]]></commands>
+    <stop_condition>If an annotation produces a new error elsewhere, STOP and report both the annotation and the new error. Do not widen the annotation to Any to make it pass — Any is prescribed only where DEC-3 and DEC-4 name it.</stop_condition>
+    <commit_message>refactor(typing): annotate the remaining untyped defs in config, context, core and cli</commit_message>
+  </work_package>
+
+  <!-- ================================================================== -->
+  <work_package id="SWP-6" title="Clear the six vulture findings" covers="E-07" order="6">
+
+    <fact>Measured: exactly six vulture findings, all in the same gate run as SWP-5. All six are parameters required by a caller or by a dunder contract but unused in the body. See DEC-5.</fact>
+    <fact>Every caller passes positionally, so renaming is safe. graph_builder.py:345 already uses the underscore convention for _workflow_query in the same signature.</fact>
+
+    <instruction>Rename each parameter to its underscore-prefixed form, in the signature only. Do not touch any call site — all callers pass positionally.</instruction>
+    <edits>
+      <edit file="src/beagle/config/registry.py" line="102" from="def __missing__(self, key: str) -> Any:" to="def __missing__(self, _key: str) -> Any:"/>
+      <edit file="src/beagle/config/registry.py" line="109" from="def __missing__(self, key: str) -> list[dict[str, Any]]:" to="def __missing__(self, _key: str) -> list[dict[str, Any]]:"/>
+      <edit file="src/beagle/context/context_preprocessor.py" line="248" from="total_lines: int," to="_total_lines: int," note="parameter of _create_chunks_from_boundaries; its one caller at context_preprocessor.py:189 passes positionally"/>
+      <edit file="src/beagle/core/graph_builder.py" line="346" from="complexity: str = &quot;normal&quot;," to="_complexity: str = &quot;normal&quot;," note="parameter of build_workflow_graph; callers at workflow_builder.py:317 and workflow_loader.py:303 pass positionally"/>
+      <edit file="src/beagle/context/embedding_adapter.py" line="67" from="def __new__(cls, *args: Any, **kwargs: Any) -> EmbeddingAdapter:" to="def __new__(cls, *_args: Any, **_kwargs: Any) -> EmbeddingAdapter:" note="the parameters must stay in the signature because __init__ takes dimension and Python forwards the same arguments to __new__"/>
+    </edits>
+
+    <acceptance>
+      <criterion id="AC-14">The gate reports 0 vulture findings across core, context and config.</criterion>
+      <criterion id="AC-15">The graph and workflow tests still pass — build_workflow_graph is exercised by tests/test_graph.py:59,65,77, tests/test_delegate.py:93 and tests/test_workflow_e2e.py:111.</criterion>
+    </acceptance>
+
+    <gate tool="qup" tool_name="run_gate">
+      <paths>src/beagle/core</paths>
+      <paths>src/beagle/context</paths>
+      <paths>src/beagle/config</paths>
+      <no_cache>true</no_cache>
+      <expect>0 violations from every engine.</expect>
+    </gate>
+    <test tool="tup" tool_name="run_tests">
+      <paths>tests/test_graph.py</paths>
+      <paths>tests/test_delegate.py</paths>
+      <paths>tests/test_workflow_e2e.py</paths>
+    </test>
+    <stop_condition>If any of those three test files fails, revert this package's edits and report. A rename that breaks a caller means a caller passes by keyword, which contradicts the measurement.</stop_condition>
+    <commit_message>refactor: underscore-prefix five contract-required but unused parameters</commit_message>
+  </work_package>
+
+  <!-- ================================================================== -->
+  <work_package id="SWP-7" title="Declare the Singleton class attribute the previous remediation left undeclared" covers="E-04 follow-on" order="7">
+
+    <fact>state.py:342 assigns cls._singleton_instance and :343 reads it, but `class Singleton[T](ABC)` at state.py:298 never declares the attribute. mypy reports attr-defined twice.</fact>
+    <fact>This defect was INTRODUCED by the previous plan's E-04 remediation, which replaced getattr/setattr with direct attribute access. Its verify gate was ruff-only, so it could not see the two mypy errors it created. That is why this recipe's gates run every engine.</fact>
+    <fact>state.py:26 already imports Any from typing. ClassVar is not yet imported.</fact>
+
+    <instruction>Extend the typing import at state.py:26 to include ClassVar.</instruction>
+    <instruction>Insert the declaration into the class body of `class Singleton[T](ABC)`, immediately after its docstring line (state.py:299) and before the blank line preceding __init__.</instruction>
+    <contract><![CDATA[
+class Singleton[T](ABC):
+    """Thread-safe singleton base class for synchronous resources."""
+
+    # Set by get_instance() on the concrete subclass, not on this base. ClassVar
+    # cannot hold a type variable, so the value is typed Any rather than
+    # Singleton[T]; the get() call at the read site recovers the real type.
+    _singleton_instance: ClassVar[Any]
+
+    def __init__(self, name: str | None = None) -> None:
+    ]]></contract>
+
+    <acceptance>
+      <criterion id="AC-16">mypy reports 0 attr-defined findings for state.py.</criterion>
+      <criterion id="AC-17">The singleton tests still pass, including the double-checked-locking behaviour described at state.py:305-309.</criterion>
+    </acceptance>
+
+    <gate tool="qup" tool_name="run_gate">
+      <paths>src/beagle/core/state.py</paths>
+      <no_cache>true</no_cache>
+      <expect>0 violations.</expect>
+    </gate>
+    <stop_condition>core/state.py is also modified by a parallel session. Before editing, run `git diff --stat src/beagle/core/state.py`. If the file has changed since this recipe was written, re-read lines 298-345 and confirm the line numbers before applying the edit.</stop_condition>
+    <commit_message>fix(core): declare Singleton._singleton_instance so mypy can see it</commit_message>
+  </work_package>
+
+  <!-- ================================================================== -->
+  <work_package id="SWP-8" title="Re-triage the quality ratchet after the gate work lands" covers="F-01 step 2" order="8">
+
+    <fact>Measured 2026-09-16T10:25Z, true exit code 1 (do NOT read the exit code through a pipe — `cmd | tail` reports tail's status, not the script's):
+      Q-07 live=330 baseline=239 target=30
+      Q-10 live=56  baseline=55  target=0
+      Q-11 live=45  baseline=44  target=0
+      Q-14 live=186 baseline=183 target=0
+      Q-15 live=168 baseline=166 target=0
+      Q-16 live=302 baseline=291 target=0
+      Q-17 live=827 baseline=805 target=0
+      Q-22 live=19  baseline=18  target=0
+      Q-26 live=140 baseline=136 target=0
+      Q-28 live=62  baseline=51  target=0
+      Q-35 live=371 baseline=365 target=363</fact>
+    <fact>These counts have drifted three times in one day. Treat the numbers above as a snapshot, not as the specification. RE-RUN the ratchet as the first action of this package and triage what it prints THEN.</fact>
+    <fact>Q-25 is NOT a regression and does not appear in the violation list. Q-24 (live=10 vs baseline=870) is an IMPROVEMENT; the script's violation loop reports only metrics whose live count exceeds baseline, so Q-24 cannot appear there. If you see Q-24, you are reading the full status table, not the violation list.</fact>
+    <fact>SWP-4 through SWP-7 remove 21 type-ignore comments and add ~25 annotations, which moves the type-ignore census and the untyped-def metrics downward. That is why this package runs last.</fact>
+
+    <instruction>Re-run the ratchet and capture its output to a file, so the exit code is read directly and not through a pipe.</instruction>
+    <instruction>For each metric still above baseline: fix enough occurrences to get under baseline. If and only if the baseline was captured mid-sweep and the live count is the true steady state, re-baseline DOWNWARD using the script's own update path.</instruction>
+    <instruction>Never hand-edit baselines/quality-ratchet.json upward. When re-baselining downward, record the reason in baselines/quality-progress.md in the same commit.</instruction>
+
+    <acceptance>
+      <criterion id="AC-18">scripts/check_quality_ratchet.py exits 0, with the exit code read directly rather than through a pipe.</criterion>
+      <criterion id="AC-19">Every metric that was re-baselined has a matching entry in baselines/quality-progress.md naming the reason.</criterion>
+      <criterion id="AC-20">Perturbing a rule in baselines/semgrep/beagle-doctrine.yml changes the Q-36..Q-38 counts, proving the measurement is live rather than a literal.</criterion>
+    </acceptance>
+
+    <commands><![CDATA[
+cd /home/server/Projects/beagle
+timeout 600 /home/server/Projects/beagle/.venv/bin/python scripts/check_quality_ratchet.py > /tmp/ratchet.out 2>&1
+echo "TRUE EXIT=$?"
+cat /tmp/ratchet.out
+    ]]></commands>
+    <expected_output>TRUE EXIT=0 and no REGRESSION lines.</expected_output>
+    <stop_condition>If a metric cannot be brought under baseline without touching code outside this recipe's scope, STOP and report the metric, its live count and what would have to change. Do not widen scope on your own.</stop_condition>
+    <commit_message>chore(ratchet): re-triage the quality metrics after the typing sweep</commit_message>
+  </work_package>
+
+  <!-- ================================================================== -->
+  <work_package id="SWP-9" title="Close the resolved entries in the defect register" covers="G-01" order="9">
+
+    <fact>docs/audits/release_readiness_code_audit_2026-08-29.md IS tracked in git. The previous plan recorded this as unverified; it is now confirmed, and the pending_disposition item is resolved.</fact>
+    <fact>The defect table at that file's lines 85-104 has columns: id, Severity, Likelihood x Impact, Description, Location. There is NO status column, so there is nowhere to write CLOSED without a schema change. The previous plan did not say where to record closure.</fact>
+    <fact>All four commits named below exist: d04308d (registers the pi frontend, D-11/D-12/D-13), 55d9311 (config/cli manifest inconsistencies), b444319 (webui task handle and tiered leak), 25b63ab (fault-recovery connection ownership, D-19).</fact>
+
+    <instruction>Add a sixth column headed `Status` to the defect table, and fill it for every row. Use `CLOSED &lt;sha&gt;` for a closed defect and `OPEN` otherwise.</instruction>
+    <instruction>Mark CLOSED: D-06, D-10, D-11 (d04308d), D-12 (d04308d), D-13 (d04308d), D-19 (25b63ab).</instruction>
+    <instruction>Leave OPEN: D-18 (frontends removal) and D-20 (ratchet), and add a pointer to SWP-8 for D-20.</instruction>
+    <instruction>Every CLOSED row must name a commit that actually touched the file in its Location column.</instruction>
+
+    <acceptance>
+      <criterion id="AC-21">Every CLOSED row cites a sha for which `git show &lt;sha&gt; --stat` contains the file named in that row's Location column.</criterion>
+      <criterion id="AC-22">The markdown gate passes on the edited file.</criterion>
+    </acceptance>
+
+    <gate tool="qup" tool_name="run_gate">
+      <paths>docs/audits/release_readiness_code_audit_2026-08-29.md</paths>
+      <no_cache>true</no_cache>
+      <expect>0 violations.</expect>
+    </gate>
+    <stop_condition>If a sha does not contain the file named in the row's Location, do NOT write that row as CLOSED. Report the mismatch instead — a closure citing the wrong commit is worse than an open row.</stop_condition>
+    <commit_message>docs(audit): record closure status and fixing commits in the defect register</commit_message>
+  </work_package>
+
+  <!-- ================================================================== -->
+  <acceptance>
+    <criterion id="FINAL-1">rup_call qup run_gate with no_cache=true over src/beagle/core, src/beagle/context, src/beagle/config and src/beagle/bridges reports 0 violations from every engine.</criterion>
+    <criterion id="FINAL-2">scripts/check_quality_ratchet.py exits 0.</criterion>
+    <criterion id="FINAL-3">Bare `beagle` exits 0 against both the .venv and the deployed venv.</criterion>
+    <criterion id="FINAL-4">The repo-wide search for the retired project-name prefix returns 0 lines.</criterion>
+    <criterion id="FINAL-5">git status --short shows no untracked file under scripts/, baselines/ or plans/.</criterion>
+    <criterion id="FINAL-6">The full test suite shows no new failures against the pre-sweep baseline.</criterion>
+  </acceptance>
+
+  <reporting>
+    <rule>Report per work package: the package id, the files changed, the real gate output, and the commit sha.</rule>
+    <rule>Paste actual command output. Never write "should pass", "as expected", or "verified" without the output beside it.</rule>
+    <rule>If you skip a package, say which and why, in the same report. A silent skip is a defect.</rule>
+    <rule>List every file you moved aside or left untracked at the end of the run, with its original path and a recommended disposition.</rule>
+  </reporting>
+
+  <closing_directive>
+    Nine packages, nine commits, in order. Stop at the first mismatch and report it
+    rather than continuing. The six items under verified_closed are already done —
+    re-doing any of them overwrites working code and is the single most likely way
+    to damage this tree.
+  </closing_directive>
+
+  <!-- ================================================================== -->
+  <revision_log>
+    <revision at="2026-09-16T10:30Z" by="Claude Opus 5 (Claude Code) — re-verification and schema conversion" signature="claude-opus-5/2026-09-16">
+      Converted from the non-standard &lt;remediation_plan&gt; form to the house
+      &lt;recipe&gt; schema, and re-measured every claim against the worktree.
+      1. RETRACTION PROPAGATED. The 09:1x pass retracted its "the marker does not
+         suppress the floor" finding inside E-01 but left the claim standing in
+         three other places (revision_log item 3, the WP-D note, and J-01 step 2).
+         All three are deleted. E-01 itself is now moot — see item 2.
+      2. SIX PACKAGES MEASURED COMPLETE and moved to verified_closed: 0-02, C-01,
+         B-01, D-01a..h, E-01 and F-01 step 1. The bridges gate returns 0/32 on a
+         cold cache; all six walltime sites carry the current rule id; both
+         provisioning scripts exist; the headless exit code raises typer.Exit(1).
+      3. E-03's PREMISE WAS FALSE. Its prescribed root fix — use `from
+         langgraph.graph import StateGraph` — is already in the file at graph.py:35
+         and graph_builder.py:28, and the error persists. Real cause measured and
+         recorded as DEC-1: a namespace package under --no-namespace-packages. The
+         fix is a mypy override, and it is verified, not proposed.
+      4. NEW DEFECT, introduced by the previous plan's own E-04 remediation:
+         state.py:342,343 now report attr-defined because _singleton_instance was
+         never declared. E-04's verify was ruff-only and could not see it. SWP-7
+         owns it; every gate in this recipe now runs all engines.
+      5. E-02 IS NOT CLOSED CLEANLY. dynamic_pool.py:273 carries a
+         `# noqa: BLE001` — the exact suppression E-02 forbade. Escalated to
+         pending_disposition rather than silently accepted.
+      6. FOUR ARTIFACTS ARE UNTRACKED with no reversion path, including this plan
+         file and the ratchet's own vendored profile. SWP-2 owns them.
+      7. PURGE IS COMPLETE. The retired project-name prefix survives at zero
+         tracked paths; its only occurrences were inside the previous version of
+         this file. This rewrite contains none, so the mandate's grep now returns 0.
+      8. Counts drifted a third time (Q-07 328→330, Q-16 303→302, Q-17 828→827).
+         SWP-8 now instructs a re-run rather than trusting the embedded list.
+      9. Rewrote every verify as a &lt;gate&gt; routed through routeUpper, resolving
+         the contradiction between the old verify blocks and INV-RUP.
+      10. Removed the WP-E/WP-F duplicate ownership of three bridges sites, the
+         A-01 commit/no-commit contradiction, and the 2026-09-17 header date error.
+      11. Every deliberative instruction ("read each site", "likely -&gt; None",
+         "derive by reading the body") replaced with the resolved answer, per the
+         executor contract for deepseek-v4.1-flash. Seven &lt;decision&gt; blocks record
+         what was chosen, why, and what was rejected.
+    </revision>
+    <revision at="2026-09-16T09:1x" by="session 20260916_9 (goose, second investigation)" note="historical">
+      Added 0-02 for the pi extension flag and the unresolvable zod dependency;
+      marked D-01b and D-01e done; corrected F-01's evidence (Q-36 baseline is 14;
+      the rule file ships inside qup; Q-24 is an improvement); added the purge
+      mandate and INV-RUP; reordered the packages.
+    </revision>
+    <revision at="2026-09-16T08:2x" by="session 20260916_8 (glm-5.3 plan investigation)" note="historical">
+      Added the default-frontend crash as 0-01; split the walltime findings into
+      two causes rather than one; replaced F-01's stale metric list with a measured
+      one (Q-25 is not a regression, Q-15 is); marked E-05 done; revoked the
+      cli.py exclusion for WP-0; raised A-01 to the user gate; warned about foreign
+      in-flight edits. Every one of these corrections was sound at HEAD 2c9522a.
+      They are superseded here only because the tree moved on, not because they
+      were wrong.
+    </revision>
+  </revision_log>
+
+  <pending_disposition>
+    <item path="src/beagle/core/dynamic_pool.py:273"
+          reason="Closed with `# noqa: BLE001`, the exact suppression the previous plan's E-02 forbade. The rationale comment is substantive (best-effort circuit-breaker lookup, degrades to None, logged at debug), but the plan's prescribed fix was to narrow the exception set instead."
+          status="in-repo"
+          recommendation="user decides: amend the prohibition, or narrow the catch to (RuntimeError, ValueError, OSError) and delete the noqa"
+          awaiting_user_approval="true"/>
+    <item path="src/beagle/bridges/config.py:18"
+          reason="`import tomllib  # noqa: E402` claims the comment above documents a 3.11+ floor. The comment says 'Use tomllib for Python 3.11+, fall back to tomli', but pyproject.toml:12 sets requires-python &gt;=3.12 and no fallback code exists. The stated justification is false."
+          status="in-repo"
+          recommendation="hoist the import into the top block, delete both the misleading comment and the noqa; NOT part of this sweep"
+          awaiting_user_approval="true"/>
+    <item path="/opt/Projects/bin/beagle"
+          reason="Duplicate launcher surface reporting 1.4.0 by importing the repo source through a py3.12 user-site editable. Confirmed still present."
+          status="outside-repo"
+          recommendation="delete-after-user-confirmation"
+          awaiting_user_approval="true"/>
+    <item path="~/.local/lib/python3.12/site-packages/beagle-1.0.1.dist-info (+ __editable__.beagle-1.0.1.pth + __editable___beagle_1_0_1_finder.py)"
+          reason="Stale 1.0.1 editable install. Confirmed all three entries still present. An outside-repo mutation with no reversion path."
+          status="outside-repo"
+          recommendation="uninstall, reporting the removed version string"
+          awaiting_user_approval="true"/>
+    <item path="docs/audits/release_readiness_code_audit_2026-08-29.md"
+          reason="Previously flagged as possibly untracked. RESOLVED: git ls-files confirms it is tracked. SWP-9 may edit it directly."
+          status="resolved"
+          recommendation="none"
+          awaiting_user_approval="false"/>
+  </pending_disposition>
+
+</recipe>
