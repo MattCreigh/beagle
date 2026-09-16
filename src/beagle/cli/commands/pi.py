@@ -82,8 +82,19 @@ def pi(
     forwarded = list(args or [])
     node = shutil.which("node")
     if not node:
+        # D-EXTRA-3: this message restated the Node.js floor as a literal
+        # ">=18". Commit 625a03f established a single source for the floor —
+        # engines.node of the vendored pi-prebuild manifest — for the exact
+        # reason that three hardcoded copies had drifted apart. The launcher's
+        # helper is the implementation; reuse it so both entry points quote the
+        # same manifest value instead of two different literals.
+        from beagle.frontends.pi.launcher import _required_node_version
+
+        declared = _required_node_version()
+        requirement = f" ({declared})" if declared else ""
         typer.echo(
-            "Node.js >=18 is required to run the pi frontend. Install node and retry.",
+            f"Node.js{requirement} is required to run the pi frontend. "
+            "Install Node or add it to PATH.",
             err=True,
         )
         raise typer.Exit(1)

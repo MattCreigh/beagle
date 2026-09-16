@@ -613,6 +613,18 @@ def load_config(path: Path | str | None = None) -> WorkflowConfig:
                 timeout_seconds=vm.get("timeout_seconds", 60),
                 allow_fallback=vm.get("allow_fallback", False),
             )
+        # D-10 (second half): the field existed on WorkflowConfig but no TOML
+        # path could set it — ``[sandbox] mode = "wasm"`` loaded fine, produced
+        # no warning, and the value never reached ``cfg.sandbox_mode``, so
+        # ``get_sandbox_mode()`` kept returning "native". Map it here, where
+        # the rest of the [sandbox] section is read.
+        if "mode" in sbox:
+            mode = sbox.get("mode")
+            if mode not in ("native", "wasm", "hybrid"):
+                raise ValueError(
+                    f"[sandbox].mode must be one of native|wasm|hybrid, got {mode!r}"
+                )
+            config.sandbox_mode = mode
 
     # Load A2A protocol config
     if "a2a" in data:
