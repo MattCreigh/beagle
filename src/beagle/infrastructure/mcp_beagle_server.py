@@ -227,14 +227,19 @@ def _fastmcp_tools_to_sdk(instance: Any) -> list[Any] | None:
         sdk_tools: list[Any] = []
         for ft in tools:
             fn = getattr(ft, "fn", None)
+            if not callable(fn):  # pragma: no cover - fastmcp always sets fn
+                continue
             sdk_tools.append(
                 SdkTool(
                     name=ft.name,
+                    title=getattr(ft, "title", None),
                     description=getattr(ft, "description", None) or "",
                     parameters=getattr(ft, "parameters", {}),
                     fn=fn,
                     fn_metadata=func_metadata(fn),
                     is_async=asyncio.iscoroutinefunction(fn),
+                    context_kwarg=getattr(ft, "context_kwarg", None),
+                    annotations=getattr(ft, "annotations", None),
                 )
             )
         return sdk_tools
