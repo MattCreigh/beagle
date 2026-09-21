@@ -2283,7 +2283,51 @@ class GooseTopOfMindRenderer:
         """
         target = Path(output_path) if output_path else self._system_instruction_path()
         content = self._load_template("system_instruction_template")
+        # Two writers touch this ONE file and last-write-wins was losing work:
+        #   - this method writes the TOML-owned template (the base document);
+        #   - the host plugin (goose-config-render) splices a BEGIN/END
+        #     GENERATED region into it, carrying the c14n_sha256 of its
+        #     source guide (PLG-4).
+        # A later render-prompts therefore silently deleted the plugin's
+        # region, and `config_render_check` reported "stale" again — observed
+        # 2026-09-21 as a flap between the two. Carry the region forward so
+        # the base render and the host splice compose instead of clobbering.
+        content = self._preserve_generated_regions(target, content)
         return self._atomic_write(target, content)
+
+    @staticmethod
+    def _preserve_generated_regions(target: Path, content: str) -> str:
+        """Re-splice existing BEGIN/END GENERATED blocks into fresh content.
+
+        Honours PLG-3 (a renderer must leave text outside its markers
+        byte-identical) by treating the plugin's region as opaque: it is
+        copied verbatim, never re-rendered here.
+        """
+        import re
+
+        try:
+            existing = target.read_text(encoding="utf-8")
+        except OSError:
+            return content
+
+        pattern = re.compile(
+            r"[ \t]*<!-- BEGIN GENERATED:.*?<!-- END GENERATED:.*?-->[ \t]*\n?",
+            re.DOTALL,
+        )
+        regions = pattern.findall(existing)
+        if not regions:
+            return content
+
+        for region in regions:
+            if region.strip() in content:
+                continue
+            if "</beagle_top_of_mind>" in content:
+                content = content.replace(
+                    "</beagle_top_of_mind>", region.rstrip() + "\n</beagle_top_of_mind>", 1
+                )
+            else:
+                content = content.rstrip() + "\n" + region
+        return content
 
     def render_compaction_prompt(self, output_path: Path | None = None) -> Path:
         """Render ``~/.config/goose/prompts/compaction.xml``.

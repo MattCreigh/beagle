@@ -14,9 +14,26 @@ source = "Final Style-Guide Remediations (Automated Run-to-Completion)"
 # nothing and rendered into no artefact at all. ["*"] = universal, which is
 # what render_targets below already declares.
 applies_to = ["*"]
+tier = 1
 scope_note = "every session, every work package / phase"
 render_targets = ["prompt-substrate", "top-of-mind"]
 priority_note = "Rule 0 always wins; Rules 1-8 are mandatory unless Rule 0 overrides"
+
+# Tier map for the layered Top-of-Mind. The per-turn (tiered) render emits
+# only the `load_bearing` one-line summaries below; the full rule text
+# (gate lists, logic blocks, templates) is retrieved on demand via the
+# `get_style_guide("run_to_completion")` MCP tool.
+rules_meta = [
+  { id = "R0", tier = "load_bearing", summary = "USER OVERRIDE: an explicit 'continue' / 'do not stop' / contrary directive beats every static constraint. Obey; log via beagle_progress_update." },
+  { id = "R1", tier = "load_bearing", summary = "PHASE GATE: before declaring a phase done, verify actions executed, tests passing, artifacts saved, errors resolved, (final phase) user confirmed. Never mark complete on self-report; cite tool output. On failure, remediate or escalate — do not stop." },
+  { id = "R2", tier = "background", summary = "ERROR RECOVERY: 3 obvious-fix retries -> mandatory research (code_search + rag_search + docs) -> 3 informed retries -> structured escalation." },
+  { id = "R3", tier = "background", summary = "AUTHORITATIVE PLAN: read fully first, execute in order, no skip/reorder/substitute unless a step fails irrecoverably; log deviations." },
+  { id = "R4", tier = "background", summary = "PRE-FLIGHT: interpreter + packages + external binaries ready before the main task; install via the documented method; escalate on install failure." },
+  { id = "R5", tier = "load_bearing", summary = "THRASHING GUARD: never run the same command with the same args >3 times consecutively — change the approach first." },
+  { id = "R6", tier = "load_bearing", summary = "SESSION CONTINUITY: beagle_session_bootstrap at session start; beagle_progress_update after each work package. Persist progress, never rely on memory." },
+  { id = "R7", tier = "load_bearing", summary = "EVIDENCE: every factual claim in a report is backed by direct tool output or a cited prior step. Never assert what was not observed." },
+  { id = "R8", tier = "background", summary = "ESCALATION FORMAT: Problem / Attempted / Research findings / Possible next steps — use exactly this structure when handing off to the user." },
+]
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 0. USER OVERRIDE — Highest Priority

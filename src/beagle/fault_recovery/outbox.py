@@ -33,6 +33,7 @@ from __future__ import annotations
 import contextlib
 import json
 import logging
+import os
 from collections.abc import Mapping
 from datetime import UTC, datetime
 from typing import Any
@@ -88,6 +89,15 @@ class OutboxError(RuntimeError):
     """
 
 
+
+try:  # redis is a lazy, optional dependency — see the module docstring.
+    from redis.exceptions import RedisError
+except ImportError:  # pragma: no cover - exercised only without redis installed
+
+    class RedisError(Exception):  # type: ignore[no-redef]
+        """Stand-in so the except clause is well-formed without redis."""
+
+
 class OutboxClient:
     """Redis Streams-based write-ahead log for DAG node lifecycle events.
 
@@ -100,7 +110,7 @@ class OutboxClient:
     def __init__(
         self,
         stream: str = DEFAULT_STREAM,
-        redis_url: str = "redis://localhost:6379",
+        redis_url: str | None = None,
         group: str = DEFAULT_GROUP,
         consumer: str | None = None,
     ) -> None:
@@ -109,6 +119,8 @@ class OutboxClient:
         Args:
             stream: Name of the Redis stream to append to.
             redis_url: Redis connection URL (``redis://host:port/db``).
+                Defaults to ``$BEAGLE_OUTBOX_REDIS_URL``, then
+                ``redis://localhost:6379``.
             group: Consumer-group name used by ``XREADGROUP`` consumers.
             consumer: Consumer name. Defaults to ``hostname:pid`` so two
                 daemons in one group are distinct members (D-08). A shared
@@ -117,7 +129,15 @@ class OutboxClient:
                 completed.
         """
         self.stream = stream
-        self.redis_url = redis_url
+        # Resolution order: explicit arg -> $BEAGLE_OUTBOX_REDIS_URL -> default.
+        # The env hop exists so a test harness can point the outbox at a port
+        # nothing listens on and make its degradation deterministic, instead
+        # of depending on whether the developer happens to run a local redis
+        # (four tests/test_integration.py cases were host-dependent because of
+        # this — see tests/conftest.py::_isolate_outbox_redis).
+        self.redis_url = redis_url or os.environ.get(
+            "BEAGLE_OUTBOX_REDIS_URL", "redis://localhost:6379"
+        )
         self.group = group
         self.consumer = consumer or _default_consumer_name()
         self._redis: Any | None = None  # lazily-imported redis.asyncio client
@@ -246,7 +266,8 @@ class OutboxClient:
             TimeoutError,
             ValueError,
             TypeError,
-        ) as exc:  # RATIONALE=outbox is best-effort; these are the redis/connection/serialisation failure modes the append can actually raise
+            RedisError,
+        ) as exc:  # RATIONALE=outbox is best-effort; these are the redis/connection/serialisation failure modes the append can actually raise. RedisError is LOAD-BEARING: redis.exceptions.ConnectionError subclasses RedisError only — it is NOT an OSError, so a redis outage escaped this handler and propagated out of the orchestrator (four tests/test_integration.py cases failed with "Error 111 connecting to localhost:6379", 2026-09-21).
             logger.warning(
                 "[Outbox] Failed to append %s event to stream %s (%s); "
                 "outbox is best-effort so the workflow continues.",

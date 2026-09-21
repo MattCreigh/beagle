@@ -1,0 +1,80 @@
+# =============================================================================
+# 03_tool_registry.toml — Local Tool Registry (Tier 2, session_start)
+# =============================================================================
+# Canonical registry of local tools/packages available over MCP and CLI.
+# References TOOLS.toml as the machine-readable SSOT; this guide is the
+# behavioural contract around tool use.
+# =============================================================================
+
+[meta]
+name = "Local Tool Registry"
+applies_to = ["session_start"]
+tier = 2
+version = "14.0"
+
+[tool_policy]
+reuse_first = "CONSULT BEFORE BUILDING. Reuse a local component before building new."
+register_new = "Build new -> register in TOOLS.toml -> run discover-local-tools. Unregistered tools are invisible."
+tool_name_compliance = "Only call tools the harness has registered. Never invent names from training memory."
+mcp_first = "Beagle, routeUpper and Skylon are the only local MCP extensions. Prefer them over a shell equivalent; shell is the fallback when the surface is down."
+suite_via_router = "Every *up tool is reached through routeUpper (rup_call), not by spawning its CLI. Only routeUpper, Beagle and Skylon hold their own MCP registration."
+
+# ── MCP surfaces (the only registered local extensions) ────────────────────
+
+[[tools]]
+name = "beagle"
+canonical = "Beagle"
+purpose = "Unified MCP surface: hybrid RAG + graph traversal, agents, workflows, research, OpenClaw tasks"
+surface = "mcp"
+
+[[tools]]
+name = "rup"
+canonical = "routeUpper"
+purpose = "MCP router fronting the whole *up suite; rup_call proxies any sibling tool"
+surface = "mcp"
+
+[[tools]]
+name = "skln"
+canonical = "Skylon"
+purpose = "Read-only host/stack/container/thermal introspection for this machine"
+surface = "mcp"
+
+# ── *up suite (reached through routeUpper, no own MCP registration) ────────
+
+[[tools]]
+name = "qup"
+canonical = "qualityUpper"
+purpose = "Static quality gate: types, security, doctrine invariants, formatting"
+gate = true
+via = "routeUpper"
+
+[[tools]]
+name = "tup"
+canonical = "testUpper"
+purpose = "Test runner: execute suites, format failure reports for LLMs"
+gate = true
+via = "routeUpper"
+
+[[tools]]
+name = "gup"
+canonical = "gitUpper"
+purpose = "Git sync and cross-session work bundles"
+via = "routeUpper"
+
+[[tools]]
+name = "bup"
+canonical = "buildUpper"
+purpose = "Build orchestration from bup.toml SSOT"
+via = "routeUpper"
+
+[[tools]]
+name = "sup"
+canonical = "studyUpper"
+purpose = "Codebase ingestion and structural dump generation"
+via = "routeUpper"
+
+[[tools]]
+name = "lup"
+canonical = "logUpper"
+purpose = "Log capture and aggregation across services"
+via = "routeUpper"

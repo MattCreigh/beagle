@@ -1,6 +1,15 @@
 # Formal Agentic Specification and Prompting Doctrine v1.2.1
 # TOML representation of the doctrine SSOT (Single Source of Truth)
 
+[meta]
+name = "Agentic Doctrine Spec"
+description = "Formal agentic/prompting doctrine SSOT — tier hierarchy, byte budgets, per-primitive tool grants."
+# Not injected per turn (the tiered Top-of-Mind derives its budget from
+# [doctrine].always_bytes_cap below); retrieved on demand via
+# get_style_guide("09_agentic_doctrine_spec").
+applies_to = ["session_start"]
+tier = 1
+
 [doctrine]
 version = "1.2.1"
 c14n_sha256 = "3a7b9c1d5e8f2a4b6c0d3e7f9a1b5c8d2e4f6a0b3c7d9e1f5a2b4c6d0e8f3a5b7c"

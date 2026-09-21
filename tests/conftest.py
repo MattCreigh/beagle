@@ -46,6 +46,47 @@ def _hermetic_env(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
 
 
 @pytest.fixture(autouse=True)
+def _isolate_outbox_redis(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Point the fault-recovery outbox at a port nothing listens on. v13.22.4.
+
+    Pre-existing defect (N9, reproducible on cd11785): the orchestrator builds
+    ``OutboxClient()``, whose ``redis_url`` defaults to
+    ``redis://localhost:6379``, and four ``tests/test_integration.py`` cases
+    drive a real connection attempt against it. They fail with
+    ``redis.exceptions.ConnectionError: Error 111 connecting to
+    localhost:6379`` whenever no redis is running on the host, and pass by
+    accident when one happens to be.
+
+    Those tests are about DAG execution, not durability, so the outbox is
+    meant to degrade silently. Pinning the URL to a reserved discard port
+    (RFC 5737 documentation range, port 9/discard) makes the degradation
+    deterministic instead of host-dependent.
+    """
+    monkeypatch.setenv("BEAGLE_OUTBOX_REDIS_URL", "redis://127.0.0.1:9/0")
+
+
+@pytest.fixture(autouse=True)
+def _isolate_rag_roots(tmp_path_factory: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Pin every RAG root under the test tmpdir. v13.22.4.
+
+    Root cause this closes (2026-09-21): ``memory_upload.MemoryUploader``
+    called ``cast_ingestion.ingest(corpus_dir)`` with no ``db_root_path``, so
+    ``rag_paths.db_root()`` resolved to the operator's LIVE
+    ``~/.beagle/instance_rag`` — and the suite replaced a ~20k-chunk index
+    with two chunks sourced from ``/tmp/pytest-of-server``.
+
+    Tests that deliberately exercise the staging/swap paths pass an explicit
+    ``db_root_path`` or set their own env, so this only constrains the
+    default-resolution case.
+    """
+    rag = tmp_path_factory.mktemp("rag")
+    monkeypatch.setenv("BEAGLE_DATA_ROOT", str(rag))
+    monkeypatch.setenv("BEAGLE_MEMORY_RAG_ROOT", str(rag / "memory_rag"))
+    monkeypatch.setenv("BEAGLE_STAGING_DIR", str(rag / "instance_rag.staging"))
+    monkeypatch.setenv("BEAGLE_RAG_BACKUP_DIR", str(rag / "instance_rag.backup"))
+
+
+@pytest.fixture(autouse=True)
 def _no_real_rag_reingest() -> Iterator[None]:
     """Refuse automatic reingest against the real, on-disk sidecar file.
 

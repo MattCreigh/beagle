@@ -1,0 +1,27 @@
+# =============================================================================
+# 02_host_runtime.toml — Host Runtime Contract (Tier 2, session_start)
+# =============================================================================
+# Injected once at session start. Describes the host environment — hardware,
+# execution target, toolchain, and runtime bindings. Domain-agnostic at the
+# behavioural level; describes the concrete host facts.
+# =============================================================================
+
+[meta]
+name = "Host Runtime Contract"
+applies_to = ["session_start"]
+tier = 2
+version = "14.0"
+
+# ── Environment ────────────────────────────────────────────────────────────
+[environment]
+hardware_architecture = "x86_64"
+execution_target = "CPU_ONLY"
+consolidated_venv = "/opt/Projects"
+python_toolchain_policy = "PIPX_DEV_UV_WHEEL"
+
+# ── Tool bindings ──────────────────────────────────────────────────────────
+[tool_bindings]
+linter_gate = "/opt/Projects/bin/qup"
+test_runner = "/opt/Projects/bin/tup"
+secret_vault_socket = "/run/server_1/orpheus/ghost.sock"
+ipc_ring_nexus = "/run/orpheus/nexus"

@@ -1,0 +1,94 @@
+# =============================================================================
+# 11_plugin_pattern.toml — Host Config Renderer Plugin Pattern (Tier 2)
+# =============================================================================
+# How a config-renderer plugin is declared, detected, gated, and mounted.
+# The pattern deliberately mirrors the Skylon plugin contract: a manifest at a
+# well-known path declares the plugin, a detect predicate decides whether it is
+# applicable, and a registry decides whether it is actually mounted. Detection
+# never implies activation.
+# =============================================================================
+
+[meta]
+name = "Host Config Renderer Plugin Pattern"
+applies_to = ["session_start", "plugin_authoring"]
+tier = 2
+version = "1.0"
+
+[doctrine]
+separation = "The general TOML -> artifact render engine is CORE to Beagle and stays there. A plugin renders only into one host's config/prompts."
+detachability = "Every plugin names its guide source as a configurable path. Beagle is the default provider, never a hard dependency. Repoint [source].guides_dir and the plugin keeps working with Beagle absent."
+detection_is_not_activation = "A discovered plugin is reported, not mounted. Mounting requires an explicit registry entry AND the plugin's own self-gate."
+generated_regions = "Rendered output is spliced between BEGIN/END markers carrying a source hash. Text outside the markers is hand-authored and never touched."
+idempotence = "Re-running a render with unchanged input produces a byte-identical file."
+
+# ── The three-layer contract ─────────────────────────────────────────────────
+
+[[layers]]
+id = "manifest"
+artifact = "plugin.toml"
+location = "<plugin-root>/<name>/plugin.toml"
+declares = "name, kind, host, engine, and a [detect] predicate"
+purpose = "Makes the plugin discoverable without a code edit."
+
+[[layers]]
+id = "config"
+artifact = "render.toml"
+location = "<plugin-root>/<name>/render.toml"
+declares = "[source].guides_dir, [output].path, and one [[section]] per generated region"
+purpose = "Binds guide TOMLs to output regions. This is the detachability seam."
+
+[[layers]]
+id = "registry"
+artifact = "tools.toml"
+location = "~/.config/beagle/plugins/tools.toml"
+declares = "[[tool]] entry with enabled = true|false"
+purpose = "The single gate deciding what is actually mounted. Hotswap via plugin_reload()."
+
+# ── Lifecycle states, mirroring Skylon plugin semantics ──────────────────────
+
+[[states]]
+id = "discovered"
+condition = "manifest found at the well-known path"
+mounted = false
+
+[[states]]
+id = "detected"
+condition = "discovered AND [detect].requires_path exists on this host"
+mounted = false
+
+[[states]]
+id = "gated"
+condition = "detected AND registry entry absent or enabled = false"
+mounted = false
+
+[[states]]
+id = "mounted"
+condition = "detected AND registry enabled AND plugin self-gate is_enabled() is true"
+mounted = true
+
+[[states]]
+id = "inert"
+condition = "discovered AND NOT detected — the host is not installed on this machine"
+mounted = false
+
+# ── Rules ────────────────────────────────────────────────────────────────────
+
+[[rules]]
+id = "PLG-1"
+statement = "A plugin MUST expose is_enabled() self-gating on whether its host actually exists. An absent host yields an inert plugin, never an errored one."
+
+[[rules]]
+id = "PLG-2"
+statement = "A plugin MUST NOT hardcode its guide source. The source is a config value so the plugin detaches from Beagle."
+
+[[rules]]
+id = "PLG-3"
+statement = "A renderer MUST write atomically and MUST leave text outside its BEGIN/END markers byte-identical."
+
+[[rules]]
+id = "PLG-4"
+statement = "A generated region MUST record the canonical hash of the source guide so drift is detectable without re-rendering."
+
+[[rules]]
+id = "PLG-5"
+statement = "Adding a plugin MUST require no edit to engine code — manifest plus registry entry only."

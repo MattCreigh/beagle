@@ -1,0 +1,370 @@
+# =============================================================================
+# HOUSE_STANDARDS.toml — Host House Standards (Tier 2, session_start)
+# =============================================================================
+# Machine-specific tool USAGE patterns for THIS workstation. Unlike
+# 02_host_runtime.toml (host facts) and 03_tool_registry.toml (tool inventory),
+# this guide pins how the local toolchain is USED and which workflow is
+# standard on this box. It is NOT a language guide (T3) and NOT core doctrine
+# (T1) — it is the operator's local house rules.
+#
+# Scoped to this host only. A different workstation may ship its own
+# HOUSE_STANDARDS.toml; implied-repeal semantics apply per repo as with any
+# T2 guide.
+# =============================================================================
+
+[meta]
+name = "House Standards"
+applies_to = ["session_start"]
+tier = 2
+version = "15.1"
+
+# ── Toolchain workflow (this box) ─────────────────────────────────────────
+[toolchain]
+policy = "UV_WHEEL_ONLY"   # wheels for every install; editables are refused (see editable_dev)
+build_wheel = "uv build --wheel"
+install_wheel = "uv pip install --force-reinstall --no-deps <wheel> --python <target>/bin/python3"
+editable_dev = "FORBIDDEN — no pip/pipx editable installs anywhere; build a wheel and install it non-editable (scripts/check_no_editable_installs.py enforces this on make lint)"
+venv_root = "/opt/beagle/beagle_venv"
+source_tree = "/home/server/Projects/beagle"
+config_root = "~/.config/beagle"   # ALL config lives here, never in the repo
+
+[python_install]
+bare_pip = "FORBIDDEN — PEP 668-marked; reject"
+wheel_deps = "ALWAYS --no-deps — resolving deps pulls the GPU torch stack (~3.5 GB)"
+site_packages_edits = "FORBIDDEN — site-packages is a build artifact; edit repo, rebuild, reinstall"
+hand_edit_signature = "a .bak file inside site-packages is the diagnostic signature of this anti-pattern"
+
+[static_gates]
+lint = "qup"          # ruff + mypy + ruff-doctrine + semgrep + vulture in one gate
+test = "tup"          # canonical test runner — never a bare pytest
+doctrine = "qup check <file>"
+config_drift = "scripts/check_config_model_drift.py"
+fail_closed = "scripts/check_fail_closed.py   # deny-by-default must never be loosened"
+
+# ── Fail-closed floor ─────────────────────────────────────────────────────
+# These are deliberate deny-by-default settings. A "tidying" change that
+# loosens one is a fail-open path, not a fix. The gate rejects it.
+[fail_closed_floor]
+microvm_allow_fallback = "false — refuse subprocess degrade (see [sandbox.microvm])"
+allowlist_strict = "true — strict model allowlist (see [inference])"
+fail_closed_firewall = "true — the semantic firewall has no off switch"
+secret_scrubbing = "true — a secret must never reach a log or a provider"
+microvm_deny_fallback = "true — untrusted code runs in the microVM or not at all"
+
+# ── RAG ingest: hotswap, not plain ingest ─────────────────────────────────
+# Verified 2026-08-25: plain rag_ingest() against a running RAG server hits
+# Kùzu lock contention and fails. Use rag_hotswap_ingest() instead — it
+# stages to a temp dir, releases the DB connections, atomically swaps, and
+# re-inits. Roll back with rag_hotswap_rollback().
+[rag_ingest]
+live_server_ingest = "hotswap_ingest — NEVER plain rag_ingest() against a running RAG server (Kuzu lock)"
+rollback = "rag_hotswap_rollback"
+lock_source = "src/beagle/infrastructure/_locks.py SWAP_LOCK"
+
+# ── Secrets: SOPS+age vault, never plaintext ──────────────────────────────
+# Migrated 2026-08-29. The vault is a sops BINARY store whose plaintext is
+# TOML; on disk it is a JSON envelope {data: ENC[...], sops: {...}} named
+# sopsSecrets.toml. ghostsecrets.GhostStore decrypts it into process memory
+# only (beagle.secrets_loader path 2) and never writes the decrypted form.
+# sops 3.12.2 has NO toml input type — the binary store is why .toml works.
+[secrets]
+vault = "~/.config/beagle/sopsSecrets.toml   # SOPS+age binary store, gitignored"
+reader = "ghostsecrets.GhostStore(GhostConfig(secrets_path=..., fail_closed=True))"
+resolution_order = "env var > sops vault > legacy ~/.config/goose/secrets.yaml > empty"
+encrypt = "sops --config ~/.config/sops/.sops.yaml -e -i --input-type binary --output-type json sopsSecrets.toml"
+decrypt_check = "sops -d --input-type json --output-type json sopsSecrets.toml   # never redirect to a file"
+sops_config = "~/.config/sops/.sops.yaml is the ONE rules file; pass --config, never duplicate the recipient (a duplicated, un-rotated recipient is what orphaned Docs/sopsSecrets.toml.undecryptable-old)"
+age_key = "~/.config/sops/age/keys.txt — losing it loses every secret; back it up off-host BEFORE deleting any plaintext"
+goose_secrets_yaml = "~/.config/goose/secrets.yaml is GOOSE's own file, not Beagle's. Beagle no longer reads it by preference; do not delete it without confirming goose's keyring fallback."
+plaintext_rule = "FORBIDDEN to add a new plaintext secrets file. A missing crypto backend must fail closed, never degrade to a plaintext path."
+
+[dev_patterns]
+recipe_delivery = "a user recipe/directive XML/YAML is an EXECUTION SCRIPT for goose to carry out inline — not a manifest to hand to a plan-only workflow."
+venv_reinstall_restart = "A wheel reinstall leaves stale modules in running MCP servers — restart the extension before testing a change."
+delegate_floor = "Delegate substantive work to Beagle workflows by default; direct execution is the fallback when no workflow fits or a delegated workflow returns zero edits."
+rule_phrasing = "Phrase a rule against the WRONG action first (what the agent does without it), then the right action. A rule that does not name the wrong action does not fire against it."
+facts_not_recall = "Never invent a house fact. Every host fact traces to a file, command, or run log it was read from. An uncited fact is dropped, not softened."
+
+# ═══════════════════════════════════════════════════════════════════════════
+# STANDARDISED PATTERN REGISTER
+# ═══════════════════════════════════════════════════════════════════════════
+# Folded 2026-08-29 from the 34 long-form pattern documents in ~/Docs/*-pattern.md.
+# Those documents remain the narrative source; this register is the SSOT for the
+# RULE each one carries. The formal content — invariants, proofs, cost bounds,
+# and the derivations behind each `invariant` line — lives in the paired
+# HOUSE_STANDARDS.tex, anchored per rule id as `lbl:<id>`.
+#
+# Field contract (per [[rules]] entry):
+#   id         stable identifier; the .tex anchor is lbl:<id>. Never renumber.
+#   pattern    the source document stem in ~/Docs (traceability, per facts_not_recall).
+#   constraint the rule, phrased WRONG-ACTION-FIRST per [dev_patterns].rule_phrasing.
+#   invariant  the checkable formal statement. Absent where no formal content exists.
+#   family     grouping key; families are listed in [pattern_families].
+# ═══════════════════════════════════════════════════════════════════════════
+
+[pattern_families]
+GATE  = "Admission and decision gates — what is allowed through, and on whose evidence"
+MUT   = "Persistent mutation and publication — changing state without losing it"
+BOUND = "Interface boundaries — absence, extraction, extension, discovery"
+IDENT = "Identity, keys and signatures — naming a thing so it stays named"
+EVID  = "Evidence and measurement — claims that a machine can falsify"
+LIVE  = "Liveness and lifetime — detecting death, and owning cleanup"
+EXEC  = "Execution substrate — pools, rings, bridges, numerics"
+SEC   = "Secrets and distribution — what must not leak, and what compiling does not buy"
+KNOW  = "Retrieval — locating code by meaning and by structure"
+
+# ── GATE: admission and decision ──────────────────────────────────────────
+
+[[rules]]
+id = "HS-GATE-01"
+family = "GATE"
+pattern = "fail-closed-policy-pattern"
+constraint = "Do not let an unevaluable or skipped check fall through to ALLOW, and do not allowlist an intent name and then trust its parameters. Validate before execute, deny on uncertainty, and emit a ValidationResult with an audit_id on EVERY path — accepts included."
+invariant = "gate(ctx) = ALLOW → (∀ c ∈ checks, evaluated(c) ∧ passed(c)); undefined(c) → DENY"
+
+[[rules]]
+id = "HS-GATE-02"
+family = "GATE"
+pattern = "drop-and-count-transport-pattern"
+constraint = "Do not retry in the transport and do not report loss as one `dropped_total`. Express admission as a conjunction over locally observable predicates, derive the drop taxonomy by negating it in a declared order, give every reason its own counter, and leave retry to the layer that knows the intent."
+invariant = "reason(x) = min{i : ¬c_i(x)} partitions ¬(⋀ c_i); Σ_i count_i = count(dropped)"
+
+[[rules]]
+id = "HS-GATE-03"
+family = "GATE"
+pattern = "qos-class-delivery-gate-pattern"
+constraint = "Do not give a channel one global backpressure behaviour. Declare a QoS class per topic at creation (LOSSLESS blocks, LOSSY(n) drops and counts, DURABLE tees), default to the class that loses nothing, make eviction direction a separate flag, and parameterize the tests over the truth table."
+invariant = "delivery : (class × ring_state) → action is total; default = ⊑-safest class; blocking is bounded or it is deadlock"
+
+[[rules]]
+id = "HS-GATE-04"
+family = "GATE"
+pattern = "hysteresis-band-gate-pattern"
+constraint = "Do not gate a noisy signal on one threshold, and do not paper over the flapping with debouncing or input smoothing. Declare an entry threshold and a strictly lower exit threshold, hold state inside the band, set band width from measured noise amplitude, and emit the level rather than an event per sample."
+invariant = "θ_lo < θ_hi enforced at construction; transitions over a window ≤ ⌈TV(signal)/(θ_hi − θ_lo)⌉"
+
+[[rules]]
+id = "HS-GATE-05"
+family = "GATE"
+pattern = "revocable-consent-export-pattern"
+constraint = "Do not treat a config boolean as consent, do not scan on the way out, and do not tell a requester why a consent check failed. Scan before persistence, gate export on signed-consent ∧ clean-scan ∧ namespace-policy failing closed on every row including unevaluable ones, count every reject reason, record every export so revocation tombstones have somewhere to go, and log hashes never payloads."
+invariant = "EXPORT ≡ (CONSENT ∧ SCRUB_OK ∧ NS_POLICY) in K3 with ⊥ ↦ false; ∀ a₁ a₂, obs_requester(reject(a₁)) = obs_requester(reject(a₂))"
+
+[[rules]]
+id = "HS-GATE-06"
+family = "GATE"
+pattern = "verdict-first-gate-pattern"
+constraint = "Do not hand an agent an exit code and expect it to fix the cause. Emit one structured verdict per gate run — PASS/FAIL/SKIPPED, a per-engine table, and per-violation file:line, rule_id, measured-vs-expected, and owning domain — and cap re-runs per finding set so a refused fix escalates instead of looping."
+invariant = "repair is a function of rule_id; a projection onto {0,1} cannot recover it. Termination is imposed by the cap, not by contraction."
+
+[[rules]]
+id = "HS-GATE-07"
+family = "GATE"
+pattern = "trust-cache-pattern"
+constraint = "Do not re-handshake a backend on every call, and do not trust a row you verified once and never rechecked. Verify each sibling once, persist a trust row carrying version AND fingerprint, and re-check the fingerprint before every proxied call — a changed binary is re-verified or refused, never called blind."
+invariant = "□(call(b) → fingerprint(b) = fingerprint_verified(b)); verification cost amortised O(1) per call"
+
+[[rules]]
+id = "HS-GATE-08"
+family = "GATE"
+pattern = "mock-parity-capability-gate-pattern"
+constraint = "Do not install an absent platform's toolchain to make a build configure, and do not hand-write a per-test stub for it. Put the real backend behind a build option defaulting OFF, ship a substitute driver implementing the identical interface from the same repository, run ONE conformance suite against both, and print a capability matrix so substitute-mode is never mistaken for hardware."
+invariant = "substitute-green ⊨ ordering and completion-count invariants; substitute-green ⊭ throughput. Real-hardware ratification is a separate gate."
+
+# ── MUT: persistent mutation and publication ──────────────────────────────
+
+[[rules]]
+id = "HS-MUT-01"
+family = "MUT"
+pattern = "contained-destructive-op-pattern"
+constraint = "Do not compare path strings to prove containment, do not follow a symlink out of a declared root, and do not let discovery delete. Resolve to real paths and test the descendant relation, refuse escapes and report the refusal as its own outcome, separate scan/adopt/rotate, simulate by default so deletion needs an explicit force, bound each step with a timeout, and discard an inherited config's unsafe defaults."
+invariant = "contained(c, r) ≡ ρ(c) ∈ Descendants(ρ(r)); startswith is logically independent of it. Omission monotonicity: destructiveness(inv \\ {f}) ≤ destructiveness(inv) for every flag f."
+
+[[rules]]
+id = "HS-MUT-02"
+family = "MUT"
+pattern = "hash-chained-rollback-journal-pattern"
+constraint = "Do not perform an effect and then log it, and do not compute the inverse at revert time. Commit an append-only hash-chained entry carrying intent AND the inverse — computed while the pre-state is still observable — before touching the world; make inverses idempotent and leaf-classified; alert on a chain break; and test by killing the process at every step boundary."
+invariant = "□((effect_applied(s) → entry_committed(s)) ∧ (entry_committed(s) → replayable(s))); applied ⊆ committed at every crash point; rec ∘ rec = rec"
+
+[[rules]]
+id = "HS-MUT-03"
+family = "MUT"
+pattern = "immutable-snapshot-swap-pattern"
+constraint = "Do not mutate a read-mostly index in place, do not lock readers for an update that almost never happens, and do not re-read the snapshot pointer per batch element. Build a new immutable snapshot off the hot path, publish it with one atomic pointer store, pin ONE snapshot for a whole operation, free the old one by reference count rather than at swap time, give each snapshot an id, and soak-test for flat memory beside the correctness drill."
+invariant = "per-operation pin: ∃k ∀i, result_i = f(e_i, S_k). Per-element read gives only ∀i ∃k — a batch consistent with no single snapshot. free(S_k) requires |readers(S_k)| = 0."
+
+[[rules]]
+id = "HS-MUT-04"
+family = "MUT"
+pattern = "zero-copy-ipc-ring-pattern"
+constraint = "Do not make the ring infer a message length, do not hold the lock across the caller's copy, and do not crash the writer on a corrupt ring. Reserve a slot, hand back a writable view, take the length from the caller on commit, advance the head only on commit, default a forgotten commit to an idempotent zero, health-check before every operation, and quarantine a corrupted ring for operator re-provisioning rather than retrying."
+invariant = "head advances only on commit ⇒ any failure in (reserve, commit) leaves state_after = state_before. Critical section is O(1) head arithmetic, not O(payload)."
+
+[[rules]]
+id = "HS-MUT-05"
+family = "MUT"
+pattern = "epoch-guarded-view-pattern"
+constraint = "Do not hand a raw pointer into a recyclable ring slot, and do not let a SIMD parser read to the exact end of a payload. Mint a view guard capturing a monotonic slot epoch, validate the epoch on every dereference and raise on mismatch, keep consumer views read-only, and pad every slot with a full vector width of trailing bytes."
+invariant = "(ptr, epoch) is unique over process lifetime where ptr alone is ABA-ambiguous; e_held ≠ e_current → fail closed. Mapped capacity ≥ payload + (w − 1) for vector width w; w = 64 covers AVX-512."
+
+# ── BOUND: interface boundaries ───────────────────────────────────────────
+
+[[rules]]
+id = "HS-BOUND-01"
+family = "BOUND"
+pattern = "typed-absence-backend-pattern"
+constraint = "Do not degrade a missing optional backend to a no-op stub or to a bare None. Declare the capability as a Protocol, return Present(backend) | Absent(capability, reason) as the public union so the type checker refuses every undiscriminated call site, keep Absent falsy but distinct from None, leave the fallback policy with the caller who owns it, and print the resolved capability set in the doctor surface."
+invariant = "a stub satisfies the type signature and violates the postcondition (∀p, unseal(seal(p)) = p ∧ seal(p) ≠ p); types cannot express the second conjunct, so absence must be carried in the type instead."
+
+[[rules]]
+id = "HS-BOUND-02"
+family = "BOUND"
+pattern = "frozen-api-strangler-extraction-pattern"
+constraint = "Do not move code and tidy it in the same commit, and do not leave a shim that re-implements. Record a characterization suite against the module in place FIRST, move it unchanged, leave a facade that only re-exports, run the suite through both paths for the whole deprecation window, freeze the public surface as a version-controlled file asserted by a snapshot test, state the removal release in the shim itself, and extract in dependency order."
+invariant = "facade as identity re-export ⇒ one implementation, two names, drift impossible by construction. Extraction order must be a topological order of the dependency DAG."
+
+[[rules]]
+id = "HS-BOUND-03"
+family = "BOUND"
+pattern = "plugin-pattern"
+constraint = "Do not require a host-core edit to register an extension. Publish plugins as packages under a PEP 420 namespace at <namespace>.plugins.<name>, have the host scan the namespace and PLUGINS_DIR and import each with a per-plugin timeout, require `app` and treat the lifecycle hooks (register_services, register_routes, get_env_vars, shutdown) as optional, ship config templates as package-data, and keep cli.py thin."
+invariant = "the contract is a structural type on the root module, not a base class; per-plugin timeout bounds host startup at O(n · t_max) rather than unbounded"
+
+[[rules]]
+id = "HS-BOUND-04"
+family = "BOUND"
+pattern = "multi-surface-cli-pattern"
+constraint = "Do not build a CLI, an MCP server, and a TUI as three implementations. Put run/format/config in one core and make each surface a thin adapter, sharing one config schema, one totally ordered precedence rule (CLI args > project TOML > user config > defaults), one set of output formats, and one last-run cache."
+invariant = "n independent surfaces carry n(n−1)/2 hand-maintained consistency obligations; one core carries 0. Precedence must be a total order — a partial order leaves ties unresolved."
+
+[[rules]]
+id = "HS-BOUND-05"
+family = "BOUND"
+pattern = "config-discovery-pattern"
+constraint = "Do not hardcode a config path and do not do filesystem I/O at import time. Keep pure constants at module top, defer resolution to an lru_cache(maxsize=1) get_settings() returning a frozen dataclass, try ordered strategies (env override, deployment descriptor walk-up, instance heuristic, system path) appending one audit entry each, warn and fall through on a stale override rather than crashing, and expose compat aliases through PEP 562 __getattr__."
+invariant = "deferring I/O makes import total rather than a partial function of the filesystem; the error must be a function of the whole attempted sequence, not of the last failure alone"
+
+[[rules]]
+id = "HS-BOUND-06"
+family = "BOUND"
+pattern = "up-suite-naming-pattern"
+constraint = "Do not give a tool family ad-hoc names or wire each tool in as its own MCP server. Name each tool <role>Upper with a binary short formed from the shortest stem prefix that stays unambiguous plus `up`, mirror it in the package as <short>_pkg, and front the whole family with one router that discovers, verifies once, and fails closed on staleness."
+invariant = "short(x) = distinguishing_prefix(stem(x)) ∥ \"up\" is a prefix code; head-letter-only is NOT injective on this roster (t: test/tailscale, v: vpn/validate) and collisions are resolved by lengthening the prefix"
+
+# ── IDENT: identity, keys, signatures ─────────────────────────────────────
+
+[[rules]]
+id = "HS-IDENT-01"
+family = "IDENT"
+pattern = "injective-hash-registry-pattern"
+constraint = "Do not ship a fast non-cryptographic hash as a key without a side-table, and do not reach for a cryptographic hash to avoid one. Bind identifier → name in a registry at registration, make re-registering the same name idempotent, reject a second name on an existing identifier loudly and name BOTH strings in the error, keep the string comparison off the hot path, and never reuse the identifier as an integrity or access primitive."
+invariant = "h restricted to the registered set R is injective by construction, by induction on registrations. Registry scope is a trust boundary: identifiers do not cross registries without re-registration."
+
+[[rules]]
+id = "HS-IDENT-02"
+family = "IDENT"
+pattern = "tofu-key-pinning-pattern"
+constraint = "Do not accept a validly signed descriptor that presents a new key for an existing name, and do not let a fleet share an unjittered TTL. Canonicalize bytes before signing or verifying, pin the signer fingerprint on first contact, reject a mismatch even when the signature verifies, never pin an unverified descriptor, make re-keying an operator action, and add uniform jitter to every refresh."
+invariant = "verify(m, k) is a predicate about k, not about k's authority over the name; conflating them is the vulnerability. TOFU trades continuous authentication for a single point-in-time assumption at t₀, and detects — does not prevent — later rotation."
+
+[[rules]]
+id = "HS-IDENT-03"
+family = "IDENT"
+pattern = "structural-signature-reuse-pattern"
+constraint = "Do not decide solution reuse on text similarity, and do not substitute a cached answer silently. Compile the problem to a typed graph with pre/postconditions, key it on an order-independent fingerprint, shortlist by similarity, break ties with a BOUNDED edit distance over the shortlist only, use separate shortlist and commit thresholds, score on several weighted components, emit an evidence record including the node correspondence, and gate store admission on novelty and validity."
+invariant = "WL-hash is isomorphism-invariant but not complete: equal fingerprints do not imply isomorphic graphs, so the fingerprint is a necessary filter and the bounded edit distance is the decision. Every stage bounded ⇒ worst-case cost constant in store size."
+
+# ── EVID: evidence and measurement ────────────────────────────────────────
+
+[[rules]]
+id = "HS-EVID-01"
+family = "EVID"
+pattern = "differential-oracle-pattern"
+constraint = "Do not express a policy denial as a free-form string and do not rely on hand-picked cases to prove a refactor changed nothing. Map every rejection to a closed DenyReason enum, freeze the hook chain as an immutable versioned tuple evaluated first-deny-wins, record a large golden decision corpus, and fail CI on any divergence from it."
+invariant = "0 mismatches over n replayed vectors bounds the disagreement rate at 3/n with 95% confidence (rule of three): n = 10⁵ ⇒ ≤ 3×10⁻⁵. The closed taxonomy is a precondition — string verdicts make cosmetic rewording report as drift."
+
+[[rules]]
+id = "HS-EVID-02"
+family = "EVID"
+pattern = "quality-ratchet-pattern"
+constraint = "Do not clear a quality gate by disabling the rule that found the defect. Baseline one measured count per defect class, recompute it live and isolated from project-local config, fail any commit whose count exceeds its baseline, record improvement without requiring it, and report the delta rather than the word 'regressed'."
+invariant = "b_{t+1} = min(b_t, m_t) is non-increasing and bounded below ⇒ monotone convergence. Soundness requires the measurement procedure be pinned (--isolated / --no-cache); an unpinned procedure lets project config lower the count without fixing the input."
+
+[[rules]]
+id = "HS-EVID-03"
+family = "EVID"
+pattern = "kill-criterion-ledger-pattern"
+constraint = "Do not adopt an optimization because it is implemented or because a paper reports a number. Open a ledger row per technique with its predicted uplift and quality floor, freeze a baseline on a named hardware fixture, implement behind an off-by-default flag, and set the verdict from artifacts: ADOPT or KILL, never blank — a KILL parks the code with a post-mortem, and every adopted technique is re-measured in combination."
+invariant = "ADOPT ⟺ ((uplift ≥ uplift_floor) ∧ (quality ≥ quality_floor) ∧ ¬composition_regression). k techniques give 2^k configurations; measuring k singletons leaves 2^k − k − 1 unmeasured, including the one that ships. Interaction Δ = uplift(⋃) − Σ uplift({i}) is typically subadditive."
+
+[[rules]]
+id = "HS-EVID-04"
+family = "EVID"
+pattern = "executable-plan-contract-pattern"
+constraint = "Do not execute a brief without auditing it, and do not state behaviour as prose. Open with a defect register giving each inherited defect an id and a specific mitigation, state every premise as a numbered claim with a citation and what the plan does with it, write conditions as logic blocks with a legend, name safety and liveness properties separately, bind each to a test id and each failure-mode property to a chaos drill that must be RUN, state phase exits as conjunctions, and put status in the filename verified against the code."
+invariant = "prose has no negation operator: ¬(⋀ c_i) = ⋁ ¬c_i is what derives the failure taxonomy from the gate. By Alpern–Schneider every trace property is safety ∩ liveness; safety □P is falsifiable by a finite prefix, liveness ◇Q is not — which is why liveness needs a bounded-time drill, not a unit test."
+
+# ── LIVE: liveness and lifetime ───────────────────────────────────────────
+
+[[rules]]
+id = "HS-LIVE-01"
+family = "LIVE"
+pattern = "accrual-heartbeat-pattern"
+constraint = "Do not decide liveness on a single binary timeout, and do not call the clock from inside the logic. Accrue misses across NORMAL ▸ SUSPECT ▸ DOWN so load can be shed before an outage is declared, reset and emit recovery immediately on any valid beat, inject the clock as a parameter defaulting to time.monotonic so the transition table is testable without sleeping, and never let a transition callback's exception stop the scheduler."
+invariant = "with per-beat loss probability p, spurious escalation at threshold k has probability p^k while detection latency is k · interval — false-alarm rate falls exponentially in the same parameter that raises latency linearly. Injecting the clock makes time an input, restoring referential transparency."
+
+[[rules]]
+id = "HS-LIVE-02"
+family = "LIVE"
+pattern = "liveness-coupled-session-pattern"
+constraint = "Do not add a reaper, a reconnect protocol, or a persisted session registry to manage orphaned remote sessions. Bind the remote resource's lifetime to the control connection so every disconnection cause takes the same hangup path, keep session state in-process only, give teardown its own CLOSING state, never resume by identifier, write the rationale beside the non-persistence, and serve long-running work with a separate observer surface."
+invariant = "orphans = W \\ C = ∅ by construction rather than by reconciliation. Persisted state has lifetime ⊇ process lifetime and so can outlive its referent; in-process state cannot. Refusing resumption removes the resumption-authorization question rather than guarding it."
+
+# ── EXEC: execution substrate ─────────────────────────────────────────────
+
+[[rules]]
+id = "HS-EXEC-01"
+family = "EXEC"
+pattern = "topology-pinned-executor-pattern"
+constraint = "Do not serve I/O, compute, and blocking work from one pool, and do not size or place workers from a core count. Import real machine topology and pin compute workers to cores, split pools by blocking character, size compute below the core count, state the yield budget and the re-acquire cadence as contract constants, put a task that cannot reach a checkpoint in the blocking pool rather than weakening the budget, bound the blocking pool, deliver completions through the data-path rings, and scrub child environments on inherit AND on exit."
+invariant = "one pool must satisfy n ≈ cores (compute) and n ≫ cores (blocking) simultaneously — infeasible; splitting makes the constraint set satisfiable. Worst-case signal latency = re-acquire cadence; worst-case co-scheduling delay = yield budget."
+
+[[rules]]
+id = "HS-EXEC-02"
+family = "EXEC"
+pattern = "eventfd-asyncio-bridge-pattern"
+constraint = "Do not poll or sleep to learn that native or accelerator work finished. Allocate an eventfd with EFD_NONBLOCK|EFD_CLOEXEC, register it with loop.add_reader, release the interpreter lock before dispatching, have the native completion hook write the 8-byte counter, read exactly 8 bytes on wake and then drain a separate completion queue, and remove the reader before closing the descriptor."
+invariant = "polling has cost O(duration/T) and latency O(T) — their product is constant, so no T is both cheap and prompt. Readiness notification has cost O(events) and latency independent of it. eventfd writes coalesce: the counter means '≥1 completed', never an exact pending count."
+
+[[rules]]
+id = "HS-EXEC-03"
+family = "EXEC"
+pattern = "two-stack-welford-pattern"
+constraint = "Do not compute variance as Σx² − (Σx)²/n, and do not recompute a sliding window from stored samples. Accumulate with Welford's recurrence, hold the window as two stacks each carrying its own aggregate, merge them with the exact two-group combination formula, pre-allocate both stacks so the ingest path allocates nothing, and reset accumulators when the window or sample clock is reconfigured."
+invariant = "naive form differs two quantities of magnitude n(μ²+s²) whose difference is n·s², amplifying relative error by (1 + μ²/s²). Merge: n = n_a+n_b, δ = μ_b−μ_a, μ = μ_a + δ·n_b/n, M₂ = M₂_a + M₂_b + δ²·n_a·n_b/n. Potential Φ = |in-stack| gives amortised O(1) per slide; the two stacks exist because Welford's update is not invertible in floating point."
+
+# ── SEC: secrets and distribution ─────────────────────────────────────────
+
+[[rules]]
+id = "HS-SEC-01"
+family = "SEC"
+pattern = "jit-memory-secrets-pattern"
+constraint = "Do not write plaintext secrets to persistent disk, and do not scrub logs by matching against secret VALUES. Decrypt into volatile memory, hold values in a read-only mapping whose repr names only keys, redact egress using the key set alone, render to an asserted tmpfs at 0600 with immediate unlink only when a consumer demands a path, AST-check both FunctionDef and AsyncFunctionDef for forbidden paths and writers, merge as `secret_env | caller_env` so an explicit caller value wins, and terminate on a decryption failure rather than proceeding with partial config."
+invariant = "value-based scrubbing requires the plaintext in the logging path, making the scrubber a place the secret exists; key-based redaction has no data dependency on the value. The AST guard is a syntactic over-approximation — sound for the literals it names, unsound against a constructed path — so it is a guard, not a proof."
+
+[[rules]]
+id = "HS-SEC-02"
+family = "SEC"
+pattern = "deterministic-scramble-build-pattern"
+constraint = "Do not rename foreign attributes, literals, or external keyword names when obfuscating a package, and do not drive the build from a shell script. Compute one global salted deterministic mapping over the package's BINDINGS only, subtract an explicit keep set that IS the published API, rewrite `import x` to `import x as _alias`, drive the four stages from a real program that asserts no kept symbol was renamed before compiling and no source shipped after packaging, keep the package initializer as real source, build in an isolated environment, and never place a secret in the artifact."
+invariant = "renaming binding occurrences is capture-avoiding α-conversion and is semantics-preserving; an attribute access on a foreign object is a field selection the package does not own, so renaming it is not α-conversion and is unsound. Build is a function of (source, salt, toolchain) — pin all three and artifact equality is checkable. Compilation raises recovery cost; it is not encryption."
+
+# ── KNOW: retrieval ───────────────────────────────────────────────────────
+
+[[rules]]
+id = "HS-KNOW-01"
+family = "KNOW"
+pattern = "hybrid-graph-vector-rag-pattern"
+constraint = "Do not answer a structural code question from vector similarity alone, nor a natural-language one from graph traversal alone. Dual-write chunks to the vector store and AST relations to the property graph in one sync stage, resolve queries by taking vector anchors first and expanding along CALLS/INHERITS/IMPORTS with a hard hop cap, and de-duplicate identical source spans before assembling the prompt."
+invariant = "vector order (similarity of descriptions) and graph order (structural adjacency) are incomparable — neither refines the other — so the pipeline composes them: vectors supply recall, the graph supplies closure. Neighbourhood grows as b^h, so h ≤ 2 is what keeps context bounded."

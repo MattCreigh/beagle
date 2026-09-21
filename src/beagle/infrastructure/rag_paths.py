@@ -15,17 +15,30 @@ from beagle.config.paths import get_data_root
 # instead of hardcoded host paths. get_data_root() honours $BEAGLE_DATA_ROOT,
 # config.toml [paths].data_root, XDG_DATA_HOME, then ~/.beagle — so a clean
 # install on any host lands in the right place.
-_INSTANCE_RAG_ROOT = str(get_data_root() / "instance_rag")
-_MAIN_RAG_ROOT = str(get_data_root() / "main_rag")
+#
+# v13.22.4: these were module-level constants bound at IMPORT time. A test
+# that imported beagle before monkeypatching $BEAGLE_DATA_ROOT therefore kept
+# resolving to the operator's live ~/.beagle — and one did, replacing a
+# ~20k-chunk index with two chunks from /tmp/pytest-of-server (2026-09-21).
+# `db_root()` was already call-time, but `get_instance_rag_root()` was not,
+# so the two disagreed under an env override. Both are call-time now.
 LANCE_TABLE_NAME = "ast_code_chunks"
 
 
 def get_instance_rag_root() -> str:
-    return _INSTANCE_RAG_ROOT
+    """Return the instance RAG root, resolved at CALL time."""
+    return str(get_data_root() / "instance_rag")
 
 
 def get_main_rag_root() -> str:
-    return _MAIN_RAG_ROOT
+    """Return the main RAG root, resolved at CALL time."""
+    return str(get_data_root() / "main_rag")
+
+
+# Deprecated import-time aliases. Kept for one release so an out-of-tree
+# importer does not break; new code must call the functions above.
+_INSTANCE_RAG_ROOT = get_instance_rag_root()
+_MAIN_RAG_ROOT = get_main_rag_root()
 
 
 def db_root(root: str | None = None) -> str:
@@ -43,7 +56,7 @@ def db_root(root: str | None = None) -> str:
             res = env_dir
         else:
             tier = os.environ.get("BEAGLE_RAG_TIER", "instance")
-            res = _MAIN_RAG_ROOT if tier == "main" else _INSTANCE_RAG_ROOT
+            res = get_main_rag_root() if tier == "main" else get_instance_rag_root()
 
     # Normalize trailing slash and relative components, but keep symlinks intact
     res = os.path.normpath(res)

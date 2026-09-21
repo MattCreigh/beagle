@@ -18,6 +18,14 @@ delivery = "MEMORY_ONLY_JIT"
 sanitization = "LINEAR_RE2_PRE_INGEST"
 permissions = "secret files 0600 or 0400"
 no_plaintext = "never persist unencrypted secrets"
+loader = "load via secrets_loader.py — env vars first, then ~/.config/goose/secrets.yaml; open secret files with os.open() and explicit mode 0o600"
+log_scrubbing = "scrub secrets from logs via _SECRET_PATTERNS (20+ char minimum); use Path.name, not the full path, for binaries in log messages"
+
+# ── Cryptography ───────────────────────────────────────────────────────────
+[crypto]
+signing = "Ed25519 for A2A agent signing — raise RuntimeError if the key is missing"
+hashing = "hashlib.sha256().hexdigest()[:48] for guardian hashes"
+no_downgrade = "never downgrade crypto — no MD5, no SHA1 for security purposes"
 
 # ── Sandbox ────────────────────────────────────────────────────────────────
 [sandbox]

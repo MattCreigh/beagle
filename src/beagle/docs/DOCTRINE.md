@@ -59,6 +59,14 @@ Domain: **universal**
 - **sanitization**: LINEAR_RE2_PRE_INGEST
 - **permissions**: secret files 0600 or 0400
 - **no_plaintext**: never persist unencrypted secrets
+- **loader**: load via secrets_loader.py — env vars first, then ~/.config/goose/secrets.yaml; open secret files with os.open() and explicit mode 0o600
+- **log_scrubbing**: scrub secrets from logs via _SECRET_PATTERNS (20+ char minimum); use Path.name, not the full path, for binaries in log messages
+
+### crypto
+
+- **signing**: Ed25519 for A2A agent signing — raise RuntimeError if the key is missing
+- **hashing**: hashlib.sha256().hexdigest()[:48] for guardian hashes
+- **no_downgrade**: never downgrade crypto — no MD5, no SHA1 for security purposes
 
 ### sandbox
 
@@ -340,35 +348,3 @@ Universal behavioural directives for the Goose Beagle Orchestrator. Auto-injecte
 - beagle --help | head
 
 - **notes**: Chosen to create dedicated run_to_completion.toml rather than overwriting beagle_core_directives.toml unread, per locate→validate→apply discipline and sandbox read failure. Both are ingested by render-prompts. If consolidation is preferred, merge this file into beagle_core_directives.toml and delete this file.
-
-## Security Baseline
-
-### validation
-
-#### rules
-
-- Validate all external input at system boundaries
-- Use parameterized queries — never string interpolation for SQL/Cypher
-- Strip injection tags BEFORE html.escape(), not after
-- Use allowlists (frozenset) for dynamic identifiers like relation types
-- Check Path.relative_to() for path traversal, not str.startswith()
-- Use os.open() with explicit mode (0o600) for secret files
-
-
-### secrets
-
-#### rules
-
-- Load via secrets_loader.py — env vars first, then ~/.config/goose/secrets.yaml
-- Secrets file must be 0600 or 0400 permissions
-- Scrub secrets from logs using _SECRET_PATTERNS with 20+ char minimum
-- Use Path.name not full path in log messages for binaries
-
-
-### crypto
-
-#### rules
-
-- Ed25519 for A2A agent signing — raise RuntimeError if key missing
-- Use hashlib.sha256 with hexdigest()[:48] for guardian hashes
-- Never downgrade crypto — no MD5, no SHA1 for security purposes

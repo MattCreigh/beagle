@@ -386,11 +386,31 @@ class MemoryUploader:
             return 0
 
     def _ingest_rag(self, corpus_dir: Path) -> bool:
-        """Best-effort inline-RAG ingest of the corpus dir. Returns success flag."""
+        """Best-effort inline-RAG ingest of the corpus dir. Returns success flag.
+
+        v13.22.4: this call used to reach the LIVE instance RAG root whenever
+        the caller did not set an env override. A test that exercised
+        ``remember()`` therefore WROTE INTO THE OPERATOR'S INDEX — observed
+        2026-09-21 as a live ``instance_rag`` holding two chunks sourced from
+        ``/tmp/pytest-of-server/...``, with the real ~20k-chunk corpus stranded
+        in ``instance_rag.backup``. Test suites must not be able to replace the
+        production index by accident.
+
+        The corpus is memory provenance, not the codebase graph, so it gets its
+        own root: ``<data_root>/memory_rag``. That is deliberately NOT a sibling
+        of ``instance_rag``, keeping the two indexes disjoint.
+        """
         try:
+            import os
+
+            from beagle.config.paths import get_data_root
             from beagle.infrastructure import cast_ingestion
 
-            cast_ingestion.ingest(corpus_dir)
+            if os.environ.get("BEAGLE_MEMORY_RAG_ROOT"):
+                target = os.environ["BEAGLE_MEMORY_RAG_ROOT"]
+            else:
+                target = str(get_data_root() / "memory_rag")
+            cast_ingestion.ingest(corpus_dir, db_root_path=target)
             return True
         except ImportError:
             return False
