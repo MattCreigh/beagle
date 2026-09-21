@@ -48,11 +48,13 @@ an edit to ``tools.toml`` + one ``plugin_reload`` call — no restart.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 from mcp.server.fastmcp import FastMCP
@@ -107,14 +109,24 @@ def _absorb(
     Tool objects are moved whole (preserving context kwargs and fn metadata).
     ``renames`` maps original tool name -> final name BEFORE prefixing;
     collisions are first-wins with the loser recorded in ``skipped``.
+    Standalone-fastmcp sources (no ``_tool_manager``) are bridged through
+    ``_sdk_tool_manager()``; they expose no resource manager, so only the
+    tool list transfers for them.
     """
     report = AbsorbReport(owner=owner)
     renames = renames or {}
 
+    source_tm = _sdk_tool_manager(source)
+    if source_tm is None:
+        raise TypeError(
+            f"absorb source {type(source).__name__} exposes neither an SDK "
+            "_tool_manager nor a bridgeable standalone-fastmcp tool surface"
+        )
+
     existing_tools = app._tool_manager.list_tools()
     taken: set[str] = {t.name for t in existing_tools}
 
-    for tool in source._tool_manager.list_tools():
+    for tool in list(source_tm.list_tools()):
         final = renames.get(tool.name, tool.name)
         if prefix:
             final = f"{prefix}{final}"
@@ -126,7 +138,10 @@ def _absorb(
         taken.add(final)
         report.tools.append(final)
 
-    for uri, res in list(source._resource_manager._resources.items()):
+    source_rm = getattr(source, "_resource_manager", None)
+    if source_rm is None:
+        return report
+    for uri, res in list(source_rm._resources.items()):
         final_uri = f"{prefix}{uri}" if prefix else uri
         if final_uri in app._resource_manager._resources:
             report.skipped[f"resource:{uri}"] = "uri collision (first-wins)"
@@ -134,7 +149,7 @@ def _absorb(
         app._resource_manager._resources[final_uri] = res.model_copy(update={"uri": final_uri})
         report.resources.append(final_uri)
 
-    for tmpl_key, tmpl in list(source._resource_manager._templates.items()):
+    for tmpl_key, tmpl in list(source_rm._templates.items()):
         final_key = f"{prefix}{tmpl_key}" if prefix else tmpl_key
         if final_key in app._resource_manager._templates:
             report.skipped[f"template:{tmpl_key}"] = "template collision (first-wins)"
@@ -163,9 +178,69 @@ def _unmount(report: AbsorbReport) -> None:
 
 def _source_tool_count(source: Any) -> int:
     try:
-        return len(source._tool_manager.list_tools())
+        source_tm = _sdk_tool_manager(source)
+        if source_tm is None:
+            return -1
+        return len(source_tm.list_tools())
     except Exception:  # noqa: BLE001 - introspection only
         return -1
+
+
+def _sdk_tool_manager(instance: Any) -> Any | None:
+    """Return the MCP-SDK tool manager for *instance* if it exposes one.
+
+    Core servers and SDK-native plugins carry ``_tool_manager`` directly.
+    Standalone-fastmcp plugins (e.g. beagle-plugin-configrender) do not —
+    their ``FunctionTool`` objects are a distinct type, so they are bridged
+    into SDK ``Tool`` objects via ``_fastmcp_tools_to_sdk()``.
+    """
+    tm = getattr(instance, "_tool_manager", None)
+    if tm is not None:
+        return tm
+    if type(instance).__module__.startswith(("fastmcp.", "mcp.server.fastmcp")):
+        tools = _fastmcp_tools_to_sdk(instance)
+        if tools is not None:
+            bridge = SimpleNamespace()
+            bridge._tools = {t.name: t for t in tools}
+            bridge.list_tools = lambda: list(bridge._tools.values())
+            bridge.remove_tool = lambda name: bridge._tools.pop(name, None)
+            return bridge
+    return None
+
+
+def _fastmcp_tools_to_sdk(instance: Any) -> list[Any] | None:
+    """Convert standalone-fastmcp FunctionTools to SDK Tools, or None.
+
+    Standalone-fastmcp's ``_list_tools()`` is async; its ``FunctionTool``
+    carries the plain ``fn``, the JSON-schema ``parameters``, and a
+    description that may be ``None`` (SDK requires a string). Conversion
+    rebuilds an SDK ``Tool`` preserving the original function, so context
+    kwarg injection and call semantics stay intact.
+    """
+    try:
+        from mcp.server.fastmcp.tools.base import Tool as SdkTool
+        from mcp.server.fastmcp.utilities.func_metadata import func_metadata
+    except ImportError:  # pragma: no cover - SDK always present here
+        return None
+    try:
+        tools = asyncio.run(instance._list_tools())
+        sdk_tools: list[Any] = []
+        for ft in tools:
+            fn = getattr(ft, "fn", None)
+            sdk_tools.append(
+                SdkTool(
+                    name=ft.name,
+                    description=getattr(ft, "description", None) or "",
+                    parameters=getattr(ft, "parameters", {}),
+                    fn=fn,
+                    fn_metadata=func_metadata(fn),
+                    is_async=asyncio.iscoroutinefunction(fn),
+                )
+            )
+        return sdk_tools
+    except Exception as exc:  # noqa: BLE001 - introspection must not kill mount
+        logger.warning("standalone-fastmcp tool bridge failed: %s", exc)
+        return None
 
 
 # ── Core groups (static code, always present) ─────────────────────────────────
