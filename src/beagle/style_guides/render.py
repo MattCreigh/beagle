@@ -1439,15 +1439,26 @@ class GooseTopOfMindRenderer:
             if not newest:
                 return None
             src_manifest = newest[0]
-            # Only adopt folds created in the last 5 seconds
-            # wall-clock-ok: compares against a persisted timestamp
+            # Only adopt folds created in the last 5 seconds.
+            #
+            # wall-clock-ok: this is a TIMESTAMP comparison, not an interval.
+            # `mtime` is a wall-clock value persisted on disk by an earlier
+            # process; time.monotonic() has an arbitrary per-process epoch, so
+            # subtracting one from a monotonic reading is not merely imprecise,
+            # it is meaningless. The doctrine permits time.time() for exactly
+            # this ("keep time.time() for timestamps only").
+            #
+            # Written as a named `now` timestamp rather than inline
+            # `time.time() - mtime` so the shape is self-evidently a
+            # timestamp diff. The previous form carried
+            # `# nosemgrep: beagle-walltime-for-interval`, which was inert:
+            # the floor rule's id is `aeca-walltime-for-interval`, and the
+            # floor variant declares no `pattern-not`, so no suppression id
+            # would have matched anyway. The suppression is gone; the
+            # justification above is what carries the intent.
             mtime = src_manifest.stat().st_mtime
-            # This directive previously carried a stale rule id, so the
-            # suppression was inert and the floor fired on an honest
-            # timestamp comparison. Repointed at the current id; the
-            # justification is unchanged.
-            age = _time.time() - mtime  # nosemgrep: beagle-walltime-for-interval
-            if age > 5.0:
+            now = _time.time()  # wall clock: a timestamp, not a duration
+            if now - mtime > 5.0:
                 return None
             src_id = src_manifest.stem.replace("_manifest", "")
             if src_id == fold_id:
