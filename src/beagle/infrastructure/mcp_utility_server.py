@@ -1566,6 +1566,130 @@ async def get_style_guide(name: str, section: str = "") -> str:
     return renderer._render_full_xml([guide], effective_domain=name)
 
 
+# ── Top-of-Mind directive (BEAGLE MIND RELAY P1) ─────────────────────────────
+
+
+@mcp.tool()
+async def beagle_context_directive(
+    scope_dir: str = "",
+    phase: str = "session_start",
+    file_path: str = "",
+) -> str:
+    """Return the composed ToM style-guide directive for ANY front end.
+
+    The front-end-agnostic replacement for goose's GOOSE_MOIM_MESSAGE_FILE
+    read: call this at session start, after context fold/compaction, and
+    before editing a file. Rendering is pure/offline; layering and caps come
+    from the style-guide engine (SSOT TOMLs), never re-composed here.
+
+    Args:
+        scope_dir: Directory the front end initialised in ("" = cwd).
+            Drives domain resolution and project-local guide discovery.
+        phase: One of "session_start", "fold", "compact", "file".
+            session_start -> full domain-scoped doctrine + project layers.
+            fold / compact -> compact load-bearing slice (<= 2048 bytes).
+            file -> extension-matched + local guides for file_path only.
+        file_path: Required for phase="file" (ignored otherwise).
+
+    Returns:
+        JSON: {status, phase, directive, layers{...}, bytes, cap_ok}.
+        Unknown phase or unresolvable input yields status="error" and never
+        raises into the transport.
+    """
+    _check_mcp_rate_limit()
+    allowed_phases = frozenset({"session_start", "fold", "compact", "file"})
+    if phase not in allowed_phases:
+        return json.dumps(
+            {
+                "status": "error",
+                "code": "INVALID_PHASE",
+                "error": f"phase must be one of {sorted(allowed_phases)}; got {phase!r}",
+            }
+        )
+    try:
+        scope = Path(scope_dir).resolve() if scope_dir else Path.cwd()
+    except (OSError, RuntimeError) as exc:
+        return json.dumps({"status": "error", "code": "BAD_SCOPE", "error": str(exc)})
+    if not scope.is_dir():
+        return json.dumps(
+            {
+                "status": "error",
+                "code": "BAD_SCOPE",
+                "error": f"scope_dir is not a directory: {scope}",
+            }
+        )
+
+    from beagle.style_guides.injector import ContextInjector
+    from beagle.style_guides.loader import StyleGuideLoader
+    from beagle.style_guides.render import GooseTopOfMindRenderer
+    from beagle.style_guides.render import resolve_domain
+
+    domain = resolve_domain(scope)
+    directive = ""
+    project_layers: list[str] = []
+    injector = ContextInjector(StyleGuideLoader())
+    try:
+        if phase == "file":
+            if not file_path:
+                return json.dumps(
+                    {
+                        "status": "error",
+                        "code": "MISSING_FILE",
+                        "error": "phase='file' requires file_path",
+                    }
+                )
+            directive = injector.inject_for_file(file_path)
+            project_layers = [
+                str(p) for p, _ in injector.loader.discover_local(Path(file_path))
+            ]
+        elif phase in ("fold", "compact"):
+            renderer = GooseTopOfMindRenderer(domain=domain)
+            directive = renderer.render(domain=domain, compact=True)
+        else:  # session_start
+            # Tiered render = the canonical per-turn path (load-bearing tier,
+            # ~13 KB) — NOT render() full (42 KB+, blows the bundle cap).
+            renderer = GooseTopOfMindRenderer(domain=domain)
+            # render_with_placeholders returns (xml, queries) — the tiered
+            # per-turn path. Hydration queries are NOT resolved here (the
+            # MCP surface stays pure/offline per C5; the caller's front end
+            # or a later hydrator pass resolves <rag>/<chat> ids).
+            directive, _hydration_queries = renderer.render_with_placeholders(
+                domain=domain, tiered=True
+            )
+            # Project-local layers: discover_local anchors on a file, so a
+            # synthetic sentinel inside scope keeps the walk bounded to scope
+            # and above. Rendered farthest-NEAREST; nearest override stands.
+            sentinel = scope / ".beagle-mind-relay-sentinel"
+            local_pairs = injector.loader.discover_local(sentinel)
+            if local_pairs:
+                parts = [
+                    '<style_guide precedence="nearest_local_overrides_central">',
+                ]
+                for path, guide in reversed(local_pairs):
+                    parts.append(injector._render_guide(guide))  # noqa: SLF001 — same-package private, pinned by tests
+                    project_layers.append(str(path))
+                parts.append("</style_guide>")
+                directive += "\n".join(parts)
+    except (OSError, RuntimeError, ValueError) as exc:
+        # Fail closed but never crash the transport (S2).
+        return json.dumps({"status": "error", "code": "RENDER_FAILED", "error": str(exc)})
+
+    payload = directive.encode("utf-8")
+    cap_ok = len(payload) <= 25600  # tom_hydrator doctrine bundle cap
+    return json.dumps(
+        {
+            "status": "ok",
+            "phase": phase,
+            "scope_dir": str(scope),
+            "domain": domain,
+            "directive": directive,
+            "layers": {"global_root": str(injector.loader.guides_dir), "project_guides": sorted(set(project_layers))},
+            "bytes": len(payload),
+            "cap_ok": cap_ok,
+        }
+    )
+
+
 # ── Observability Tools ──────────────────────────────────────────────────────
 
 
@@ -1862,6 +1986,19 @@ async def validate_security(code: str) -> str:
 # Resources — beagle://config, beagle://workflows, beagle://routing-rules
 # Migrated from mcp_workflow_server.py
 # ══════════════════════════════════════════════════════════════════════════════
+
+
+@mcp.resource("beagle://top-of-mind")
+async def get_top_of_mind_resource() -> str:
+    """BEAGLE MIND RELAY — the composed Top-of-Mind directive as an MCP resource.
+
+    Declarative read for any front end that prefers resources over tool
+    calls (OpenClaw pull, pi session-start). Scoped to the process cwd;
+    prefer the ``beagle_context_directive`` tool to pass an explicit
+    scope_dir / phase. Pure and offline (no hydration).
+
+    """
+    return await beagle_context_directive(scope_dir=str(Path.cwd()), phase="session_start")
 
 
 @mcp.resource("beagle://config")

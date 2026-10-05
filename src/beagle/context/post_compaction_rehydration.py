@@ -26,6 +26,24 @@ from pathlib import Path
 from typing import Any
 
 from ..style_guides.render import render_canonical
+from ..style_guides.render import render_compact
+from ..style_guides.render import resolve_domain
+
+
+def _domain_hint(project_dir: Path | None) -> str | None:
+    """Resolve a domain hint for the compact doctrine slice.
+
+    Args:
+        project_dir: Project root the fold is rehydrating toward.
+
+    Returns:
+        The cwd-compatible domain name (e.g. ``"python"``) or ``None``; a
+        None hint yields the universal compact slice.
+    """
+    try:
+        return resolve_domain(project_dir or Path.cwd())
+    except (OSError, RuntimeError):
+        return None
 from .context_compaction_hook import (
     CompactionCheckpoint,
     discover_context_files,
@@ -384,6 +402,19 @@ def build_rehydration_prompt(
         for f in files_modified[-10:]:
             parts.append(f"  - {f}")
         parts.append("</files_modified>")
+
+    # 7. BEAGLE MIND RELAY (P2): compact doctrine slice so a post-fold session
+    #    still carries the load-bearing directive even when the harness has no
+    #    per-turn tom surface. Bounded by the compact render's own cap
+    #    (COMPACT_MAX_BYTES = 2048); failure must never block rehydration.
+    try:
+        _slice = render_compact(domain=_domain_hint(project_dir))
+        if _slice:
+            parts.append("\n<doctrine_slice>")
+            parts.append(_slice)
+            parts.append("</doctrine_slice>")
+    except (OSError, RuntimeError, ValueError) as exc:
+        logger.warning("[Rehydration] doctrine slice omitted: %s", exc)
 
     return "\n".join(parts)
 
