@@ -265,6 +265,48 @@ _DIR_OPTION = typer.Option(
 )
 
 
+@render_app.command("init")
+def init_repo(
+    target: Path | None = _TARGET_OPTION,
+) -> None:
+    """Initialise a front end / repo for the Top-of-Mind directive surface.
+
+    BEAGLE MIND RELAY (P3). Equivalent to ``render-prompts --target <dir>``
+    plus an explicit MCP-surface check, so any front end (goose, pi,
+    OpenClaw) gets the same treatment: point at the directory the session
+    will be initialised in and every required artefact lands — global guides
+    at the config root, per-repo pointers (.goosehints, .goose/standards.md,
+    CLAUDE.md, .goose/project.json), and the canonical per-turn Top-of-Mind.
+
+    Idempotent by construction: re-running with unchanged TOMLs produces
+    byte-identical files (PLG-3).
+
+    """
+    from ...style_guides.render import GooseTopOfMindRenderer
+    from ...style_guides.render import render_canonical
+
+    # Canonical per-turn artefact (mtime-guarded / force-fresh).
+    render_canonical(force=True)
+
+    renderer = GooseTopOfMindRenderer(target_root=target)
+    results = renderer.render_all()
+
+    table = Table(title="beagle init — prompt-substrate initialisation")
+    table.add_column("Artefact", style="bold")
+    table.add_column("Path", style="cyan")
+    table.add_column("Bytes", justify="right")
+    for name, path in results.items():
+        if path == Path():
+            continue
+        table.add_row(str(name), str(path), str(path.stat().st_size))
+    console.print(table)
+    console.print(
+        "[green]MCP surface:[/green] tool beagle_context_directive + resource "
+        "beagle://top-of-mind are always-registered on the Beagle MCP — "
+        "point any front end's session-start hook at them."
+    )
+
+
 @render_app.command("render-hints")
 def render_hints(
     quiet: bool = typer.Option(
