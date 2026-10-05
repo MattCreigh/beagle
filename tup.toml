@@ -1,0 +1,27 @@
+[project]
+name = "beagle"
+framework = "auto"
+test_paths = ["tests"]
+exclude = []
+
+[runner]
+# Whole-suite subprocess budget, NOT a per-test timeout. Beagle's suite is
+# ~3556 tests and needs many minutes; tup's built-in default (300s) truncates
+# the run partway and reports the truncated counts as if they were the suite's
+# state — a cap that silently converts "not finished" into "here are your
+# results" is worse than no cap. Hangs are caught by the per-test bound in
+# pyproject.toml [tool.pytest.ini_options]; this number only has to be
+# generous enough not to truncate a healthy run.
+timeout_seconds = 3600
+max_workers = 4
+extra_args = []
+fail_fast = false
+verbose = false
+failed_only = false
+coverage = false
+
+[output]
+format = "llm"
+include_stdout = true
+include_stderr = true
+max_traceback_lines = 40
