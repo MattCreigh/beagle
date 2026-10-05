@@ -11,11 +11,8 @@ from __future__ import annotations
 
 import asyncio
 import json
-import re
 import xml.etree.ElementTree as ET
 from pathlib import Path
-
-import pytest
 
 from beagle.infrastructure import mcp_utility_server as u
 from beagle.style_guides.render import resolve_domain
@@ -58,12 +55,6 @@ def test_tool_directive_is_canonical_tiered_body() -> None:
     assert tool_sig == canon_sig
 
 
-def test_goosehints_pointer_agrees_with_canonical() -> None:
-    """goosehints is a thin POINTER to the SSOT; its source hash must match."""
-    hints = (BEAGLE_ROOT / ".goosehints").read_text()
-    assert "beagle_top_of_mind" in hints  # pointer contract
-
-
 def test_full_corpus_convergence() -> None:
     """Golden corpus: N scopes → directive stable & parseable & cap_ok (N=1000)."""
     scopes = [BEAGLE_ROOT, Path("/home/server/Projects/routeUpper"),
@@ -96,7 +87,7 @@ def test_full_corpus_convergence() -> None:
         ET.fromstring(body)  # parseable every vector
 
 
-def test_goosehints_pointer_agrees_with_canonical(tmp_path=None) -> None:
+def test_goosehints_pointer_agrees_with_canonical() -> None:
     """goosehints = session-start pointer; its XML block carries the SSOT."""
     hints = (BEAGLE_ROOT / ".goosehints").read_text()
     assert "beagle_session_start" in hints  # pointer contract (render.py emit)

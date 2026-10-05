@@ -26,9 +26,10 @@ import json
 import os
 import sys
 from pathlib import Path
+from types import ModuleType
 
 
-def _load_bootstrap():
+def _load_bootstrap() -> ModuleType | None:
     """Load the sibling interpreter bootstrap by path.
 
     The hook may be running under an interpreter that cannot import beagle,
@@ -195,14 +196,13 @@ def main() -> int:
                 project_dir=project_dir,
             )
         )
-        parsed: dict = {}
-        if isinstance(result, str):
-            try:
-                parsed = json.loads(result)
-            except json.JSONDecodeError:
-                parsed = {"raw": result}
-        elif isinstance(result, dict):
-            parsed = result
+        parsed: dict = {}  # annotated contract is -> str
+        try:
+            parsed = json.loads(result) if isinstance(result, str) else {
+                "raw": str(result)
+            }
+        except json.JSONDecodeError:
+            parsed = {"raw": result}
         action = parsed.get("action", "")
         # v1.2.0 (CC-1, BGL-036): report EVERY invocation, not only the ones
         # that fold. A control loop that speaks only when it acts cannot be

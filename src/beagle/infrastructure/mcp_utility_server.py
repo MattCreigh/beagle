@@ -1621,8 +1621,7 @@ async def beagle_context_directive(
 
     from beagle.style_guides.injector import ContextInjector
     from beagle.style_guides.loader import StyleGuideLoader
-    from beagle.style_guides.render import GooseTopOfMindRenderer
-    from beagle.style_guides.render import resolve_domain
+    from beagle.style_guides.render import GooseTopOfMindRenderer, resolve_domain
 
     domain = resolve_domain(scope)
     directive = ""

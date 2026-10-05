@@ -282,8 +282,7 @@ def init_repo(
     byte-identical files (PLG-3).
 
     """
-    from ...style_guides.render import GooseTopOfMindRenderer
-    from ...style_guides.render import render_canonical
+    from ...style_guides.render import GooseTopOfMindRenderer, render_canonical
 
     # Canonical per-turn artefact (mtime-guarded / force-fresh).
     render_canonical(force=True)

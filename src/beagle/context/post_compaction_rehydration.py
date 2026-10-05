@@ -25,9 +25,14 @@ from contextlib import suppress
 from pathlib import Path
 from typing import Any
 
-from ..style_guides.render import render_canonical
-from ..style_guides.render import render_compact
-from ..style_guides.render import resolve_domain
+from ..style_guides.render import render_canonical, render_compact, resolve_domain
+from .context_compaction_hook import (
+    CompactionCheckpoint,
+    discover_context_files,
+    load_context_file,
+)
+
+logger = logging.getLogger("Beagle.post_compaction_rehydration")
 
 
 def _domain_hint(project_dir: Path | None) -> str | None:
@@ -44,13 +49,6 @@ def _domain_hint(project_dir: Path | None) -> str | None:
         return resolve_domain(project_dir or Path.cwd())
     except (OSError, RuntimeError):
         return None
-from .context_compaction_hook import (
-    CompactionCheckpoint,
-    discover_context_files,
-    load_context_file,
-)
-
-logger = logging.getLogger("Beagle.post_compaction_rehydration")
 
 # v1.2.0 (RG-7, BGL-012): strong references to background fold tasks so the
 # event loop cannot collect them before they complete. Mirrors events/bus.py.
