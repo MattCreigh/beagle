@@ -1,0 +1,429 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  BEAGLE MIND RELAY — executable plan contract (HS-EVID-04)
+  ID:        BEAGLE MIND RELAY
+  Slug:      beagle-mind-relay
+  Status:    DRAFT  (filename status == file status; flip to COMPLETE only after gates pass)
+  Owner:     server@mininas
+  Repo:      /home/server/Projects/beagle  (branch main @ cd11785)
+  Date:      2026-10-05
+  SSOT:      this XML. Human digest mirrored to plans/beagle-mind-relay-README.md.
+-->
+<plan id="beagle-mind-relay" name="BEAGLE MIND RELAY" version="1.0" status="DRAFT">
+
+  <intent>
+    Make Beagle's TOML style guides (global at appdata root + project-local at repo base)
+    render into an MCP-surfaced directive that ANY front end (goose, pi, OpenClaw, future)
+    can pull, at session start, on file use, and on context fold/compaction — so every
+    session carries the relevant doctrine inside a usable context window, with Beagle as
+    the single source and no per-front-end reimplementation.
+  </intent>
+
+  <!-- ===================================================================== -->
+  <!-- 0. DEFECT REGISTER — inherited defects, each with a specific mitigation -->
+  <!-- ===================================================================== -->
+  <defect_register>
+    <defect id="D1" severity="P0">
+      <statement>No MCP entry point exposes the Top-of-Mind directive. A front end that
+      connects only to the Beagle MCP cannot obtain the rendered doctrine.</statement>
+      <evidence>mcp_beagle_server.py has no style-guide/top-of-mind tool; grep for
+      "style_guide|top_of_mind|render_hints" in that file returns only the _absorb tool
+      mechanics. mcp_utility_server.py exposes only list_style_guides/get_style_guide
+      (raw guide text), not the composed directive.</evidence>
+      <mitigation>P1 — add tool `beagle_context_directive(scope_dir, phase)` + resource
+      `beagle://top-of-mind` to the unified surface.</mitigation>
+    </defect>
+
+    <defect id="D2" severity="P0">
+      <statement>Delivery is goose-specific: the tom platform extension + GOOSE_MOIM_MESSAGE_FILE
+      is the only automatic path; pi/OpenClaw get nothing.</statement>
+      <evidence>~/.config/goose/config.yaml: extensions.tom enabled=true,
+      GOOSE_MOIM_MESSAGE_FILE=.../beagle_top_of_mind.xml. No equivalent outside goose.</evidence>
+      <mitigation>P2/P4 — front-end-agnostic injection at the three generic points
+      (start, fold, file); goose keeps its path unchanged.</mitigation>
+    </defect>
+
+    <defect id="D3" severity="P1">
+      <statement>Per-session refresh exists, per-TURN refresh does not: the mounted
+      beagle-context-management plugin fires render only on SessionStart (force=True);
+      a mid-session style-guide edit drifts the TOML from the running session until the
+      next session starts.</statement>
+      <evidence>hooks.json (beagle-context-management) registers SessionStart →
+      beagle_bootstrap.py, which force-renders (beagle_bootstrap.py:412-420) ONCE;
+      NO hook calls render-hints (grep "render-hints" in hooks/ + plugin = 0 hits).
+      The goose-config-render dir at ~/.config/goose/plugins/ is a SEPARATE, NON-EMPTY,
+      NON-mounted plugin (plugin.toml + render.toml + render_goose_config.py present,
+      3 entries) that renders beagle_system_instruction.xml — it does NOT refresh
+      beagle_top_of_mind.xml. Correction of the DRAFT evidence: that dir is not empty,
+      and beagle_top_of_mind.xml mtime = 2026-10-05 10:01 (fresh — auto-refreshed by
+      the SessionStart force-render this session), NOT Sep 21. The residual defect
+      is real but narrower: refresh cadence is per-session, not per-turn.</evidence>
+      <mitigation>P4 — add a per-turn refresh path (UserPromptSubmit-hook or the
+      render-hints --quiet call) so a mid-session TOML edit reaches the running
+      session within one turn; the mtime-guarded render_canonical makes it cheap.</mitigation>
+    </defect>
+
+    <defect id="D4" severity="P1">
+      <statement>Compaction/fold rehydration carries no style-guide slice, so a front end
+      that is not goose loses doctrine exactly when context pressure is highest.</statement>
+      <evidence>context/post_compaction_rehydration.py and infrastructure/tools/_impl.py own
+      the fold sidecar; the sidecar content is task/progress, not doctrine. render_compact()
+      exists (render.py:532) but nothing appends it to the fold payload.</evidence>
+      <mitigation>P2 — fold tools append render_compact(domain) to the rehydration sidecar.</mitigation>
+    </defect>
+
+    <defect id="D5" severity="P2">
+      <statement>Three beagle working copies coexist; two are redundant, creating drift and
+      "which one is canonical?" failures.</statement>
+      <evidence>`beagle` (MattCreigh/beagle @ cd11785), `beagle_dev` (MattCreigh/beagle_dev @
+      e5d29c96, 12 dirty files), `beagle-fork` (MattCreigh/beagle @ a8dacc6). `git merge-base
+      --is-ancestor a8dacc6 cd11785` → 0 (a8dacc6 is an ancestor of cd11785).</evidence>
+      <mitigation>P6 — keep `beagle`; delete `beagle-fork` (reversion-path: ancestor of pushed
+      main); settle `beagle_dev` by fold-or-abandon decision (its diff touches ToM surfaces).</mitigation>
+    </defect>
+
+    <defect id="D6" severity="P2">
+      <statement>Project-local guide discovery is name-keyed (`&lt;DIRNAME_UPPER&gt;_STYLE_GUIDE.toml`)
+      and undocumented to front ends; a repo without the exact filename silently gets no
+      project doctrine.</statement>
+      <evidence>loader.py:91 `candidate = current / f"{current.name.upper()}_STYLE_GUIDE.toml"`;
+      loader.py:73 discover_local.</evidence>
+      <mitigation>P3 — document the convention in the session-start directive; add a
+      `beagle_context_directive` coverage field listing resolved global+local layers so the
+      absence is visible, not silent (HS-BOUND-01: typed absence, not None).</mitigation>
+    </defect>
+
+    <defect id="D7" severity="P3">
+      <statement>No conformance test proves the composed directive is identical across
+      front ends (goose XML vs mcp_resource payload vs future adapter).</statement>
+      <evidence>targets/mcp_target.py returns a status string only; no cross-target
+      equivalence assertion exists.</evidence>
+      <mitigation>P5 — differential-oracle test (HS-EVID-01): same scope → byte-identical
+      doctrine body across goosehints / top_of_mind_xml / mcp_resource.</mitigation>
+    </defect>
+  </defect_register>
+
+  <!-- ===================================================================== -->
+  <!-- 1. PREMISES — numbered claims, each cited, and what the plan does with it -->
+  <!-- ===================================================================== -->
+  <premises>
+    <claim id="C1">
+      <text>Global guide root is resolved by a single ordered strategy chain.</text>
+      <cite file="src/beagle/config/_config_path.py">Resolution order for CONFIG_ROOT:
+      1. $BEAGLE_CONFIG_ROOT env var  2. ~/.config/beagle  3. &lt;repo_root&gt;/config
+      4. ~/.config/beagle (unpopulated).</cite>
+      <use>P3 renders global guides into ~/.config/beagle/style_guides/guides/; the directive
+      reads the same root so there is one global SSOT.</use>
+    </claim>
+    <claim id="C2">
+      <text>Project-local guides are discovered by walking up from the target path.</text>
+      <cite file="src/beagle/style_guides/loader.py" line="73">def discover_local(self, target: Path)
+      -&gt; list[tuple[Path, dict]]: Find repo-local ``[DIR]_STYLE_GUIDE.toml`` files above *target*.</cite>
+      <use>P1 the tool takes scope_dir and calls discover_local(scope_dir) so project doctrine
+      follows the directory the front end was initialised in.</use>
+    </claim>
+    <claim id="C3">
+      <text>Layer precedence is total: central ext-matched first, then local farthest→nearest;
+      nearest overrides.</text>
+      <cite file="src/beagle/style_guides/injector.py">'&lt;style_guide
+      precedence="nearest_local_overrides_central"&gt;' ... local = [guide for _p, guide in
+      reversed(self.loader.discover_local(path))]</cite>
+      <use>P1/P2 reuse inject_for_file unchanged; the directive is a composition of
+      render(domain) + inject_for_file(path), never a re-implementation.</use>
+    </claim>
+    <claim id="C4">
+      <text>A front-end target axis already exists and includes a payload (non-file) target.</text>
+      <cite file="src/beagle/style_guides/targets/mcp_target.py">Return rendered content as a
+      payload, writing no file. ... It is the mechanism by which OpenClaw (or later a `pi`
+      front end) can pull directives over MCP. Pure and offline.</cite>
+      <use>P1 the MCP tool calls renderer.emit("mcp_resource", content, options) — no new
+      rendering logic, satisfying PLG-5 / HS-BOUND-04.</use>
+    </claim>
+    <claim id="C5">
+      <text>The renderer is pure/offline; the hydrator is the only network surface, with hard
+      caps (8 KB hydrator, 25 KB doctrine).</text>
+      <cite file="src/beagle/style_guides/tom_hydrator.py">v13.21: This module is the ONLY
+      network-bound surface for the Top-of-Mind (Tom) XML. The renderer in ``render.py`` is
+      pure (no I/O, no network).</cite>
+      <use>P1 the MCP tool stays pure; RAG/chat hydration stays in tom_hydrator so a stdio
+      MCP call cannot create a network dependency (T4 fail-closed friendly).</use>
+    </claim>
+    <claim id="C6">
+      <text>The unified MCP server absorbs core groups verbatim; adding a core tool needs no
+      per-tool wiring.</text>
+      <cite file="src/beagle/infrastructure/mcp_beagle_server.py" line="256">_load_core_groups()
+      ... Utility absorbs FIRST ... _CORE_REPORTS["utility"] = _absorb(mcp_utility_server.mcp,
+      owner="core:utility")</cite>
+      <use>P1 adds the tool to mcp_utility_server.py (a core group) so it is absorbed
+      automatically by build_app() (line 738).</use>
+    </claim>
+    <claim id="C7">
+      <text>Raw guide access already exists as MCP tools, but not the composed directive.</text>
+      <cite file="src/beagle/infrastructure/mcp_utility_server.py" line="1469">async def
+      list_style_guides() -&gt; str; ... line 1509: async def get_style_guide(name: str,
+      section: str = "") -&gt; str</cite>
+      <use>P1 keeps get_style_guide (piece lookup) and adds beagle_context_directive
+      (composed, scoped, phased). Distinct concerns, no overlap.</use>
+    </claim>
+    <claim id="C8">
+      <text>The per-turn refresh entry point already exists and is failure-tolerant and
+      mtime-guarded.</text>
+      <cite file="src/beagle/cli/commands/render.py" line="268">@render_app.command("render-hints")
+      ... render_canonical is mtime-guarded and no-ops when the source TOMLs are unchanged</cite>
+      <use>P4 only needs to CALL it reliably per turn; no new render path.</use>
+    </claim>
+    <claim id="C9">
+      <text>The render entry points needed by the plan already exist.</text>
+      <cite file="src/beagle/style_guides/render.py">emit(...) line 823; render_canonical(...)
+      line 870; render_compact(domain) line 532; render_all(...) line 2338; layers default
+      ("global","directory","task") line 829.</cite>
+      <use>P1/P2/P3 compose these; no new renderer surface.</use>
+    </claim>
+    <claim id="C10">
+      <text>beagle-fork is redundant with beagle/main.</text>
+      <cite>git merge-base --is-ancestor a8dacc6 cd11785 -&gt; exit 0 (YES).</cite>
+      <use>P6 deletion is reversion-safe (HS-MUT-01 / preserved-aside rule: pre-state is in
+      pushed main).</use>
+    </claim>
+    <claim id="C11">
+      <text>beagle_dev is a distinct repo with uncommitted ToM work.</text>
+      <cite>git -C beagle_dev status --porcelain → modified .goosehints, CLAUDE.md,
+      .goose/standards.md, src/beagle/context/rag_staleness.py,
+      src/beagle/infrastructure/{cast_ingestion,delta_engine}.py,
+      src/beagle/infrastructure/services/embedding.py, default_config style-guide
+      beagle_core_directives.toml; untracked plans/beagle-pi-frontend-bundle.xml, qup.toml.</cite>
+      <use>P6 does NOT delete beagle_dev blind; it requires a fold-or-abandon decision and a
+      pushed reversion path before any removal.</use>
+    </claim>
+  </premises>
+
+  <!-- ===================================================================== -->
+  <!-- 2. LEGEND for the logic blocks below -->
+  <!-- ===================================================================== -->
+  <legend>
+    ENT(x)      : x exists / is present
+    RESOLVED(x) : x resolves through the single canonical resolver (no ad-hoc path)
+    TOTAL(x)    : x is defined for every input in its domain
+    ⊨           : satisfies (green here implies the named property)
+    ⊥ ↦ false   : unevaluable predicate fails closed (deny)
+    □P          : safety — holds on every prefix (falsifiable by finite counterexample)
+    ◇Q          : liveness — eventually (needs a bounded-time drill, not a unit test)
+  </legend>
+
+  <!-- ===================================================================== -->
+  <!-- 3. PHASES — each exit is a conjunction -->
+  <!-- ===================================================================== -->
+  <phases>
+
+    <phase id="P1" title="MCP surface — expose the composed directive">
+      <deliverables>
+        <item>mcp_utility_server.py: new tool
+          `async def beagle_context_directive(scope_dir: str = "", phase: str = "session_start",
+          file_path: str = "") -&gt; str`.</item>
+        <item>Resource `beagle://top-of-mind` (FastMCP @mcp.resource) returning the session-start
+          directive for cwd (declarative read for any client that prefers resources).</item>
+        <item>Behaviour map (phase):
+          session_start → render(domain=resolve_domain(scope)) + discover_local(scope) layers;
+          fold|compact  → render_compact(domain);
+          file          → inject_for_file(file_path);
+          all           → emit via targets.mcp_resource (payload, no file write).</item>
+        <item>Response carries a resolved-layer manifest: {global_root, global_guides[],
+          project_guides[], domain, bytes, cap_ok} so D6's absence is explicit.</item>
+      </deliverables>
+      <logic>
+        EXIT_P1 ≡ ENT(tool.beagle_context_directive)
+              ∧ ENT(resource.beagle://top-of-mind)
+              ∧ RESOLVED(find_guides_dir)          # one resolver, per C1
+              ∧ (∀ phase ∈ {session_start, fold, compact, file}, TOTAL(dispatch(phase)))
+              ∧ (unknown phase → returns error string, never raises)   # fail closed, T4
+              ∧ (bytes ≤ doctrine_cap)             # 25 KB, C5
+      </logic>
+      <tests>
+        <test id="T-P1-01">tool listed by build_app(); resource URI present in app._resource_manager._resources.</test>
+        <test id="T-P1-02">phase=session_start in a py repo → directive contains python domain guide; in a repo dir with FOO_STYLE_GUIDE.toml → contains that local guide, ordered last.</test>
+        <test id="T-P1-03">phase with garbage string → error string, no exception; other tools still callable (process survival).</test>
+        <test id="T-P1-04">phase=file with a .py path == inject_for_file(path) byte-for-byte.</test>
+      </tests>
+      <risks>
+        <risk>Importing style_guides into the utility server couples it to config resolution at import.</risk>
+        <mitigation>Import inside the handler (deferred), matching the existing lazy-import discipline (mcp_utility_server lines 44-99 tolerate a missing SDK).</mitigation>
+      </risks>
+    </phase>
+
+    <phase id="P2" title="Generic injection points — start / fold / file / compact">
+      <deliverables>
+        <item>Fold path: in context/post_compaction_rehydration.py (and the fold tool in
+          infrastructure/tools/_impl.py), append render_compact(domain=resolve_domain(cwd)) to
+          the rehydration sidecar under a &lt;doctrine_slice&gt; element.</item>
+        <item>Session start: documented contract — front end calls
+          beagle_context_directive(phase="session_start", scope_dir=&lt;init dir&gt;).</item>
+        <item>File use: file_discovery/code_context handlers may call
+          inject_for_file(path) when a file is opened for edit (opt-in flag first).</item>
+      </deliverables>
+      <logic>
+        EXIT_P2 ≡ (□(fold_fires → sidecar_contains(doctrine_slice)))     # safety, testable
+              ∧ (◇(sidecar_doctrine ≤ 8 KB over 100 folds))              # liveness, drill P-D2
+              ∧ (session_start path documented in the rendered hints + README)
+              ∧ (file hook is off by default and cannot change existing tool return shapes)
+      </logic>
+      <tests>
+        <test id="T-P2-01">force a fold → sidecar has &lt;doctrine_slice&gt; with expected domain guide.</test>
+        <test id="T-P2-02">file hook disabled → file_discovery output identical to pre-change golden.</test>
+      </tests>
+      <chaos_drills>
+        <drill id="P-D2">Run 100 consecutive folds in a session; assert sidecar doctrine block
+          never exceeds 8 KB and never duplicates the full doctrine (§ liveness ◇).</drill>
+      </chaos_drills>
+    </phase>
+
+    <phase id="P3" title="Default enablement — render on init, always-register">
+      <deliverables>
+        <item>Wheel post-install / `beagle init`: call render_all() so global guides land under
+          ~/.config/beagle/style_guides/guides/ and per-repo pointers (.goosehints,
+          .goose/standards.md, CLAUDE.md, .goose/project.json) are emitted for the init dir.</item>
+        <item>Document the project-guide filename convention (D6) in the session-start
+          directive text and in docs/DOCTRINE.md.</item>
+        <item>MCP tools/resources always registered — no config boolean gates the surface
+          (detection ≠ activation is preserved for PLUGINS, not for this core capability).</item>
+      </deliverables>
+      <logic>
+        EXIT_P3 ≡ (fresh install → ENT(~/.config/beagle/style_guides/guides/*.toml))
+              ∧ (fresh clone + init → ENT(repo/.goosehints) ∧ ENT(repo/.goose/standards.md))
+              ∧ (no new required config key: grep for the tool's name in config TOMLs = 0)
+              ∧ (idempotent: second init produces byte-identical files)   # PLG-3
+      </logic>
+      <tests>
+        <test id="T-P3-01">clean venv + install wheel → global guides present; init in a sample repo → pointers present.</test>
+        <test id="T-P3-02">run init twice → byte-identical outputs (idempotence).</test>
+      </tests>
+    </phase>
+
+    <phase id="P4" title="Refresh hook + front-end adapters">
+      <deliverables>
+        <item>Per-turn refresh: add a UserPromptSubmit hook (or equivalent pre-read hook) to
+          the mounted beagle-context-management plugin calling `beagle render-hints --quiet`
+          so the tom extension's every-turn read of GOOSE_MOIM_MESSAGE_FILE sees the latest
+          TOML. Note (D3 correction): the separate, non-mounted ~/.config/goose/plugins/
+          goose-config-render plugin renders beagle_system_instruction.xml, not the ToM —
+          leave it out of this path.</item>
+        <item>pi adapter: pi's session-start hook calls the beagle MCP tool (or reads
+          beagle://top-of-mind).</item>
+        <item>OpenClaw adapter: already the mcp_resource design target (C4) — document the one
+          call.</item>
+        <item>Adapter contract file: docs/FRONTEND_CONTRACT.md — start / fold / file, nothing
+          else required of a front end.</item>
+      </deliverables>
+      <logic>
+        EXIT_P4 ≡ (goose: □(turn_n → top_of_mind.xml reflects latest TOML mtime))   # safety
+              ∧ (◇(render-hints failure never breaks the turn))                  # liveness, drill P-D1
+              ∧ (pi + openclaw documented against ONE contract, zero goose-specific branches
+                 in Beagle core)                                                   # HS-BOUND-04
+      </logic>
+      <chaos_drills>
+        <drill id="P-D1">Delete the dest XML mid-session, then issue a turn: render-hints
+          recreates it; a corrupt source TOML must leave the previous artefact in place and
+          exit 0.</drill>
+      </chaos_drills>
+      <tests>
+        <test id="T-P4-01">touch a guide TOML → next turn's beagle_top_of_mind.xml mtime advances and content changes.</test>
+      </tests>
+    </phase>
+
+    <phase id="P5" title="Cross-target conformance — differential oracle">
+      <deliverables>
+        <item>Test: for a fixed scope, the doctrine BODY of goosehints, top_of_mind_xml, and
+          mcp_resource is byte-identical (only envelope/target-status differs).</item>
+        <item>Golden corpus: N ≥ 10³ (scope, phase) vectors → verdicts hashed; CI fails on any
+          divergence (rule of three: 3/N bound).</item>
+      </deliverables>
+      <logic>
+        EXIT_P5 ≡ (∀ target ∈ {goosehints, top_of_mind_xml, mcp_resource},
+                   body(target, scope) = body(canonical, scope))       # HS-EVID-01
+              ∧ (0 divergence over the corpus) ∧ (corpus committed + replay harness in CI)
+      </logic>
+      <tests>
+        <test id="T-P5-01">differential oracle over the corpus → 0 mismatches.</test>
+      </tests>
+    </phase>
+
+    <phase id="P6" title="Repo hygiene — one beagle">
+      <deliverables>
+        <item>beagle-fork: delete after reversion path confirmed (C10 satisfies: ancestor of
+          pushed origin/main). Record SHA in the removal commit message.</item>
+        <item>beagle_dev: decide fold-into-beagle vs abandon. If fold: cherry-pick the ToM-relevant
+          diff onto a branch, push, then remove. If abandon: commit WIP to a pushed branch first.
+          No uncommitted-to-delete.</item>
+        <item>Remove duplicate top-level skylon_plugin_{tailscale,vpn,wifi} only if
+          skylon_ecosystem holds the canonical copies (separate check; out of P0-P5 scope,
+          tracked as OQ-2).</item>
+      </deliverables>
+      <logic>
+        EXIT_P6 ≡ (ENT(beagle) ∧ ¬ENT(beagle-fork))
+              ∧ (beagle_dev either folded (its diff pushed) or parked (WIP pushed))
+              ∧ (every removed path has a `git log --follow`-traceable pushed commit)
+      </logic>
+    </phase>
+
+  </phases>
+
+  <!-- ===================================================================== -->
+  <!-- 4. SAFETY (□) and LIVENESS (◇), each bound to a test / drill -->
+  <!-- ===================================================================== -->
+  <properties>
+    <safety id="S1" bound_to="T-P5-01">□ (same scope ⇒ identical doctrine body across targets).
+      Falsifiable by a finite counterexample (one divergent vector).</safety>
+    <safety id="S2" bound_to="T-P1-03">□ (MCP tool call never raises into the transport; unknown
+      inputs yield an error string). Falsifiable by one crash.</safety>
+    <safety id="S3" bound_to="T-P3-02">□ (re-render with unchanged input ⇒ byte-identical file).</safety>
+    <safety id="S4" bound_to="T-P2-02">□ (file-hook off ⇒ existing tool outputs unchanged).</safety>
+    <liveness id="L1" bound_to="P-D1">◇ (after a guide edit, the running session's next turn
+      reflects it within one turn). Needs the bounded-time drill; a unit test cannot prove it.</liveness>
+    <liveness id="L2" bound_to="P-D2">◇ (fold doctrine slice stays ≤ cap across a long session).</liveness>
+  </properties>
+
+  <!-- ===================================================================== -->
+  <!-- 5. VERIFICATION MATRIX — gates that must be RUN, not asserted -->
+  <!-- ===================================================================== -->
+  <verification>
+    <gate tool="qup">static quality gate on every changed .py (lint/type/doctrine).</gate>
+    <gate tool="tup">test runner for all suites; structured verdict gates phase success.</gate>
+    <gate tool="make">scripts/check_fail_closed.py, scripts/check_config_model_drift.py,
+      scripts/check_no_editable_installs.py must stay green.</gate>
+    <gate tool="ruff" scope="src">no new noqa suppressions (quality-ratchet: fix the input).</gate>
+    <install>uv build --wheel; uv pip install --force-reinstall --no-deps &lt;wheel&gt;
+      --python /opt/beagle/beagle_venv/bin/python3; restart the Beagle extension (stale
+      modules in running MCP servers).</install>
+  </verification>
+
+  <!-- ===================================================================== -->
+  <!-- 6. ROLLBACK — hash-chained intent before effect (HS-MUT-02 spirit) -->
+  <!-- ===================================================================== -->
+  <rollback>
+    <step>Every phase lands on a branch `relay/Pn-&lt;slug&gt;`, committed and pushed before merge.</step>
+    <step>Config/render edits are idempotent and re-renderable from TOML (revert = restore TOML +
+      re-run render_all).</step>
+    <step>The one destructive step (P6 deletions) is gated on a pushed commit; the removal commit
+      names the reversion SHA.</step>
+  </rollback>
+
+  <!-- ===================================================================== -->
+  <!-- 7. OPEN QUESTIONS -->
+  <!-- ===================================================================== -->
+  <open_questions>
+    <q id="OQ-1">beagle_dev fold-or-abandon: which? (blocks P6; needs the owner's call on the
+      beagle-pi-frontend-bundle.xml WIP).</q>
+    <q id="OQ-2">Do the top-level skylon_plugin_{tailscale,vpn,wifi} dirs duplicate
+      skylon_ecosystem copies? (out of scope for this plan; check before any removal).</q>
+    <q id="OQ-3">Does the goose plugin API support a pre-read hook, or must the refresh be a
+      scheduler entry? (determines P4 shape).</q>
+    <q id="OQ-4">Should the resource expose the FULL doctrine or the domain-scoped slice by
+      default? (default: scoped — bounded context is the point).</q>
+  </open_questions>
+
+  <status_note>
+    Status DRAFT. Flip the filename and this node to COMPLETE only after P1-P6 exits hold and
+    the verification gates have been RUN (not asserted). Cite file:line for any claim added
+    on revision.
+  </status_note>
+
+</plan>
