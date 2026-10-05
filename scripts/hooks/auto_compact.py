@@ -164,6 +164,19 @@ def main() -> int:
     if should_skip_tool(tool):
         return 0
 
+    # BEAGLE MIND RELAY (P4, D3): per-turn ToM freshness piggyback. Every
+    # PostToolUse turn, offer render_canonical() the chance to run; it is
+    # mtime-guarded (rule 2: source TOML newer than dest), so an unchanged
+    # TOML set makes this a cheap stat-no-op. A mid-session guide edit now
+    # reaches the running session within one turn (liveness L1). Never fatal:
+    # a hook failure must not break the tool stream.
+    try:
+        from beagle.style_guides.render import render_canonical
+
+        render_canonical()
+    except Exception as exc:  # ruff: ignore[BLE001]  # hook path must never break the tool stream
+        print(f"[Beagle Auto-Compact] ToM refresh skipped: {exc}", file=sys.stderr)
+
     percentage, used_tokens, max_tokens = _read_percentage()
     # Sentinel: no usage source answered.  Skip the fold — folding at 0.0
     # percent would be a false "no fold needed".
