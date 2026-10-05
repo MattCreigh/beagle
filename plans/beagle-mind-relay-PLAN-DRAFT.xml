@@ -9,7 +9,7 @@
   Date:      2026-10-05
   SSOT:      this XML. Human digest mirrored to plans/beagle-mind-relay-README.md.
 -->
-<plan id="beagle-mind-relay" name="BEAGLE MIND RELAY" version="1.0" status="DRAFT">
+<plan id="beagle-mind-relay" name="BEAGLE MIND RELAY" version="1.0" status="IN_PROGRESS">
 
   <intent>
     Make Beagle's TOML style guides (global at appdata root + project-local at repo base)
@@ -410,12 +410,17 @@
   <!-- 7. OPEN QUESTIONS -->
   <!-- ===================================================================== -->
   <open_questions>
-    <q id="OQ-1">beagle_dev fold-or-abandon: which? (blocks P6; needs the owner's call on the
-      beagle-pi-frontend-bundle.xml WIP).</q>
+    <q id="OQ-1" status="partially-resolved-2026-10-05">beagle_dev fold-or-abandon: WIP preserved without loss — committed as
+      plans/disposition/mind-relay-wip.patch on pushed branch wip/mind-relay-tom-bundle
+      (769088f6, MattCreigh/beagle_dev) + git stash in the local tree. Direct commit was
+      hook-blocked (no-hardcoded-host-paths, cast_ingestion.py:126 — pre-existing). Final
+      fold/abandon still needs the owner's call.</q>
     <q id="OQ-2">Do the top-level skylon_plugin_{tailscale,vpn,wifi} dirs duplicate
       skylon_ecosystem copies? (out of scope for this plan; check before any removal).</q>
-    <q id="OQ-3">Does the goose plugin API support a pre-read hook, or must the refresh be a
-      scheduler entry? (determines P4 shape).</q>
+    <q id="OQ-3" status="resolved-2026-10-05">goose v1.49 hook events (verified via README + check_hook_health.py):
+      PreToolUse/PostToolUse/AfterFileEdit (emit, non-blocking), Stop (emit_blocking),
+      SessionStart/SessionEnd. NO UserPromptSubmit. P4 shape therefore = PostToolUse
+      piggyback on the always-firing auto_compact.py (implemented, drilled PASS).</q>
     <q id="OQ-4">Should the resource expose the FULL doctrine or the domain-scoped slice by
       default? (default: scoped — bounded context is the point).</q>
   </open_questions>
