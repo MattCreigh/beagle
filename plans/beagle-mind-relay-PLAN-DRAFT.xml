@@ -415,8 +415,11 @@
       (769088f6, MattCreigh/beagle_dev) + git stash in the local tree. Direct commit was
       hook-blocked (no-hardcoded-host-paths, cast_ingestion.py:126 — pre-existing). Final
       fold/abandon still needs the owner's call.</q>
-    <q id="OQ-2">Do the top-level skylon_plugin_{tailscale,vpn,wifi} dirs duplicate
-      skylon_ecosystem copies? (out of scope for this plan; check before any removal).</q>
+    <q id="OQ-2" status="checked-2026-10-05">Do the top-level skylon_plugin_{tailscale,vpn,wifi}
+      dirs duplicate skylon_ecosystem copies? Checked: vpn and wifi DO have
+      skylon_ecosystem/skylon_plugins twins; tailscale does NOT (skylon_ecosystem copy absent).
+      So the three are not a uniform duplicate set — removal requires a per-plugin canonical
+      comparison, not a blanket delete. Left in place; out of P0-P5 scope.</q>
     <q id="OQ-3" status="resolved-2026-10-05">goose v1.49 hook events (verified via README + check_hook_health.py):
       PreToolUse/PostToolUse/AfterFileEdit (emit, non-blocking), Stop (emit_blocking),
       SessionStart/SessionEnd. NO UserPromptSubmit. P4 shape therefore = PostToolUse
@@ -430,5 +433,30 @@
     the verification gates have been RUN (not asserted). Cite file:line for any claim added
     on revision.
   </status_note>
+
+  <execution_log date="2026-10-05">
+    <run id="relay-merge">Branch relay/mind-relay @ d72f41a fast-forwarded onto main
+      (origin/main cd11785 → d72f41a, pushed; then 0b1e616 pushed). Remote main verified
+      via `git ls-remote`.</run>
+    <run id="gates">Gates RUN, not asserted: qup run_gate over 4 changed .py = 0 violations;
+      check_fail_closed.py = PASS; check_config_model_drift.py = rc0;
+      check_no_editable_installs.py = rc0. Branch test files: 14 passed
+      (conformance 3, context_directive 7, init_command 2, rehydration_slice 2).</run>
+    <run id="full-suite">.venv/bin/python -m pytest tests → 5 failed, 3538 passed, 18 skipped
+      (746.92s). All 5 failures are environmental redis: ConnectionRefusedError 127.0.0.1:6379
+      (outbox.py:103 default; server_1_redis runs but its 6379 is not published to the host).
+      Files test_autonomous_orchestrator.py and test_integration.py are untouched by the relay
+      branch — no relay regression.</run>
+    <run id="P-D2">Drill P-D2 implemented as a re-runnable guard:
+      tests/test_rehydration_doctrine_slice.py::test_pd2_doctrine_slice_soak_100_folds —
+      100 folds, doctrine block ≤ 8 KB, never duplicated. PASSED (3 passed incl. drill).</run>
+    <run id="P6">beagle-fork absent (ENT(beagle) ∧ ¬ENT(beagle-fork) satisfied). beagle_dev
+      parked: WIP pushed as 769088f6 on origin/wip/mind-relay-tom-bundle. Fold-vs-abandon
+      remains the owner's call (see OQ-1).</run>
+    <remaining>The one open item is the tiered/large ToM render exceeding always_bytes_cap
+      (3072): the file-phase directive renders 25874 B with cap_ok=false. The compact doctrine
+      slice (drill P-D2) is capped correctly at 2048 B; the FULL session_start render is the
+      over-cap path. Doctrine pruning workstream, not part of P1-P6.</remaining>
+  </execution_log>
 
 </plan>
