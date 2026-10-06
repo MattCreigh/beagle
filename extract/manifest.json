@@ -1,0 +1,681 @@
+{
+  "config_root": "/home/server/.config/beagle",
+  "models": {
+    "GLM-5.2": [
+      "beagle_core_config/config.toml"
+    ],
+    "Deepseek-v4-pro": [
+      "beagle_core_config/config.toml"
+    ],
+    "deepseek-v4-pro": [
+      "beagle_core_config/config.toml"
+    ],
+    "KIMI-K2.7-CODE": [
+      "beagle_core_config/config.toml"
+    ],
+    "minimax-m3": [
+      "beagle_core_config/config.toml",
+      "style_guides/guides/beagle_core_directives.toml"
+    ],
+    "kimi-k2.5": [
+      "beagle_core_config/config.toml"
+    ],
+    "DEEPSEEK-V4-FLASH": [
+      "beagle_core_config/config.toml"
+    ],
+    "phi-4-mini": [
+      "beagle_core_config/config.toml"
+    ],
+    "gpt-4-0125-preview": [
+      "beagle_core_config/config.toml"
+    ],
+    "deepseek-v4-pro:0813-cloud": [
+      "beagle_core_config/config.toml"
+    ],
+    "kimi-k2-thinking": [
+      "beagle_core_config/config.toml"
+    ],
+    "deepseek-v3.2": [
+      "beagle_core_config/config.toml",
+      "coding_agent_config/metaprompts/_archive/self-improvement.yaml",
+      "coding_agent_config/metaprompts/self-improvement.yaml"
+    ],
+    "nemotron-3-ultra": [
+      "beagle_core_config/config.toml"
+    ],
+    "kimi-k3": [
+      "beagle_core_config/config.toml"
+    ],
+    "glm-5.2": [
+      "beagle_core_config/config.toml"
+    ],
+    "deepseek-v4-flash:0731": [
+      "beagle_core_config/config.toml"
+    ],
+    "KIMI-K2.6": [
+      "beagle_core_config/config.toml"
+    ],
+    "NEMOTRON-3-ULTRA": [
+      "beagle_core_config/config.toml"
+    ],
+    "kimi-k2.6": [
+      "beagle_core_config/config.toml"
+    ],
+    "deepseek-v4-flash-0731": [
+      "beagle_core_config/config.toml"
+    ],
+    "deepseek-v4-flash": [
+      "beagle_core_config/config.toml"
+    ],
+    "kimi-k2.7-code": [
+      "beagle_core_config/config.toml"
+    ],
+    "deepseek-v4-pro:0813": [
+      "beagle_core_config/config.toml"
+    ],
+    "deepseek-v4-flash:0731-cloud": [
+      "beagle_core_config/config.toml"
+    ],
+    "glm-5.1": [
+      "beagle_core_config/config.toml"
+    ],
+    "DEEPSEEK-V4-PRO": [
+      "beagle_core_config/config.toml"
+    ],
+    "minimax-m2.7": [
+      "coding_agent_config/metaprompts/_archive/self-improvement.yaml",
+      "coding_agent_config/metaprompts/self-improvement.yaml"
+    ],
+    "glm-5": [
+      "coding_agent_config/metaprompts/_archive/self-improvement.yaml",
+      "coding_agent_config/metaprompts/self-improvement.yaml"
+    ],
+    "deepseek-v4-pro:cloud": [
+      "coding_agent_config/blocks/agents/python_backend.toml"
+    ],
+    "minimax-m3:cloud": [
+      "coding_agent_config/metaprompts/tasks/goose_cli_feature_parity.toml",
+      "coding_agent_config/metaprompts/tasks/host_optimization.toml",
+      "coding_agent_config/metaprompts/tasks/openclaw_controller_refactor.toml",
+      "coding_agent_config/metaprompts/tasks/research_comparison.toml",
+      "coding_agent_config/metaprompts/tasks/self_improvement_loop_25.toml",
+      "coding_agent_config/metaprompts/tasks/skills_audit.toml",
+      "coding_agent_config/metaprompts/tasks/zeus_docker_improvements.toml",
+      "coding_agent_config/metaprompts/templates/develop.toml",
+      "coding_agent_config/metaprompts/templates/research.toml",
+      "coding_agent_config/metaprompts/templates/self-improvement.toml",
+      "style_guides/guides/_archive/llm_bridge_contract.toml",
+      "style_guides/guides/beagle_core_directives.toml"
+    ]
+  },
+  "allowlist_violations": [],
+  "agent_profiles": {
+    "profile_count": 61,
+    "prose_only_count": 5,
+    "identical_count": 0,
+    "profiles": {
+      "default": {
+        "differing_fields": [
+          "provider",
+          "model"
+        ],
+        "differs_by_prose_only": false,
+        "identical_to_modal": false
+      },
+      "planner": {
+        "differing_fields": [
+          "temperature",
+          "description"
+        ],
+        "differs_by_prose_only": false,
+        "identical_to_modal": false
+      },
+      "executor": {
+        "differing_fields": [
+          "provider",
+          "model",
+          "temperature",
+          "description"
+        ],
+        "differs_by_prose_only": false,
+        "identical_to_modal": false
+      },
+      "verifier": {
+        "differing_fields": [
+          "provider",
+          "model",
+          "temperature",
+          "description"
+        ],
+        "differs_by_prose_only": false,
+        "identical_to_modal": false
+      },
+      "synthesizer": {
+        "differing_fields": [
+          "provider",
+          "model",
+          "temperature",
+          "description"
+        ],
+        "differs_by_prose_only": false,
+        "identical_to_modal": false
+      },
+      "curator": {
+        "differing_fields": [
+          "provider",
+          "model",
+          "temperature",
+          "description"
+        ],
+        "differs_by_prose_only": false,
+        "identical_to_modal": false
+      },
+      "compressor": {
+        "differing_fields": [
+          "provider",
+          "model",
+          "temperature",
+          "description"
+        ],
+        "differs_by_prose_only": false,
+        "identical_to_modal": false
+      },
+      "security_firewall": {
+        "differing_fields": [
+          "provider",
+          "model",
+          "temperature",
+          "description"
+        ],
+        "differs_by_prose_only": false,
+        "identical_to_modal": false
+      },
+      "grpo_reflector": {
+        "differing_fields": [
+          "provider",
+          "model",
+          "description"
+        ],
+        "differs_by_prose_only": false,
+        "identical_to_modal": false
+      },
+      "adversarial-reviewer": {
+        "differing_fields": [
+          "provider",
+          "model",
+          "temperature",
+          "description"
+        ],
+        "differs_by_prose_only": false,
+        "identical_to_modal": false
+      },
+      "agent-orchestrator": {
+        "differing_fields": [
+          "description"
+        ],
+        "differs_by_prose_only": true,
+        "identical_to_modal": false
+      },
+      "agent-spawn": {
+        "differing_fields": [
+          "provider",
+          "model",
+          "description"
+        ],
+        "differs_by_prose_only": false,
+        "identical_to_modal": false
+      },
+      "api-designer": {
+        "differing_fields": [
+          "description"
+        ],
+        "differs_by_prose_only": true,
+        "identical_to_modal": false
+      },
+      "architecture-auditor": {
+        "differing_fields": [
+          "temperature",
+          "description"
+        ],
+        "differs_by_prose_only": false,
+        "identical_to_modal": false
+      },
+      "claude-integration": {
+        "differing_fields": [
+          "provider",
+          "model",
+          "description"
+        ],
+        "differs_by_prose_only": false,
+        "identical_to_modal": false
+      },
+      "cli-ux-designer": {
+        "differing_fields": [
+          "provider",
+          "model",
+          "description"
+        ],
+        "differs_by_prose_only": false,
+        "identical_to_modal": false
+      },
+      "code-profiler": {
+        "differing_fields": [
+          "provider",
+          "model",
+          "temperature",
+          "description"
+        ],
+        "differs_by_prose_only": false,
+        "identical_to_modal": false
+      },
+      "consulting-strategist": {
+        "differing_fields": [
+          "provider",
+          "model",
+          "temperature",
+          "description"
+        ],
+        "differs_by_prose_only": false,
+        "identical_to_modal": false
+      },
+      "context-compressor": {
+        "differing_fields": [
+          "provider",
+          "model",
+          "description"
+        ],
+        "differs_by_prose_only": false,
+        "identical_to_modal": false
+      },
+      "context-fold": {
+        "differing_fields": [
+          "provider",
+          "model",
+          "description"
+        ],
+        "differs_by_prose_only": false,
+        "identical_to_modal": false
+      },
+      "db-migration-specialist": {
+        "differing_fields": [
+          "provider",
+          "model",
+          "description"
+        ],
+        "differs_by_prose_only": false,
+        "identical_to_modal": false
+      },
+      "deep-planner": {
+        "differing_fields": [
+          "temperature",
+          "description"
+        ],
+        "differs_by_prose_only": false,
+        "identical_to_modal": false
+      },
+      "developer-advocate": {
+        "differing_fields": [
+          "provider",
+          "model",
+          "temperature",
+          "description"
+        ],
+        "differs_by_prose_only": false,
+        "identical_to_modal": false
+      },
+      "devops-pipeline-architect": {
+        "differing_fields": [
+          "provider",
+          "model",
+          "temperature",
+          "description"
+        ],
+        "differs_by_prose_only": false,
+        "identical_to_modal": false
+      },
+      "documentation-writer": {
+        "differing_fields": [
+          "provider",
+          "model",
+          "temperature",
+          "description"
+        ],
+        "differs_by_prose_only": false,
+        "identical_to_modal": false
+      },
+      "e2e-tester": {
+        "differing_fields": [
+          "provider",
+          "model",
+          "description"
+        ],
+        "differs_by_prose_only": false,
+        "identical_to_modal": false
+      },
+      "fact-checker": {
+        "differing_fields": [
+          "provider",
+          "model",
+          "temperature",
+          "description"
+        ],
+        "differs_by_prose_only": false,
+        "identical_to_modal": false
+      },
+      "financial-valuator": {
+        "differing_fields": [
+          "provider",
+          "model",
+          "description"
+        ],
+        "differs_by_prose_only": false,
+        "identical_to_modal": false
+      },
+      "frontend-architect": {
+        "differing_fields": [
+          "provider",
+          "model",
+          "temperature",
+          "description"
+        ],
+        "differs_by_prose_only": false,
+        "identical_to_modal": false
+      },
+      "ground-truth-validator": {
+        "differing_fields": [
+          "provider",
+          "model",
+          "temperature",
+          "description"
+        ],
+        "differs_by_prose_only": false,
+        "identical_to_modal": false
+      },
+      "infrastructure": {
+        "differing_fields": [
+          "provider",
+          "model",
+          "description"
+        ],
+        "differs_by_prose_only": false,
+        "identical_to_modal": false
+      },
+      "langgraph-graph-builder": {
+        "differing_fields": [
+          "provider",
+          "model",
+          "description"
+        ],
+        "differs_by_prose_only": false,
+        "identical_to_modal": false
+      },
+      "latency-hunter": {
+        "differing_fields": [
+          "provider",
+          "model",
+          "description"
+        ],
+        "differs_by_prose_only": false,
+        "identical_to_modal": false
+      },
+      "memory-forensics": {
+        "differing_fields": [
+          "provider",
+          "model",
+          "description"
+        ],
+        "differs_by_prose_only": false,
+        "identical_to_modal": false
+      },
+      "new-ai-dev": {
+        "differing_fields": [
+          "provider",
+          "model",
+          "temperature",
+          "description"
+        ],
+        "differs_by_prose_only": false,
+        "identical_to_modal": false
+      },
+      "patent-analyst": {
+        "differing_fields": [
+          "description"
+        ],
+        "differs_by_prose_only": true,
+        "identical_to_modal": false
+      },
+      "performance-profiler": {
+        "differing_fields": [
+          "provider",
+          "model",
+          "description"
+        ],
+        "differs_by_prose_only": false,
+        "identical_to_modal": false
+      },
+      "prompt-engineer": {
+        "differing_fields": [
+          "provider",
+          "model",
+          "description"
+        ],
+        "differs_by_prose_only": false,
+        "identical_to_modal": false
+      },
+      "protocol-debugger": {
+        "differing_fields": [
+          "provider",
+          "model",
+          "description"
+        ],
+        "differs_by_prose_only": false,
+        "identical_to_modal": false
+      },
+      "python-backend": {
+        "differing_fields": [
+          "provider",
+          "model",
+          "description"
+        ],
+        "differs_by_prose_only": false,
+        "identical_to_modal": false
+      },
+      "react-frontend-dev": {
+        "differing_fields": [
+          "provider",
+          "model",
+          "temperature",
+          "description"
+        ],
+        "differs_by_prose_only": false,
+        "identical_to_modal": false
+      },
+      "research-planner": {
+        "differing_fields": [
+          "temperature",
+          "description"
+        ],
+        "differs_by_prose_only": false,
+        "identical_to_modal": false
+      },
+      "resource-optimizer": {
+        "differing_fields": [
+          "provider",
+          "model",
+          "description"
+        ],
+        "differs_by_prose_only": false,
+        "identical_to_modal": false
+      },
+      "root-cause-analyst": {
+        "differing_fields": [
+          "description"
+        ],
+        "differs_by_prose_only": true,
+        "identical_to_modal": false
+      },
+      "rust-cpp-systems": {
+        "differing_fields": [
+          "provider",
+          "model",
+          "description"
+        ],
+        "differs_by_prose_only": false,
+        "identical_to_modal": false
+      },
+      "search-executor": {
+        "differing_fields": [
+          "provider",
+          "model",
+          "temperature",
+          "description"
+        ],
+        "differs_by_prose_only": false,
+        "identical_to_modal": false
+      },
+      "security-auditor": {
+        "differing_fields": [
+          "provider",
+          "model",
+          "temperature",
+          "description"
+        ],
+        "differs_by_prose_only": false,
+        "identical_to_modal": false
+      },
+      "self-benchmark": {
+        "differing_fields": [
+          "provider",
+          "model",
+          "description"
+        ],
+        "differs_by_prose_only": false,
+        "identical_to_modal": false
+      },
+      "self-improver": {
+        "differing_fields": [
+          "provider",
+          "model",
+          "description"
+        ],
+        "differs_by_prose_only": false,
+        "identical_to_modal": false
+      },
+      "sota-dev": {
+        "differing_fields": [
+          "provider",
+          "model",
+          "temperature",
+          "description"
+        ],
+        "differs_by_prose_only": false,
+        "identical_to_modal": false
+      },
+      "synthesis-writer": {
+        "differing_fields": [
+          "provider",
+          "model",
+          "temperature",
+          "description"
+        ],
+        "differs_by_prose_only": false,
+        "identical_to_modal": false
+      },
+      "ui-ux-designer": {
+        "differing_fields": [
+          "provider",
+          "model",
+          "description"
+        ],
+        "differs_by_prose_only": false,
+        "identical_to_modal": false
+      },
+      "web-researcher": {
+        "differing_fields": [
+          "temperature",
+          "description"
+        ],
+        "differs_by_prose_only": false,
+        "identical_to_modal": false
+      },
+      "web-search-agent": {
+        "differing_fields": [
+          "provider",
+          "model",
+          "temperature",
+          "description"
+        ],
+        "differs_by_prose_only": false,
+        "identical_to_modal": false
+      },
+      "streaming-synthesizer": {
+        "differing_fields": [
+          "provider",
+          "model",
+          "temperature",
+          "description"
+        ],
+        "differs_by_prose_only": false,
+        "identical_to_modal": false
+      },
+      "audit-reviewer": {
+        "differing_fields": [
+          "provider",
+          "model",
+          "temperature",
+          "description"
+        ],
+        "differs_by_prose_only": false,
+        "identical_to_modal": false
+      },
+      "memory-upload": {
+        "differing_fields": [
+          "description"
+        ],
+        "differs_by_prose_only": true,
+        "identical_to_modal": false
+      },
+      "orchestrator": {
+        "differing_fields": [
+          "provider",
+          "model",
+          "temperature",
+          "description"
+        ],
+        "differs_by_prose_only": false,
+        "identical_to_modal": false
+      },
+      "researcher": {
+        "differing_fields": [
+          "provider",
+          "model",
+          "temperature",
+          "description"
+        ],
+        "differs_by_prose_only": false,
+        "identical_to_modal": false
+      },
+      "critic": {
+        "differing_fields": [
+          "provider",
+          "model",
+          "temperature",
+          "description"
+        ],
+        "differs_by_prose_only": false,
+        "identical_to_modal": false
+      },
+      "operator": {
+        "differing_fields": [
+          "provider",
+          "model",
+          "temperature",
+          "description"
+        ],
+        "differs_by_prose_only": false,
+        "identical_to_modal": false
+      }
+    }
+  },
+  "credentials": []
+}
